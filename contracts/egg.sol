@@ -5,8 +5,9 @@ import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol";
 
-contract RoosterEgg is ERC1155, Ownable, Pausable {
+contract RoosterEgg is ERC1155, ERC1155Burnable, Ownable, Pausable {
   // Presale time in UNIX
   uint128 public openingTime;
   uint128 public closingTime;
@@ -39,7 +40,7 @@ contract RoosterEgg is ERC1155, Ownable, Pausable {
   mapping(uint8 => mapping(address => uint32)) public purchasedAmount;
 
   event Purchase(address indexed purchaser, uint8 indexed round, uint256 amount, uint256 cost);
-  event NewPresale(uint8 round, uint32 cap, uint128 openingTime, uint128 closingTime, uint256 price, bool isPublicSale);
+  event NewPresale(uint8 round, uint32 supply, uint32 cap, uint128 openingTime, uint128 closingTime, uint256 price);
 
   constructor(
     IERC20 usdc_,
@@ -58,7 +59,7 @@ contract RoosterEgg is ERC1155, Ownable, Pausable {
     return uint32(block.timestamp);
   }
 
-  function buyEggs(uint32 amount) external {
+  function buyEggs(uint8 amount) external {
     address purchaser = _msgSender();
     uint256 value = price * amount;
 
@@ -67,7 +68,7 @@ contract RoosterEgg is ERC1155, Ownable, Pausable {
 
     //Effects
     sold += amount; //amount is no more than 10
-    purchasedAmount[round][purchaser] += uint32(amount);
+    purchasedAmount[round][purchaser] += amount;
 
     //Interactions
     usdc.transferFrom(purchaser, wallet, value);
@@ -78,11 +79,11 @@ contract RoosterEgg is ERC1155, Ownable, Pausable {
 
   function _preValidatePurchase(
     address purchaser,
-    uint32 amount
+    uint8 amount
   ) private view whenNotPaused {
     require(isOpen(), "Not open");
     require(amount > 0 && amount <= 10, "Must be > 0 and <= 10");
-    require(sold + uint32(amount) <= supply, "Exceeds supply");
+    require(sold + amount <= supply, "Exceeds supply");
     if(cap > 0){
       require(amount + purchasedAmount[round][purchaser] <= cap, "Exceeds cap");
     }
@@ -90,17 +91,44 @@ contract RoosterEgg is ERC1155, Ownable, Pausable {
 
   function _mintRandom(
     address purchaser,
-    uint32 amount
+    uint8 amount
   ) private {
-    uint256 id = 
-      uint256(keccak256(abi.encodePacked(block.difficulty, block.timestamp, purchaser, amount))) % types;
-    for(uint32 i = 0; i < amount; i++){
+    uint8 id = 
+      uint8(uint256(keccak256(abi.encodePacked(block.difficulty, block.timestamp, purchaser, amount))) % types);
+    for(uint8 i = 0; i < amount; i++){
       id = id < types ? id : 0;
       _mint(purchaser, id++, 1, "");
     }
   }
 
   /* Only owner functions */
+
+  function setPresale(
+    uint128 openingTime_,
+    uint128 closingTime_,
+    uint256 price_,
+    uint32 supply_,
+    uint32 cap_,
+    uint8 round_
+  ) external onlyOwner {
+    require(!isOpen() || paused(), "Cannot set now");
+    if (!isOpen()) {
+      require(closingTime_ >= openingTime_, "Closing time < Opening time");
+      require(openingTime_ > block.timestamp, "Invalid opening time");
+      openingTime = openingTime_;
+      round = round_;
+      sold = 0;
+    }else{
+      require(closingTime_ > block.timestamp, "Closing time < Opening time");
+    }
+
+    supply = supply_;
+    cap = cap_;
+    price = price_;
+    closingTime = closingTime_;
+
+    emit NewPresale(round, supply, cap, openingTime, closingTime, price);
+  }
 
   function setURI(string memory uri_) public onlyOwner {
     _setURI(uri_);
