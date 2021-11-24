@@ -1,83 +1,126 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.2;
 
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
+import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-// import "hardhat/console.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 
-contract RoosterEgg is ERC721Enumerable, ERC721Burnable, Ownable {
-  using Strings for uint256;
+contract RoosterEgg is ERC1155, Ownable, Pausable {
+  // Presale time in UNIX
+  uint128 public openingTime;
+  uint128 public closingTime;
 
-  uint256 private _tokenIdCounter;
-  string public baseURI;
-  mapping(address => bool) public isOperator;
+  //USDC address
+  IERC20 public immutable usdc;
 
-  event UpdateOperator(address user, bool isOperator);
+  // Value wallet address
+  address public immutable wallet;
 
-  constructor(string memory baseURI_) ERC721("RoosterEgg", "ROOSTER_EGG") {
-    baseURI = baseURI_;
-    isOperator[msg.sender] = true;
-    
-    emit UpdateOperator(msg.sender, true);
+  //Max supply for round
+  uint32 public supply;
+
+  //Tokens sold for round
+  uint32 public sold;
+
+  //Indivisual cap for round (0 to disable)
+  uint32 public cap;
+
+  //Sale round
+  uint8 public round;
+
+  //Number of egg type
+  uint8 public types;
+
+  //The price per NFT token (1token = ? wei)
+  uint256 public price;
+
+  //round => user => amount
+  mapping(uint8 => mapping(address => uint32)) public purchasedAmount;
+
+  event Purchase(address indexed purchaser, uint8 indexed round, uint256 amount, uint256 cost);
+  event NewPresale(uint8 round, uint32 cap, uint128 openingTime, uint128 closingTime, uint256 price, bool isPublicSale);
+
+  constructor(
+    IERC20 usdc_,
+    address wallet_,
+    string memory uri_
+  ) ERC1155(uri_) {
+    usdc = usdc_;
+    wallet = wallet_;
   }
 
-  function tokenURI(uint256 tokenId) public view override returns (string memory) {
-    require(bytes(baseURI).length > 0, "BaseURI not set");
-    require(_exists(tokenId), "Query for nonexistent token");
-    return string(abi.encodePacked(baseURI, tokenId.toString()));
+  function isOpen() public view returns (bool) {
+    return block.timestamp >= openingTime && block.timestamp <= closingTime;
   }
 
-  function tokensOfOwner(address owner) public view returns (uint256[] memory) {
-    uint256 balance = balanceOf(owner);
-    uint256[] memory tokens = new uint256[](balance);
-    for (uint256 i = 0; i < balance; i++) {
-      tokens[i] = tokenOfOwnerByIndex(owner, i);
+  function getTime() external view returns (uint32) {
+    return uint32(block.timestamp);
+  }
+
+  function buyEggs(uint32 amount) external {
+    address purchaser = _msgSender();
+    uint256 value = price * amount;
+
+    //Checks
+    _preValidatePurchase(purchaser, amount);
+
+    //Effects
+    sold += amount; //amount is no more than 10
+    purchasedAmount[round][purchaser] += uint32(amount);
+
+    //Interactions
+    usdc.transferFrom(purchaser, wallet, value);
+    _mintRandom(purchaser, amount);
+
+    emit Purchase(purchaser, round, amount, value);
+  }
+
+  function _preValidatePurchase(
+    address purchaser,
+    uint32 amount
+  ) private view whenNotPaused {
+    require(isOpen(), "Not open");
+    require(amount > 0 && amount <= 10, "Must be > 0 and <= 10");
+    require(sold + uint32(amount) <= supply, "Exceeds supply");
+    if(cap > 0){
+      require(amount + purchasedAmount[round][purchaser] <= cap, "Exceeds cap");
     }
-    return tokens;
   }
 
-  function _baseURI() internal view override returns (string memory) {
-    return baseURI;
-  }
-
-  /* Token actions */
-
-  function safeMint(address to, uint256 amount) external {
-    address sender = _msgSender();
-    require(isOperator[sender], "Invalid access");
-
-    uint256 newtokenId = _tokenIdCounter;
-
-    for (uint256 i = 0; i < amount; i++) {
-      _safeMint(to, newtokenId);
-      newtokenId++;
+  function _mintRandom(
+    address purchaser,
+    uint32 amount
+  ) private {
+    uint256 id = 
+      uint256(keccak256(abi.encodePacked(block.difficulty, block.timestamp, purchaser, amount))) % types;
+    for(uint32 i = 0; i < amount; i++){
+      id = id < types ? id : 0;
+      _mint(purchaser, id++, 1, "");
     }
-
-    _tokenIdCounter = newtokenId;
   }
 
-  /* Token settings  */
+  /* Only owner functions */
 
-  function setBaseURI(string memory baseURI_) external onlyOwner {
-    baseURI = baseURI_;
+  function setURI(string memory uri_) public onlyOwner {
+    _setURI(uri_);
   }
 
-  function setOperator(address user, bool isOperator_) external onlyOwner {
-    isOperator[user] = isOperator_;
-    emit UpdateOperator(user, isOperator_);
+  function mint(
+    address account,
+    uint256 id,
+    uint256 amount,
+    bytes memory data
+  ) external onlyOwner {
+    _mint(account, id, amount, data);
   }
 
-  function _beforeTokenTransfer(
-    address from,
+  function mintBatch(
     address to,
-    uint256 tokenId
-  ) internal virtual override(ERC721, ERC721Enumerable) {
-    super._beforeTokenTransfer(from, to, tokenId);
-  }
-
-  function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721, ERC721Enumerable) returns (bool) {
-    return super.supportsInterface(interfaceId);
+    uint256[] memory ids,
+    uint256[] memory amounts,
+    bytes memory data
+  ) external onlyOwner {
+    _mintBatch(to, ids, amounts, data);
   }
 }
