@@ -5,20 +5,7 @@ import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol";
-
-interface IUSDC {
-  function transferWithAuthorization(
-    address from,
-    address to,
-    uint256 value,
-    uint256 validAfter,
-    uint256 validBefore,
-    bytes32 nonce,
-    uint8 v,
-    bytes32 r,
-    bytes32 s
-  ) external;
-}
+import { IUSDC } from "./IUSDC.sol";
 
 contract RoosterEgg is ERC1155, ERC1155Burnable, Ownable, Pausable {
   // Presale time in UNIX
@@ -46,7 +33,7 @@ contract RoosterEgg is ERC1155, ERC1155Burnable, Ownable, Pausable {
   //The price per egg (1egg = ? wei)
   uint256 public price;
 
-  //round => user => amount
+  //user => amount
   mapping(address => uint8) public purchasedAmount;
 
   event Purchase(address indexed purchaser, uint256 amount, uint256 cost);
@@ -55,10 +42,12 @@ contract RoosterEgg is ERC1155, ERC1155Burnable, Ownable, Pausable {
   constructor(
     IUSDC usdc_,
     address wallet_,
-    string memory uri_
+    string memory uri_,
+    uint8 varients_
   ) ERC1155(uri_) {
     usdc = usdc_;
     wallet = wallet_;
+    variants = varients_;
   }
 
   function isOpen() public view returns (bool) {
@@ -85,7 +74,7 @@ contract RoosterEgg is ERC1155, ERC1155Burnable, Ownable, Pausable {
     _preValidatePurchase(purchaser, amount);
 
     //Effects
-    sold += amount; //amount is no more than 10
+    sold += amount; 
     purchasedAmount[purchaser] += amount;
 
     //Interactions
