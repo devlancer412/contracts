@@ -11,7 +11,7 @@ const { expect } = chai;
 
 let macrochain: MacroChain;
 let egg: RoosterEgg;
-let usdc: IUSDC
+let usdc: IUSDC;
 let owner: SignerWithAddress;
 let wallet: SignerWithAddress;
 let alice: SignerWithAddress;
@@ -70,10 +70,12 @@ describe("Egg test", () => {
         const amount = 2;
         const price = toWei(30, 6);
         const value = toBN(amount).mul(price);
-        
+
         const { msg, sig } = await signERC3009Transfer(alice, wallet.address, value);
-        const promi = egg.connect(alice).buyEggs(amount, msg.validAfter, msg.validBefore, msg.nonce, sig.v, sig.r, sig.s);
-        
+        const promi = egg
+          .connect(alice)
+          .buyEggs(amount, msg.validAfter, msg.validBefore, msg.nonce, sig.v, sig.r, sig.s);
+
         await expect(promi).to.be.revertedWith("Not open");
       });
     });
@@ -91,8 +93,10 @@ describe("Egg test", () => {
         const { msg, sig } = await signERC3009Transfer(alice, wallet.address, value);
         console.log(JSON.stringify(msg, null, 2));
         console.log(JSON.stringify(sig, null, 2));
-        const promi = egg.connect(alice).buyEggs(amount, msg.validAfter, msg.validBefore, msg.nonce, sig.v, sig.r, sig.s);
-        
+        const promi = egg
+          .connect(alice)
+          .buyEggs(amount, msg.validAfter, msg.validBefore, msg.nonce, sig.v, sig.r, sig.s);
+
         await promi;
       });
     });
