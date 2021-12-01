@@ -97,7 +97,7 @@ const config: HardhatUserConfig = {
         },
       },
       {
-        version: "0.6.6",
+        version: "0.6.12",
         settings: {
           optimizer: {
             enabled: true,
@@ -112,7 +112,7 @@ const config: HardhatUserConfig = {
       accounts: {
         mnemonic: MNEMONIC_LOCALHOST,
       },
-      chainId: chainIds.hardhat,
+      chainId: 137,
       forking: {
         url: "https://polygon-mainnet.g.alchemy.com/v2/" + ALCHEMY_API_KEY,
         blockNumber: 21972690

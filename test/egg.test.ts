@@ -2,63 +2,20 @@ import chai from "chai";
 import hre, { ethers } from "hardhat";
 import { solidity } from "ethereum-waffle";
 import { SignerWithAddress } from "hardhat-deploy-ethers/dist/src/signers";
-import { advanceTimeAndBlock, getCurrentTime, MacroChain, toBN, toWei } from "../utils";
-import { IUSDC__factory, RoosterEgg, RoosterEgg__factory } from "../typechain";
-import { BigNumber } from "ethers";
+import { advanceTimeAndBlock, MacroChain, toBN, toWei } from "../utils";
+import { IUSDC, IUSDC__factory, RoosterEgg, RoosterEgg__factory } from "../typechain";
+import { signERC3009Transfer } from "./utils";
 
 chai.use(solidity);
 const { expect } = chai;
-const { utils, constants } = ethers;
 
 let macrochain: MacroChain;
 let egg: RoosterEgg;
+let usdc: IUSDC
 let owner: SignerWithAddress;
 let wallet: SignerWithAddress;
 let alice: SignerWithAddress;
 let bob: SignerWithAddress;
-
-const signERC3009Transfer = async (from: SignerWithAddress, to: string, value: BigNumber) => {
-  const msg = {
-    from: from.address,
-    to,
-    value,
-    validAfter: 0,
-    validBefore: Math.floor(Date.now() / 1000) + 3600,
-    nonce: utils.hexlify(utils.randomBytes(32)),
-  };
-  const data = {
-    types: {
-      TransferWithAuthorization: [
-        { name: "from", type: "address" },
-        { name: "to", type: "address" },
-        { name: "value", type: "uint256" },
-        { name: "validAfter", type: "uint256" },
-        { name: "validBefore", type: "uint256" },
-        { name: "nonce", type: "bytes32" },
-      ],
-    },
-    domain: {
-      name: "USD Coin (PoS)",
-      version: "1",
-      chainId: 137,
-      verifyingContract: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
-    },
-    message: msg,
-  };
-
-  const rawsig = await from._signTypedData(data.domain, data.types, data.message);
-
-  const sig = {
-    r: rawsig.slice(0, 66),
-    s: "0x" + rawsig.slice(66, 130),
-    v: parseInt(rawsig.slice(130, 132), 16),
-  };
-  
-  return {
-    msg,
-    sig,
-  };
-};
 
 describe("Egg test", () => {
   before(async () => {
@@ -86,7 +43,7 @@ describe("Egg test", () => {
       params: [whaleAddr],
     });
     const whale = await ethers.getSigner(whaleAddr);
-    const usdc = IUSDC__factory.connect(usdcAddr, whale);
+    usdc = IUSDC__factory.connect(usdcAddr, whale);
     const balance = await usdc.balanceOf(whaleAddr);
     await usdc.transfer(owner.address, balance.div(2));
     await usdc.transfer(alice.address, balance.div(2));
@@ -130,11 +87,12 @@ describe("Egg test", () => {
         const amount = 2;
         const price = toWei(30, 6);
         const value = toBN(amount).mul(price);
-        
+
         const { msg, sig } = await signERC3009Transfer(alice, wallet.address, value);
+        console.log(JSON.stringify(msg, null, 2));
+        console.log(JSON.stringify(sig, null, 2));
         const promi = egg.connect(alice).buyEggs(amount, msg.validAfter, msg.validBefore, msg.nonce, sig.v, sig.r, sig.s);
         
-        // await expect(promi).not.to.be.reverted;
         await promi;
       });
     });

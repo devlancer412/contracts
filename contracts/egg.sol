@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol";
+import "hardhat/console.sol";
 import { IUSDC } from "./IUSDC.sol";
 
 contract RoosterEgg is ERC1155, ERC1155Burnable, Ownable, Pausable {
