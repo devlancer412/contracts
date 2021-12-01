@@ -21,19 +21,13 @@ const signERC3009Transfer = async (from: SignerWithAddress, to: string, value: B
   const msg = {
     from: from.address,
     to,
-    value: value.toString(),
+    value,
     validAfter: 0,
     validBefore: Math.floor(Date.now() / 1000) + 3600,
     nonce: utils.hexlify(utils.randomBytes(32)),
   };
   const data = {
     types: {
-      EIP712Domain: [
-        { name: "name", type: "string" },
-        { name: "version", type: "string" },
-        { name: "chainId", type: "uint256" },
-        { name: "verifyingContract", type: "address" },
-      ],
       TransferWithAuthorization: [
         { name: "from", type: "address" },
         { name: "to", type: "address" },
@@ -47,12 +41,12 @@ const signERC3009Transfer = async (from: SignerWithAddress, to: string, value: B
       name: "USD Coin (PoS)",
       version: "1",
       chainId: 137,
-      verifyingContract: "0x2791bca1f2de4661ed88a30c99a7a9449aa84174"
+      verifyingContract: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
     },
-    primaryType: "TransferWithAuthorization",
     message: msg,
   };
-  const rawsig = await from.signMessage(JSON.stringify(data));
+
+  const rawsig = await from._signTypedData(data.domain, data.types, data.message);
 
   const sig = {
     r: rawsig.slice(0, 66),
@@ -80,7 +74,7 @@ describe("Egg test", () => {
     const { deployer } = macrochain;
 
     //Deploy RoosterEgg
-    const usdcAddr = "0x2791bca1f2de4661ed88a30c99a7a9449aa84174";
+    const usdcAddr = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174";
     const uri = "https://api.roosterwars.io/metadata/egg/";
     const varients = 10;
     egg = await deployer<RoosterEgg__factory>("RoosterEgg", [usdcAddr, wallet.address, uri, varients]);
@@ -110,7 +104,7 @@ describe("Egg test", () => {
       await egg.setPresale(openingTime, closingTime, price, supply, cap);
     });
 
-    describe("Before presale", () => {
+    describe.skip("Before presale", () => {
       it("Should return not open", async () => {
         expect(await egg.isOpen()).to.be.false;
       });
