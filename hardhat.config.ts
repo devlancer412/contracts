@@ -88,7 +88,7 @@ const config: HardhatUserConfig = {
   solidity: {
     compilers: [
       {
-        version: "0.8.4",
+        version: "0.8.9",
         settings: {
           optimizer: {
             enabled: true,
@@ -110,7 +110,7 @@ const config: HardhatUserConfig = {
   networks: {
     hardhat: {
       accounts: {
-        mnemonic: MNEMONIC_LOCALHOST,
+        mnemonic: MNEMONIC_TESTNET,
       },
       chainId: 137,
       forking: {

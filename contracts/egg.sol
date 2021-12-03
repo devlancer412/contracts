@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.2;
 
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol";
 import "hardhat/console.sol";
-import { IUSDC } from "./IUSDC.sol";
 
 contract RoosterEgg is ERC1155, ERC1155Burnable, Ownable, Pausable {
   // Presale time in UNIX
@@ -14,7 +14,7 @@ contract RoosterEgg is ERC1155, ERC1155Burnable, Ownable, Pausable {
   uint128 public closingTime;
 
   //USDC address
-  IUSDC public immutable usdc;
+  IERC20 public immutable usdc;
 
   // Value wallet address
   address public immutable wallet;
@@ -25,7 +25,7 @@ contract RoosterEgg is ERC1155, ERC1155Burnable, Ownable, Pausable {
   //Tokens sold for round
   uint32 public sold;
 
-  //Indivisual cap for round (0 to disable)
+  //Indivisual cap for round
   uint32 public cap;
 
   //Number of egg type
@@ -41,7 +41,7 @@ contract RoosterEgg is ERC1155, ERC1155Burnable, Ownable, Pausable {
   event NewPresale(uint32 supply, uint32 cap, uint128 openingTime, uint128 closingTime, uint256 price);
 
   constructor(
-    IUSDC usdc_,
+    IERC20 usdc_,
     address wallet_,
     string memory uri_,
     uint8 varients_
@@ -60,13 +60,7 @@ contract RoosterEgg is ERC1155, ERC1155Burnable, Ownable, Pausable {
   }
 
   function buyEggs(
-    uint8 amount,
-    uint256 validAfter,
-    uint256 validBefore,
-    bytes32 nonce,
-    uint8 v,
-    bytes32 r,
-    bytes32 s
+    uint8 amount
   ) external {
     address purchaser = _msgSender();
     uint256 value = price * amount;
@@ -79,7 +73,7 @@ contract RoosterEgg is ERC1155, ERC1155Burnable, Ownable, Pausable {
     purchasedAmount[purchaser] += amount;
 
     //Interactions
-    usdc.transferWithAuthorization(purchaser, wallet, value, validAfter, validBefore, nonce, v, r, s);
+    usdc.transferFrom(purchaser, wallet, value);
     _mintRandom(purchaser, amount);
 
     emit Purchase(purchaser, amount, value);
