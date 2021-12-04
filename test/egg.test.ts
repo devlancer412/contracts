@@ -36,8 +36,8 @@ describe("Egg test", () => {
     //Deploy RoosterEgg
     const usdcAddr = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174";
     const uri = "https://api.roosterwars.io/metadata/egg/";
-    const varients = 10;
-    egg = await deployer<RoosterEgg__factory>("RoosterEgg", [usdcAddr, wallet.address, uri, varients]);
+    const initialTokenId = 1;
+    egg = await deployer<RoosterEgg__factory>("RoosterEgg", [usdcAddr, wallet.address, initialTokenId, uri]);
 
     //Get USDC
     const whaleAddr = "0x986a2fCa9eDa0e06fBf7839B89BfC006eE2a23Dd";
@@ -58,11 +58,11 @@ describe("Egg test", () => {
       const currentTime = await egg.getTime();
       const openingTime = currentTime + 1000;
       const closingTime = currentTime + 3000;
-      const price = toWei(30, 6); //$30
       const supply = 150_000;
       const cap = 10;
+      const price = toWei(30, 6); //$30
 
-      await egg.setPresale(openingTime, closingTime, price, supply, cap);
+      await egg.setPresale(openingTime, closingTime, supply, cap, price);
     });
 
     describe("Before presale", () => {
@@ -95,12 +95,7 @@ describe("Egg test", () => {
         const promi = egg.connect(alice).buyEggs(amount);
 
         await expect(promi).not.to.be.reverted;
-        
-        let total = toBN(0);
-        for(let i = 0; i < 9; i++){
-          total = (await egg.balanceOf(alice.address, i)).add(total);
-        }
-        expect(total).to.eq(amount);
+        expect(await egg.balanceOf(alice.address)).to.eq(amount);
       });
 
       it("Should be able to handle large order", async () => {
@@ -112,9 +107,7 @@ describe("Egg test", () => {
         const promi = egg.connect(bob).buyEggs(amount);
 
         await expect(promi).not.to.be.reverted;
-        for(let i = 0; i < 9; i++){
-          expect(await egg.balanceOf(bob.address, i)).to.eq(1);
-        }
+        expect(await egg.balanceOf(bob.address)).to.eq(10);
       });
 
       it("Should fail without sufficient balance", async () => {
@@ -163,36 +156,25 @@ describe("Egg test", () => {
 
   describe("Burn test", () => {
     it("Should fail to burn without approval", async () => {
-      const promi = egg.connect(rooster).burn(alice.address, 0, 1);
-      await expect(promi).to.be.revertedWith("ERC1155: caller is not owner nor approved");
+      const promi = egg.connect(rooster).burn(1);
+      await expect(promi).to.be.revertedWith("ERC721Burnable: caller is not owner nor approved");
     });
 
     it("Should allow to burn after approval", async () => {
-      let id = 0;
-      for(let i = 0; i < 9; i++){
-        if((await egg.balanceOf(alice.address, i)).toString() === "1"){
-          id = i;
-          break;
-        }
-      }
-
       await egg.connect(alice).setApprovalForAll(rooster.address, true);
-      const promi = egg.connect(rooster).burn(alice.address, id, 1);
+      const promi = egg.connect(rooster).burn(1);
 
       await expect(promi).not.to.be.reverted;
-      expect(await egg.balanceOf(alice.address, 0)).to.eq(0);
+      expect(await egg.balanceOf(alice.address)).to.eq(1);
     });
 
     it("Should be able to handle batch burn", async () => {
       await egg.connect(bob).setApprovalForAll(rooster.address, true);
-      const values = new Array(10).fill(1);
-      const ids = values.map((_, i) => i);
-      const promi = egg.connect(rooster).burnBatch(bob.address, ids, values);
+      const ids = [3,4,5,6,7,8,9,10,11,12];
+      const promi = egg.connect(rooster).burnBatch(ids);
 
       await expect(promi).not.to.be.reverted;
-      for(let i = 0; i < 9; i++){
-        expect(await egg.balanceOf(bob.address, i)).to.eq(0);
-      }
+      expect(await egg.balanceOf(bob.address)).to.eq(0);
     });
   })
 });
