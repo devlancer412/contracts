@@ -6,7 +6,10 @@
   "scripts": {
     "compile": "npx hardhat compile",
     "test": "npx hardhat test",
-    "build": "rm -rf artifacts cache typechain | yarn compile"
+    "build": "rm -rf artifacts cache typechain | yarn compile",
+    "format": "prettier --write .",
+    "script:rinkeby": "npx hardhat run --network rinkeby",
+    "script:polygon": "npx hardhat run --network localhost"
   },
   "author": "",
   "license": "MIT",

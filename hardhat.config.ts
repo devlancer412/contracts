@@ -124,7 +124,7 @@ const config: HardhatUserConfig = {
     mumbai: createNetworkConfig("mumbai"),
   },
   etherscan: {
-    apiKey: POLYSCAN_API_KEY
+    apiKey: ETHERSCAN_API_KEY
   },
   gasReporter: {
     currency: "USD",
