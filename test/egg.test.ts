@@ -3,7 +3,7 @@ import hre, { ethers } from "hardhat";
 import { solidity } from "ethereum-waffle";
 import { SignerWithAddress } from "hardhat-deploy-ethers/dist/src/signers";
 import { advanceTimeAndBlock, MacroChain, toBN, toWei } from "../utils";
-import { IERC20, IERC20__factory ,RoosterEgg, RoosterEgg__factory } from "../typechain";
+import { IERC20, IERC20__factory, RoosterEgg, RoosterEgg__factory, USDC__factory } from "../typechain";
 
 chai.use(solidity);
 const { expect } = chai;
@@ -33,22 +33,15 @@ describe("Egg test", () => {
   before(async () => {
     const { deployer } = macrochain;
 
+    //Deploy USDC
+    usdc = await deployer<USDC__factory>("USDC", []);
+
     //Deploy RoosterEgg
-    const usdcAddr = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174";
     const uri = "https://api.roosterwars.io/metadata/egg/";
     const initialTokenId = 1;
-    egg = await deployer<RoosterEgg__factory>("RoosterEgg", [usdcAddr, wallet.address, initialTokenId, uri]);
+    egg = await deployer<RoosterEgg__factory>("RoosterEgg", [usdc.address, wallet.address, initialTokenId, uri]);
 
-    //Get USDC
-    const whaleAddr = "0x986a2fCa9eDa0e06fBf7839B89BfC006eE2a23Dd";
-    await hre.network.provider.request({
-      method: "hardhat_impersonateAccount",
-      params: [whaleAddr],
-    });
-    const whale = await ethers.getSigner(whaleAddr);
-    usdc = IERC20__factory.connect(usdcAddr, whale);
-    const balance = await usdc.balanceOf(whaleAddr);
-    await usdc.transfer(owner.address, balance.div(4));
+    const balance = await usdc.balanceOf(owner.address);
     await usdc.transfer(alice.address, balance.div(4));
     await usdc.transfer(bob.address, balance.div(4));
   });
@@ -170,11 +163,11 @@ describe("Egg test", () => {
 
     it("Should be able to handle batch burn", async () => {
       await egg.connect(bob).setApprovalForAll(rooster.address, true);
-      const ids = [3,4,5,6,7,8,9,10,11,12];
+      const ids = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
       const promi = egg.connect(rooster).burnBatch(ids);
 
       await expect(promi).not.to.be.reverted;
       expect(await egg.balanceOf(bob.address)).to.eq(0);
     });
-  })
+  });
 });

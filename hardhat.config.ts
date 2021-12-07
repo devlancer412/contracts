@@ -30,7 +30,6 @@ const MNEMONIC_MAINNET = process.env.MNEMONIC_MAINNET || "";
 const MORALIS_API_KEY = process.env.MORALIS_API_KEY || "";
 const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY || "";
 const POLYSCAN_API_KEY = process.env.POLYSCAN_API_KEY || "";
-const ALCHEMY_API_KEY = process.env.ALCHEMY_API_KEY || "";
 const REPORT_GAS = process.env.REPORT_GAS || "";
 
 let blockchain: "eth" | "polygon" = "eth";
@@ -110,13 +109,13 @@ const config: HardhatUserConfig = {
   networks: {
     hardhat: {
       accounts: {
-        mnemonic: MNEMONIC_TESTNET,
+        mnemonic: MNEMONIC_LOCALHOST,
       },
       chainId: 137,
-      forking: {
-        url: "https://polygon-mainnet.g.alchemy.com/v2/" + ALCHEMY_API_KEY,
-        blockNumber: 21972690
-      },
+      mining: {
+        auto: true,
+        interval: 1000
+      }
     },
     mainnet: createNetworkConfig("mainnet"),
     rinkeby: createNetworkConfig("rinkeby"),
@@ -124,7 +123,7 @@ const config: HardhatUserConfig = {
     mumbai: createNetworkConfig("mumbai"),
   },
   etherscan: {
-    apiKey: POLYSCAN_API_KEY
+    apiKey: blockchain === "eth" ? ETHERSCAN_API_KEY : POLYSCAN_API_KEY
   },
   gasReporter: {
     currency: "USD",
