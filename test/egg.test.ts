@@ -1,16 +1,16 @@
 import chai from "chai";
-import hre, { ethers } from "hardhat";
 import { solidity } from "ethereum-waffle";
 import { SignerWithAddress } from "hardhat-deploy-ethers/dist/src/signers";
 import { advanceTimeAndBlock, MacroChain, toBN, toWei } from "../utils";
-import { IERC20, IERC20__factory, RoosterEgg, RoosterEgg__factory, USDC__factory } from "../typechain";
+import { RoosterEgg, RoosterEgg__factory, USDC, USDC__factory } from "../typechain";
+import { ethers } from "hardhat";
 
 chai.use(solidity);
 const { expect } = chai;
 
 let macrochain: MacroChain;
 let egg: RoosterEgg;
-let usdc: IERC20;
+let usdc: USDC;
 let owner: SignerWithAddress;
 let wallet: SignerWithAddress;
 let rooster: SignerWithAddress;
@@ -54,8 +54,9 @@ describe("Egg test", () => {
       const supply = 150_000;
       const cap = 10;
       const price = toWei(30, 6); //$30
+      const cashbackPerEgg = toWei(0.045); //0.045 MATIC
 
-      await egg.setPresale(openingTime, closingTime, supply, cap, price);
+      await egg.setPresale(openingTime, closingTime, supply, cap, price, cashbackPerEgg);
     });
 
     describe("Before presale", () => {
@@ -72,6 +73,14 @@ describe("Egg test", () => {
 
         await expect(promi).to.be.revertedWith("Not open");
       });
+
+      it("Funds matic", async () => {
+        const promi = owner.sendTransaction({
+          to: egg.address,
+          value: toWei(100),
+        });
+        await expect(promi).to.emit(egg, "MaticReceived").withArgs(owner.address, toWei(100));
+      });
     });
 
     describe("During presale", () => {
@@ -87,19 +96,44 @@ describe("Egg test", () => {
         await usdc.connect(alice).approve(egg.address, value);
         const promi = egg.connect(alice).buyEggs(amount);
 
-        await expect(promi).not.to.be.reverted;
+        await expect(await promi).to.changeEtherBalance(alice, toWei(0.045).mul(amount));
         expect(await egg.balanceOf(alice.address)).to.eq(amount);
       });
 
       it("Should be able to handle large order", async () => {
-        const amount = 10;
+        const amount = 9;
         const price = toWei(30, 6);
         const value = toBN(amount).mul(price);
 
         await usdc.connect(bob).approve(egg.address, value);
         const promi = egg.connect(bob).buyEggs(amount);
 
-        await expect(promi).not.to.be.reverted;
+        await expect(promi).to.emit(egg, "Purchase").withArgs(bob.address, amount, value);
+        expect(await egg.balanceOf(bob.address)).to.eq(9);
+      });
+
+      it("Withdraws matic", async () => {
+        const eggMaticBalance = await ethers.provider.getBalance(egg.address);
+        const walletMaticBalanceBefore = await ethers.provider.getBalance(wallet.address);
+        const promi1 = egg.connect(alice).withdrawMatic(eggMaticBalance);
+        const promi2 = egg.withdrawMatic(eggMaticBalance);
+        
+        await expect(promi1).to.be.revertedWith("Invalid access");
+        await expect(promi2).to.emit(egg, "MaticWithdrawn").withArgs(eggMaticBalance);
+
+        const walletMaticBalanceAfter = await ethers.provider.getBalance(wallet.address);
+        expect(walletMaticBalanceAfter.sub(walletMaticBalanceBefore)).to.eq(eggMaticBalance);
+      });
+
+      it("Shouldn't fail even if cashback fails", async () => {
+        const amount = 1;
+        const price = toWei(30, 6);
+        const value = toBN(amount).mul(price);
+
+        await usdc.connect(bob).approve(egg.address, value);
+        const promi = egg.connect(bob).buyEggs(amount);
+
+        await expect(promi).to.emit(egg, "MaticCashbackFailed").withArgs(bob.address, 0);
         expect(await egg.balanceOf(bob.address)).to.eq(10);
       });
 

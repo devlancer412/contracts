@@ -30,10 +30,13 @@ contract RoosterEgg is ERC721, ERC721Burnable, Ownable, Pausable {
   //The price per egg (1egg = ? wei)
   uint256 public price;
 
+  //Matic cashback per egg
+  uint256 public cashbackPerEgg;
+
   //USDC address
   IERC20 public immutable usdc;
 
-  // Value wallet address
+  // Vault wallet address
   address public immutable wallet;
 
   //Base URI
@@ -43,7 +46,18 @@ contract RoosterEgg is ERC721, ERC721Burnable, Ownable, Pausable {
   mapping(address => uint8) public purchasedAmount;
 
   event Purchase(address indexed purchaser, uint8 amount, uint256 value);
-  event NewPresale(uint24 supply, uint24 cap, uint32 openingTime, uint32 closingTime, uint256 price);
+  event NewPresale(
+    uint24 supply,
+    uint24 cap,
+    uint32 openingTime,
+    uint32 closingTime,
+    uint256 price,
+    uint256 cashbackPerEgg
+  );
+  event MaticReceived(address user, uint256 amount);
+  event MaticWithdrawn(uint256 amount);
+  event MaticCashback(address user, uint256 amount);
+  event MaticCashbackFailed(address indexed user, uint256 balance);
 
   constructor(
     IERC20 usdc_,
@@ -55,6 +69,10 @@ contract RoosterEgg is ERC721, ERC721Burnable, Ownable, Pausable {
     wallet = wallet_;
     baseURI = baseURI_;
     _tokenIdCounter = inititalTokenId_;
+  }
+
+  receive() external payable {
+    emit MaticReceived(msg.sender, msg.value);
   }
 
   function isOpen() public view returns (bool) {
@@ -78,6 +96,7 @@ contract RoosterEgg is ERC721, ERC721Burnable, Ownable, Pausable {
   function buyEggs(uint8 amount) external {
     address purchaser = _msgSender();
     uint256 value = price * amount;
+    uint256 cashbackAmount = cashbackPerEgg * amount;
 
     //Checks
     _preValidatePurchase(purchaser, amount);
@@ -90,11 +109,18 @@ contract RoosterEgg is ERC721, ERC721Burnable, Ownable, Pausable {
     usdc.transferFrom(purchaser, wallet, value);
     _mintEggs(purchaser, amount);
 
+    (bool success, ) = payable(purchaser).call{ value: cashbackAmount }("");
+    if (success) {
+      emit MaticCashback(purchaser, cashbackAmount);
+    } else {
+      emit MaticCashbackFailed(purchaser, address(this).balance);
+    }
+
     emit Purchase(purchaser, amount, value);
   }
 
   function burnBatch(uint24[] calldata tokenIds) external {
-    for(uint256 i = 0; i < tokenIds.length; i++){
+    for (uint256 i = 0; i < tokenIds.length; i++) {
       burn(tokenIds[i]);
     }
   }
@@ -122,7 +148,8 @@ contract RoosterEgg is ERC721, ERC721Burnable, Ownable, Pausable {
     uint32 closingTime_,
     uint24 supply_,
     uint24 cap_,
-    uint256 price_
+    uint256 price_,
+    uint256 cashbackPerEgg_
   ) external onlyOwner {
     require(!isOpen() || paused(), "Cannot set now");
     if (!isOpen()) {
@@ -138,8 +165,9 @@ contract RoosterEgg is ERC721, ERC721Burnable, Ownable, Pausable {
     cap = cap_;
     price = price_;
     closingTime = closingTime_;
+    cashbackPerEgg = cashbackPerEgg_;
 
-    emit NewPresale(supply, cap, openingTime, closingTime, price);
+    emit NewPresale(supply_, cap_, openingTime_, closingTime_, price_, cashbackPerEgg_);
   }
 
   function mintEggs(address to, uint8 amount) external onlyOwner {
@@ -148,5 +176,13 @@ contract RoosterEgg is ERC721, ERC721Burnable, Ownable, Pausable {
 
   function setBaseURI(string memory baseURI_) external onlyOwner {
     baseURI = baseURI_;
+  }
+
+  function withdrawMatic(uint256 amount) external {
+    address user = msg.sender;
+    require(user == owner() || user == wallet, "Invalid access");
+    (bool success, ) = payable(wallet).call{ value: amount }("");
+    require(success, "Withdraw failed");
+    emit MaticWithdrawn(amount);
   }
 }
