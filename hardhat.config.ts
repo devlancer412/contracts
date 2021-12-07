@@ -112,6 +112,10 @@ const config: HardhatUserConfig = {
         mnemonic: MNEMONIC_LOCALHOST,
       },
       chainId: 137,
+      mining: {
+        auto: true,
+        interval: 1000
+      }
     },
     mainnet: createNetworkConfig("mainnet"),
     rinkeby: createNetworkConfig("rinkeby"),
