@@ -156,9 +156,6 @@ contract RoosterEgg is ERC721, ERC721Burnable, Ownable, Pausable {
       require(closingTime_ >= openingTime_, "Closing time < Opening time");
       require(openingTime_ > block.timestamp, "Invalid opening time");
       openingTime = openingTime_;
-      sold = 0;
-    } else {
-      require(closingTime_ > block.timestamp, "Closing time < Opening time");
     }
 
     supply = supply_;
