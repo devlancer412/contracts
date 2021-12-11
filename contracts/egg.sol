@@ -131,10 +131,10 @@ contract RoosterEgg is ERC721, ERC721Burnable, Ownable, Pausable {
     require(amount + purchasedAmount[purchaser] <= cap, "Exceeds cap");
   }
 
-  function _mintEggs(address to, uint8 amount) private {
+  function _mintEggs(address to, uint256 amount) private {
     uint24 newtokenId = _tokenIdCounter;
 
-    for (uint8 i = 0; i < amount; i++) {
+    for (uint256 i = 0; i < amount; i++) {
       _safeMint(to, newtokenId++);
     }
 
@@ -156,9 +156,6 @@ contract RoosterEgg is ERC721, ERC721Burnable, Ownable, Pausable {
       require(closingTime_ >= openingTime_, "Closing time < Opening time");
       require(openingTime_ > block.timestamp, "Invalid opening time");
       openingTime = openingTime_;
-      sold = 0;
-    } else {
-      require(closingTime_ > block.timestamp, "Closing time < Opening time");
     }
 
     supply = supply_;
@@ -170,7 +167,7 @@ contract RoosterEgg is ERC721, ERC721Burnable, Ownable, Pausable {
     emit NewPresale(supply_, cap_, openingTime_, closingTime_, price_, cashbackPerEgg_);
   }
 
-  function mintEggs(address to, uint8 amount) external onlyOwner {
+  function mintEggs(address to, uint256 amount) external onlyOwner {
     _mintEggs(to, amount);
   }
 

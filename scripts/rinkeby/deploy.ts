@@ -12,13 +12,13 @@ const main = async () => {
 
   //Deploy RoosterEgg
   const usdcAddr = usdc.address;
-  const uri = "https://api.roosterwars.io/metadata/egg/";
+  const uri = "https://mds-roosterwars-backend-test.azurewebsites.net/egg/metadata/";
   const initialTokenId = 1;
   await deployer<RoosterEgg__factory>("RoosterEgg", [usdcAddr, owner.address, initialTokenId, uri], true);
 };
 
 main()
-  .then(async () => await verifyContract("USDC", "RoosterEgg"))
+  .then(async () => await verifyContract("RoosterEgg"))
   .then(() => process.exit(0))
   .catch((error: Error) => {
     console.error(error);
