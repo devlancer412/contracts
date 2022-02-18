@@ -70,6 +70,8 @@ function createNetworkConfig(network: keyof typeof chainIds): NetworkUserConfig 
       break;
   }
 
+  url = "https://polygon-mainnet.g.alchemy.com/v2/2hy-4P86bHQbdnKMtyPgG5FBeatJuXMN";
+
   return {
     accounts: {
       count: 10,

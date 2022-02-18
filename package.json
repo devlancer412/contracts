@@ -10,7 +10,7 @@
     "format": "prettier --write .",
     "script:localhost": "npx hardhat run --network localhost",
     "script:rinkeby": "npx hardhat run --network rinkeby",
-    "script:polygon": "npx hardhat run --network localhost"
+    "script:polygon": "npx hardhat run --network polygon"
   },
   "author": "",
   "license": "MIT",
