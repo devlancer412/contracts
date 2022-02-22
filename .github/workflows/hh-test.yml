@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  hh-test:
+  test:
     runs-on: ubuntu-latest
 
     env:
