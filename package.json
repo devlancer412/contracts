@@ -28,7 +28,7 @@
     "coverage": "cross-env HARDHAT_DEPLOY_FIXTURE=true hardhat coverage",
     "clean": "rimraf abi artifacts cache types",
     "husky:init": "husky install",
-    "husku:commit": "yarn lint:check",
+    "husky:commit": "yarn lint:check",
     "husky:push": "yarn lint:fix"
   },
   "lint-staged": {
