@@ -6,8 +6,8 @@ export const toBN = (value: number): BigNumber => {
   return valueBN;
 };
 
-export const toWei = (value: number, decimals: number = 18): BigNumber => {
-  const valueString = value.toString();
+export const toWei = (value: number, decimals = 18): BigNumber => {
+  const valueString = value.toFixed(decimals);
   const valueWeiBN = ethers.utils.parseUnits(valueString, decimals);
   return valueWeiBN;
 };
@@ -18,21 +18,18 @@ export const fromBN = (valueBN: BigNumber): number => {
   return valueNumber;
 };
 
-export const fromWei = (valueWeiBN: BigNumber, decimals: number = 18): number => {
+export const fromWei = (valueWeiBN: BigNumber, decimals = 18): number => {
   const valueString = ethers.utils.formatUnits(valueWeiBN, decimals);
   const valueNumber = Number(valueString);
   return valueNumber;
 };
 
 export const toBNArray = (values: number[]): BigNumber[] => {
-  const bnArray = values.map<BigNumber>(value => toBN(value));
+  const bnArray = values.map<BigNumber>((value) => toBN(value));
   return bnArray;
 };
 
 export const fromBNArray = (valuesBN: BigNumber[]): number[] => {
-  const values = valuesBN.map<number>(valueBN => fromBN(valueBN));
+  const values = valuesBN.map<number>((valueBN) => fromBN(valueBN));
   return values;
 };
-
-export const fromSec = (sec: number): number => sec * 1000;
-export const fromMin = (min: number): number => min * 60000;

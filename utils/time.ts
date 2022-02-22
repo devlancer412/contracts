@@ -1,13 +1,13 @@
-import { BigNumber } from "@ethersproject/bignumber";
 import { ethers } from "hardhat";
 
+//eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function advanceBlock(): Promise<any> {
   return ethers.provider.send("evm_mine", []);
 }
 
 export async function advanceBlockTo(blockNumber: number): Promise<void> {
-  let now = (await ethers.provider.getBlockNumber()).toString();
-  for (let i = parseInt(now); i < blockNumber; i++) {
+  const now = await ethers.provider.getBlockNumber();
+  for (let i = now; i < blockNumber; i++) {
     await advanceBlock();
   }
 }
@@ -27,19 +27,61 @@ export async function advanceTimeAndBlock(time: number): Promise<void> {
   await advanceBlock();
 }
 
-export async function latest(): Promise<BigNumber> {
-  const block = await ethers.provider.getBlock("latest");
-  return BigNumber.from(block.timestamp);
+export async function setTime(time: number): Promise<void> {
+  await ethers.provider.send("evm_setNextBlockTimestamp", [time]);
+  await advanceBlock();
 }
 
-export function toUnix(strDate: string): number {
-  const datum = Date.parse(strDate);
-  return datum / 1000;
-}
+export class Time {
+  t: number;
+  constructor(ms: number) {
+    this.t = ms;
+  }
 
-export function getCurrentTime(addTime = 0): number {
-  const time = Math.floor(Date.now() / 1000) + addTime;
-  return time;
-}
+  public toSec = (): number => {
+    return this.t / 1000;
+  };
 
-export const delay = (ms: number): Promise<PromiseConstructor> => new Promise(resolve => setTimeout(resolve, ms));
+  public toMin = (): number => {
+    return this.t / (1000 * 60);
+  };
+
+  public toHr = (): number => {
+    return this.t / (1000 * 60 * 60);
+  };
+
+  static fromSec = (s: number): Time => {
+    const time = new Time(s * 1000);
+    return time;
+  };
+
+  static fromMin = (m: number): Time => {
+    const time = new Time(m * 1000 * 60);
+    return time;
+  };
+
+  static fromHr = (h: number): Time => {
+    const time = new Time(h * 1000 * 60 * 60);
+    return time;
+  };
+
+  static fromNow = (ms = 0): Time => {
+    const time = new Time(Date.now() + ms);
+    return time;
+  };
+
+  static fromDate = (strDate: string): Time => {
+    const datum = Date.parse(strDate);
+    const time = new Time(datum);
+    return time;
+  };
+
+  public delay = (): Promise<PromiseConstructor> => {
+    return new Promise((resolve) => setTimeout(resolve, this.t));
+  };
+
+  static delay = (ms: number): Promise<PromiseConstructor> => {
+    const time = new Time(ms);
+    return new Promise((resolve) => setTimeout(resolve, time.t));
+  };
+}
