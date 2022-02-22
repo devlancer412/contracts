@@ -39,7 +39,12 @@ describe("Egg test", () => {
     //Deploy RoosterEgg
     const uri = "https://api.roosterwars.io/metadata/egg/";
     const initialTokenId = 1;
-    egg = await deployer<RoosterEgg__factory>("RoosterEgg", [usdc.address, wallet.address, initialTokenId, uri]);
+    egg = await deployer<RoosterEgg__factory>("RoosterEgg", [
+      usdc.address,
+      wallet.address,
+      initialTokenId,
+      uri,
+    ]);
 
     const balance = await usdc.balanceOf(owner.address);
     await usdc.transfer(alice.address, balance.div(4));
@@ -117,7 +122,7 @@ describe("Egg test", () => {
         const walletMaticBalanceBefore = await ethers.provider.getBalance(wallet.address);
         const promi1 = egg.connect(alice).withdrawMatic(eggMaticBalance);
         const promi2 = egg.withdrawMatic(eggMaticBalance);
-        
+
         await expect(promi1).to.be.revertedWith("Invalid access");
         await expect(promi2).to.emit(egg, "MaticWithdrawn").withArgs(eggMaticBalance);
 

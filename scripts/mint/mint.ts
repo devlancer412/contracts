@@ -9,7 +9,6 @@ interface List {
   address: string;
 }
 
-
 const main = async () => {
   const data = fs.readFileSync("./scripts/mint/list.csv").toString();
   const description = {
@@ -22,7 +21,7 @@ const main = async () => {
 
   const signers = await ethers.getSigners();
   let nonce = await ethers.provider.getTransactionCount(await signers[0].getAddress());
-  
+
   const addr = "0xbDD4AE46B65977a1d06b365c09B4e0F429c70Aef";
   const egg = RoosterEgg__factory.connect(addr, signers[0]);
 

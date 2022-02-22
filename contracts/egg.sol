@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
+
 // import "hardhat/console.sol";
 
 contract RoosterEgg is ERC721, ERC721Burnable, Ownable, Pausable {
@@ -109,7 +110,7 @@ contract RoosterEgg is ERC721, ERC721Burnable, Ownable, Pausable {
     usdc.transferFrom(purchaser, wallet, value);
     _mintEggs(purchaser, amount);
 
-    (bool success, ) = payable(purchaser).call{ value: cashbackAmount }("");
+    (bool success, ) = payable(purchaser).call{value: cashbackAmount}("");
     if (success) {
       emit MaticCashback(purchaser, cashbackAmount);
     } else {
@@ -178,7 +179,7 @@ contract RoosterEgg is ERC721, ERC721Burnable, Ownable, Pausable {
   function withdrawMatic(uint256 amount) external {
     address user = msg.sender;
     require(user == owner() || user == wallet, "Invalid access");
-    (bool success, ) = payable(wallet).call{ value: amount }("");
+    (bool success, ) = payable(wallet).call{value: amount}("");
     require(success, "Withdraw failed");
     emit MaticWithdrawn(amount);
   }

@@ -10,7 +10,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract Gem is ERC1155, ERC1155Burnable, Pausable, Ownable {
   mapping(address => bool) public isOperator;
-  
+
   event UpdateOperator(address user, bool isOperator);
 
   constructor(string memory uri) ERC1155(uri) {
