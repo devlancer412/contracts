@@ -71,6 +71,7 @@ function createNetworkConfig(network: keyof typeof chainIds): NetworkUserConfig 
   }
 
   url = "https://polygon-mainnet.g.alchemy.com/v2/2hy-4P86bHQbdnKMtyPgG5FBeatJuXMN";
+  // url = "https://rinkeby.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161";
 
   return {
     accounts: {

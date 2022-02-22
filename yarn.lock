@@ -2705,6 +2705,11 @@ crypto-browserify@3.12.0:
     randombytes "^2.0.0"
     randomfill "^1.0.3"
 
+csv-to-js-parser@^2.3.4:
+  version "2.3.4"
+  resolved "https://registry.yarnpkg.com/csv-to-js-parser/-/csv-to-js-parser-2.3.4.tgz#5843aa277ab1d64a96bc175a65e5b24d20e5a4d8"
+  integrity sha512-OZJOxERk20b1Q4dcZfIsXvNfu6HYPhO5zU63bUuXY08F+ahQP/2oNYNd83nShfOCZZ7XWR/pir2A49XuHYeLCA==
+
 d@1, d@^1.0.1:
   version "1.0.1"
   resolved "https://registry.yarnpkg.com/d/-/d-1.0.1.tgz#8698095372d58dbee346ffd0c7093f99f8f9eb5a"
