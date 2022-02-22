@@ -5,6 +5,7 @@
   "main": "index.js",
   "license": "MIT",
   "scripts": {
+    "postinstall": "npm-run-all husky:init",
     "help": "npx hardhat help",
     "accounts": "npx hardhat accounts",
     "node:hh": "npx hardhat node",
@@ -26,8 +27,9 @@
     "lint:fix": "yarn prettier:fix && yarn solhint:fix && npx eslint '**/*.{js,ts}' --fix",
     "coverage": "cross-env HARDHAT_DEPLOY_FIXTURE=true hardhat coverage",
     "clean": "rimraf abi artifacts cache types",
-    "check:commit": "yarn lint:check",
-    "check:push": "yarn lint:fix"
+    "husky:init": "husky install",
+    "husku:commit": "yarn lint:check",
+    "husky:push": "yarn lint:fix"
   },
   "lint-staged": {
     "src/**/*.{ts,js,sol}": [
