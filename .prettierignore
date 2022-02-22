@@ -17,6 +17,7 @@ cache/
 coverage/
 dist/
 node_modules/
+z/
 
 # files
 *.env

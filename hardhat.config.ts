@@ -15,6 +15,7 @@ import "solidity-coverage";
 import "dotenv/config";
 
 import "./tasks/account";
+import "./tasks/verify";
 
 const config: HardhatUserConfig = {
   defaultNetwork: "hardhat",
@@ -44,14 +45,6 @@ const config: HardhatUserConfig = {
       url: node_url("polygon"),
       accounts: accounts("polygon"),
     },
-    bsc: {
-      url: node_url("bsc"),
-      accounts: accounts("bsc"),
-    },
-    kovan: {
-      url: node_url("kovan"),
-      accounts: accounts("kovan"),
-    },
     rinkeby: {
       url: node_url("rinkeby"),
       accounts: accounts("rinkeby"),
@@ -60,10 +53,8 @@ const config: HardhatUserConfig = {
   etherscan: {
     apiKey: {
       mainnet: verifyKey("etherscan"),
-      kovan: verifyKey("etherscan"),
       rinkeby: verifyKey("etherscan"),
       polygon: verifyKey("polyscan"),
-      bsc: verifyKey("bscscan"),
     },
   },
   solidity: {

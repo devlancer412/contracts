@@ -2,6 +2,7 @@
   "extends": "./tsconfig.json",
   "include": [
     "scripts/**/*.ts",
+    "deploy/**/*.ts",
     "test/**/*.ts",
     "utils/**/*.ts",
     ".eslintrc.js",
@@ -13,5 +14,6 @@
     "artifacts",
     "cache",
     "types",
+    "z"
   ]
 }
