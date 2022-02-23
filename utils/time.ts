@@ -32,7 +32,7 @@ export async function setTime(time: number): Promise<void> {
   await advanceBlock();
 }
 
-export class Time {
+class Time {
   t: number;
   constructor(ms: number) {
     this.t = ms;
@@ -85,3 +85,5 @@ export class Time {
     return new Promise((resolve) => setTimeout(resolve, time.t));
   };
 }
+
+export default Time;

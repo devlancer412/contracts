@@ -35,7 +35,7 @@
     "husky:push": "yarn lint:fix"
   },
   "lint-staged": {
-    "src/**/*.{ts,js,sol}": [
+    "**/*.{ts,js,sol}": [
       "prettier --write"
     ]
   },
