@@ -36,18 +36,17 @@ const config: HardhatUserConfig = {
     localhost: {
       url: node_url("localhost"),
       accounts: accounts("localhost"),
-    },
-    mainnet: {
-      url: node_url("mainnet"),
-      accounts: accounts("mainnet"),
+      tags: ["local", "test"]
     },
     polygon: {
       url: node_url("polygon"),
       accounts: accounts("polygon"),
+      tags: ["prod"]
     },
     rinkeby: {
       url: node_url("rinkeby"),
       accounts: accounts("rinkeby"),
+      tags: ["test"]
     },
   },
   etherscan: {
@@ -72,10 +71,8 @@ const config: HardhatUserConfig = {
   },
   namedAccounts: {
     deployer: 0,
-    tokenOwner: 1,
-    alice: 2,
-    bob: 3,
-    charlie: 4,
+    signer: 1,
+    vault: 2,
   },
   abiExporter: {
     path: "./abis",
