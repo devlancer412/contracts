@@ -5,8 +5,7 @@ import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-
-// import "hardhat/console.sol";
+import "hardhat/console.sol";
 
 contract Gem is ERC1155, ERC1155Burnable, Pausable, Ownable {
   mapping(address => bool) public isOperator;

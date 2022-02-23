@@ -1,26 +1,24 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "hardhat/console.sol";
 
-// import "hardhat/console.sol";
-
-contract Rooster is ERC1155, ERC1155Burnable, Pausable, Ownable {
+contract Rooster is ERC1155Burnable, Pausable, Ownable {
   mapping(address => bool) public isOperator;
   mapping(uint256 => BaseStats) public baseStats;
 
   event UpdateOperator(address user, bool isOperator);
 
   struct BaseStats {
-    uint16 VIT;
-    uint16 WATK;
-    uint16 BATK;
-    uint16 CATK;
-    uint16 SPD;
-    uint16 AGRO;
+    uint32 VIT;
+    uint32 WATK;
+    uint32 BATK;
+    uint32 CATK;
+    uint32 SPD;
+    uint32 AGRO;
   }
 
   constructor() ERC1155("Rooster") {
@@ -60,8 +58,8 @@ contract Rooster is ERC1155, ERC1155Burnable, Pausable, Ownable {
     _setURI(newuri);
   }
 
-  function setBaseStats(uint256 id, uint16[] memory stats) external onlyOperator {
-    baseStats[id] = BaseStats(stats[0], stats[1], stats[2], stats[3], stats[4], stats[5]);
+  function setBaseStats(uint256 id, BaseStats memory newStats) external onlyOperator {
+    baseStats[id] = newStats;
   }
 
   function pause() public onlyOperator {
