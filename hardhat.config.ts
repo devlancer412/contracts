@@ -36,17 +36,17 @@ const config: HardhatUserConfig = {
     localhost: {
       url: node_url("localhost"),
       accounts: accounts("localhost"),
-      tags: ["local", "test"]
+      tags: ["local", "test"],
     },
     polygon: {
       url: node_url("polygon"),
       accounts: accounts("polygon"),
-      tags: ["prod"]
+      tags: ["prod"],
     },
     rinkeby: {
       url: node_url("rinkeby"),
       accounts: accounts("rinkeby"),
-      tags: ["test"]
+      tags: ["test"],
     },
   },
   etherscan: {

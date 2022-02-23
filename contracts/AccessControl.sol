@@ -15,11 +15,10 @@ contract RoosterAccessControl {
     address signer_,
     address minter_,
     address vault_
-  ){
+  ) {
     owner = owner_;
     signer = signer_;
     minter = minter_;
     vault = vault_;
   }
-
 }
