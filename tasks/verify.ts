@@ -1,7 +1,7 @@
 import { task } from "hardhat/config";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
-task("verify", "Verfies deployed contract")
+task("upload", "Verfies deployed contract")
   .addParam("contract", "The name of the contract")
   .setAction(async (taskArgs, hre) => {
     const contractName = taskArgs.contract;

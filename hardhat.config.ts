@@ -2,13 +2,13 @@ import { HardhatUserConfig } from "hardhat/types";
 import { node_url, accounts, verifyKey } from "./utils/network";
 import { removeConsoleLog } from "hardhat-preprocessor";
 
+import '@nomiclabs/hardhat-ethers';
 import "@typechain/hardhat";
 import "hardhat-gas-reporter";
 import "solidity-coverage";
 import "@nomiclabs/hardhat-etherscan";
 import "hardhat-abi-exporter";
 import "hardhat-deploy";
-import "hardhat-deploy-ethers";
 import "hardhat-gas-reporter";
 import "hardhat-watcher";
 import "solidity-coverage";
@@ -81,6 +81,12 @@ const config: HardhatUserConfig = {
     flat: true,
     spacing: 2,
     pretty: true,
+  },
+  paths: {
+    artifacts: "./artifacts",
+    cache: "./cache",
+    sources: "./contracts",
+    tests: "./test",
   },
   typechain: {
     outDir: "types",

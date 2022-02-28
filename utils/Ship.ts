@@ -1,8 +1,8 @@
 import hardhatRuntimeEnvironment, { ethers } from "hardhat";
 import { ContractFactory } from "ethers";
-import { SignerWithAddress } from "hardhat-deploy-ethers/signers";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployOptions } from "hardhat-deploy/types";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 type Modify<T, R> = Omit<T, keyof R> & R;
 type DeployParam<T extends ContractFactory> = Parameters<InstanceType<{ new (): T }>["deploy"]>;
@@ -65,7 +65,8 @@ class Ship {
     >,
   ): Promise<ContractInstance<T>> => {
     const contractName = contractFactory.name.split("__")[0];
-    const from = option?.from?.address || this.accounts.deployer.address;
+    const from = option?.from || this.accounts.deployer;
+    const fromAddr = from.address;
 
     let log = option?.log || this.log;
     if (log === undefined) {
@@ -77,7 +78,7 @@ class Ship {
     }
     const { address } = await this.hre.deployments.deploy(contractName, {
       ...option,
-      from,
+      from: fromAddr,
       args: option?.args,
       log,
     });
