@@ -16,11 +16,8 @@ contract Gaff is ERC1155, AccessControl {
     _mint(to, id, amount, "");
   }
 
-  function mintBatch(
-    address to,
-    uint256[] memory amounts
-  ) external onlyMinter {
-    for(uint256 gaffId = 0; gaffId < amounts.length; gaffId++){
+  function mintBatch(address to, uint256[] memory amounts) external onlyMinter {
+    for (uint256 gaffId = 0; gaffId < amounts.length; gaffId++) {
       _mint(to, gaffId, amounts[gaffId], "");
     }
   }

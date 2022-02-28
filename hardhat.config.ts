@@ -2,7 +2,7 @@ import { HardhatUserConfig } from "hardhat/types";
 import { node_url, accounts, verifyKey } from "./utils/network";
 import { removeConsoleLog } from "hardhat-preprocessor";
 
-import '@nomiclabs/hardhat-ethers';
+import "@nomiclabs/hardhat-ethers";
 import "@typechain/hardhat";
 import "hardhat-gas-reporter";
 import "solidity-coverage";

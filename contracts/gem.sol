@@ -24,11 +24,8 @@ contract Gem is ERC1155, AccessControl {
     _mintBatch(to, ids, amounts, "");
   }
 
-  function mintByIds(
-    address to,
-    uint256[] memory gemIds
-  ) external onlyMinter {
-    for(uint256 i = 0; i < gemIds.length; i++){
+  function mintByIds(address to, uint256[] memory gemIds) external onlyMinter {
+    for (uint256 i = 0; i < gemIds.length; i++) {
       _mint(to, gemIds[i], 1, "");
     }
   }

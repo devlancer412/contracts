@@ -17,10 +17,7 @@ interface IGaff {
 }
 
 interface IGem {
-  function mintByIds(
-    address to,
-    uint256[] memory gemIds
-  ) external;
+  function mintByIds(address to, uint256[] memory gemIds) external;
 }
 
 contract RoosterEggHatching is Ownable, Pausable {
@@ -66,10 +63,7 @@ contract RoosterEggHatching is Ownable, Pausable {
     Sig calldata sig
   ) external whenNotPaused {
     //Check if parameters are valid
-    require(
-      _isParamValid(breeds, gaffAmounts, gemIds, sig),
-      "Invalid parameter"
-    );
+    require(_isParamValid(breeds, gaffAmounts, gemIds, sig), "Invalid parameter");
 
     //Burn eggs
     IEgg(egg).burnBatch(eggIds);
@@ -87,9 +81,7 @@ contract RoosterEggHatching is Ownable, Pausable {
     uint256[] calldata gemIds,
     Sig calldata sig
   ) private view returns (bool) {
-    bytes32 messageHash = keccak256(
-      abi.encodePacked(msg.sender, breeds, gaffAmounts, gemIds)
-    );
+    bytes32 messageHash = keccak256(abi.encodePacked(msg.sender, breeds, gaffAmounts, gemIds));
     bytes32 ethSignedMessageHash = keccak256(
       abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash)
     );
