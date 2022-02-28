@@ -1,87 +1,53 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.9;
 
-import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
+import "./RoosterMetadata.sol";
+import "./AccessControl.sol";
 import "hardhat/console.sol";
 
-contract Rooster is ERC1155Burnable, Pausable, Ownable {
-  mapping(address => bool) public isOperator;
-  mapping(uint256 => BaseStats) public baseStats;
+contract Rooster is ERC721, AccessControl, RoosterMetadata {
+  //Current roosterId count
+  uint256 private _roosterIdCounter = 0;
+  //Rooster hard cap
+  uint256 public constant cap = 150_000;
 
-  event UpdateOperator(address user, bool isOperator);
-
-  struct BaseStats {
-    uint32 VIT;
-    uint32 WATK;
-    uint32 BATK;
-    uint32 CATK;
-    uint32 SPD;
-    uint32 AGRO;
+  constructor(string memory baseUri_) ERC721("Rooster", "ROOSTER") {
+    setBaseUri(baseUri_);
   }
 
-  constructor() ERC1155("Rooster") {
-    isOperator[msg.sender] = true;
+  function totalSupply() public view returns (uint256) {
+    return _roosterIdCounter;
   }
 
-  modifier onlyOperator() {
-    require(isOperator[_msgSender()], "Invalid access");
-    _;
+  function mint(address to, Breed breed) external onlyMinter {
+    require(totalSupply() + 1 <= cap, "cap exceeded");
+    uint256 roosterId = _roosterIdCounter++;
+    _mint(to, roosterId, breed);
   }
 
-  function mint(
-    address account,
-    uint256 id,
-    uint256 amount,
-    bytes memory data
-  ) public onlyOperator {
-    _mint(account, id, amount, data);
+  function mintBatch(address to, Breed[] memory breeds) external onlyMinter {
+    require(totalSupply() + breeds.length <= cap, "cap exceeded");
+
+    uint256 roosterId = _roosterIdCounter;
+    for (uint256 i = 0; i < breeds.length; i++) {
+      _mint(to, roosterId, breeds[i]);
+      roosterId++;
+    }
+    _roosterIdCounter = roosterId;
   }
 
-  function mintBatch(
+  function _mint(
     address to,
-    uint256[] memory ids,
-    uint256[] memory amounts,
-    bytes memory data
-  ) public onlyOperator {
-    _mintBatch(to, ids, amounts, data);
+    uint256 roosterId,
+    Breed breed
+  ) private {
+    _safeMint(to, roosterId);
+    _setBreed(roosterId, breed);
   }
 
-  /* Admin settings  */
-  function setOperator(address user, bool isOperator_) external onlyOwner {
-    isOperator[user] = isOperator_;
-    emit UpdateOperator(user, isOperator_);
-  }
-
-  function setURI(string memory newuri) public onlyOperator {
-    _setURI(newuri);
-  }
-
-  function setBaseStats(uint256 id, BaseStats memory newStats) external onlyOperator {
-    baseStats[id] = newStats;
-  }
-
-  function pause() public onlyOperator {
-    _pause();
-  }
-
-  function unpause() public onlyOperator {
-    _unpause();
-  }
-
-  function _beforeTokenTransfer(
-    address operator,
-    address from,
-    address to,
-    uint256[] memory ids,
-    uint256[] memory amounts,
-    bytes memory data
-  ) internal override whenNotPaused {
-    super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
-  }
-
-  function supportsInterface(bytes4 interfaceId) public view override(ERC1155) returns (bool) {
-    return super.supportsInterface(interfaceId);
+  function _baseURI() internal view override(ERC721, RoosterMetadata) returns (string memory) {
+    return RoosterMetadata._baseURI();
   }
 }
