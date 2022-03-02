@@ -10,13 +10,13 @@ interface List {
 }
 
 const main = async () => {
-  const data = fs.readFileSync("./z/list.csv").toString();
+  const data = fs.readFileSync("./z/list2.csv").toString();
   const description = {
     amount: { type: "number", group: 1 },
     address: { type: "string", group: 2 },
   };
   let lists = csvToObj(data, ",", description) as List[];
-  const continueFrom = "0x31d070c26B72bef2767Ac1cDf07a8B8E98d45419";
+  const continueFrom = "0xCdF8CC3EF079cc6638e05418853a0d646704781a";
   lists = lists.slice(lists.findIndex((i) => i.address === continueFrom));
 
   const signers = await ethers.getSigners();
