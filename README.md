@@ -13,7 +13,7 @@
 1. Clone this repository
 
 ```bash
-git clone https://github.com/Metadhana-Studio
+git clone https://github.com/Metadhana-Studio/roosterwars-contracts
 ```
 
 2. Install dependencies
@@ -74,6 +74,8 @@ yarn deploy:rinkeby --tags ....
 Contracts are developed using well-known open-source software for utility libraries and developement tools. You can read more about each of them.
 
 [OpenZeppelin](https://github.com/OpenZeppelin/openzeppelin-contracts)
+
+[Solmate](https://github.com/Rari-Capital/solmate)
 
 [Hardhat](https://github.com/nomiclabs/hardhat)
 

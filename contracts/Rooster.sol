@@ -4,7 +4,6 @@ pragma solidity ^0.8.9;
 import {ERC721} from "@rari-capital/solmate/src/tokens/ERC721.sol";
 import "./RoosterMetadata.sol";
 import "./AccessControl.sol";
-import "hardhat/console.sol";
 
 contract Rooster is ERC721, AccessControl, RoosterMetadata {
   //Current roosterId count

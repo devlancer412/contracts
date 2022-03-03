@@ -54,6 +54,12 @@ contract RoosterEggHatching is Ownable, Pausable {
     setSigner(signer_);
   }
 
+  /**
+   * @param eggIds Array of rooster egg ids to burn
+   * @param breeds Array of rooster breeds to mint
+   * @param gaffAmounts Array of gaff amounts to mint (Index number corresponds to gaff id)
+   * @param gemIds Array of gem ids to mint
+   */
   function hatch(
     address to,
     uint24[] memory eggIds,
