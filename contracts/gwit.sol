@@ -11,22 +11,6 @@ contract GWITToken is ERC20 {
     }
 }
 
-contract GRP {
-    address _token;
-    constructor() {
-    }
-    
-    // run once
-    function set_token_addr(address addr) public {
-        assert(_token == address(0));
-        _token = addr;
-    }
-
-    function token_addr() public view returns(address) {
-        return _token;
-    }
-
-}
 
 contract FarmPool {
     address _token;
