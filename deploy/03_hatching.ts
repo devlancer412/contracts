@@ -16,9 +16,14 @@ const func: DeployFunction = async (hre) => {
   const gaff = await connect(Gaff__factory);
   const gem = await connect(Gem__factory);
 
-  await deploy(RoosterEggHatching__factory, {
+  const hatching = await deploy(RoosterEggHatching__factory, {
     args: [accounts.signer.address, egg.address, rooster.address, gaff.address, gem.address],
   });
+
+  const p1 = rooster.grantMinterRole(hatching.address);
+  const p2 = gaff.grantMinterRole(hatching.address);
+  const p3 = gem.grantMinterRole(hatching.address);
+  await Promise.all([p1, p2, p3]);
 };
 
 export default func;

@@ -6,54 +6,35 @@ import { Ship } from "../utils";
 const func: DeployFunction = async (hre) => {
   const { deploy } = await Ship.init(hre);
 
-  //eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const p: Promise<any>[] = [];
+  let roosterBaseUri: string;
+  let gaffUri: string;
+  let gemUri: string;
+  let gameItemUri: string;
 
   if (hre.network.tags.prod) {
-    p.push(
-      deploy(Rooster__factory, {
-        args: [""],
-      }),
-    );
-    p.push(
-      deploy(Gaff__factory, {
-        args: [""],
-      }),
-    );
-    p.push(
-      deploy(Gem__factory, {
-        args: [""],
-      }),
-    );
-    p.push(
-      deploy(GameItem__factory, {
-        args: [""],
-      }),
-    );
+    roosterBaseUri = "";
+    gaffUri = "";
+    gemUri = "";
+    gameItemUri = "";
   } else {
-    p.push(
-      deploy(Rooster__factory, {
-        args: [""],
-      }),
-    );
-    p.push(
-      deploy(Gaff__factory, {
-        args: [""],
-      }),
-    );
-    p.push(
-      deploy(Gem__factory, {
-        args: [""],
-      }),
-    );
-    p.push(
-      deploy(GameItem__factory, {
-        args: [""],
-      }),
-    );
+    roosterBaseUri = "";
+    gaffUri = "";
+    gemUri = "";
+    gameItemUri = "";
   }
 
-  await Promise.all(p);
+  await deploy(Rooster__factory, {
+    args: [roosterBaseUri],
+  });
+  await deploy(Gaff__factory, {
+    args: [gaffUri],
+  });
+  await deploy(Gem__factory, {
+    args: [gemUri],
+  });
+  await deploy(GameItem__factory, {
+    args: [gameItemUri],
+  });
 };
 
 export default func;
