@@ -1,0 +1,10 @@
+**/export
+**/deployments
+**/artifacts
+**/cache
+**/coverage
+**/typechain
+**/dapp_test/lib
+**/artifacts
+**/node_modules/
+**/z/

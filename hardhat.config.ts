@@ -1,144 +1,108 @@
-import { task } from "hardhat/config";
+import { HardhatUserConfig } from "hardhat/types";
+import { node_url, accounts, verifyKey } from "./utils/network";
+import { removeConsoleLog } from "hardhat-preprocessor";
 
-import { config as dotenvConfig } from "dotenv";
-import { resolve } from "path";
-dotenvConfig({ path: resolve(__dirname, "./.env") });
-
-import { HardhatUserConfig, NetworkUserConfig } from "hardhat/types";
-import "hardhat-deploy";
-import "hardhat-deploy-ethers";
-
-import "@nomiclabs/hardhat-waffle";
-import "@typechain/hardhat";
 import "@nomiclabs/hardhat-ethers";
-import "@nomiclabs/hardhat-waffle";
-
+import "@typechain/hardhat";
 import "hardhat-gas-reporter";
+import "solidity-coverage";
 import "@nomiclabs/hardhat-etherscan";
+import "hardhat-abi-exporter";
+import "hardhat-deploy";
+import "hardhat-gas-reporter";
+import "hardhat-watcher";
+import "solidity-coverage";
+import "dotenv/config";
 
-const chainIds = {
-  mainnet: 1,
-  rinkeby: 4,
-  hardhat: 31337,
-  polygon: 137,
-  mumbai: 80001,
-};
-
-const MNEMONIC_LOCALHOST = process.env.MNEMONIC_LOCALHOST || "";
-const MNEMONIC_TESTNET = process.env.MNEMONIC_TESTNET || "";
-const MNEMONIC_MAINNET = process.env.MNEMONIC_MAINNET || "";
-const MORALIS_API_KEY = process.env.MORALIS_API_KEY || "";
-const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY || "";
-const POLYSCAN_API_KEY = process.env.POLYSCAN_API_KEY || "";
-const REPORT_GAS = process.env.REPORT_GAS || "";
-
-let blockchain: "eth" | "polygon" = "eth";
-
-task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
-  const accounts = await hre.ethers.getSigners();
-
-  for (const account of accounts) {
-    console.log(account.address);
-  }
-});
-
-function createNetworkConfig(network: keyof typeof chainIds): NetworkUserConfig {
-  let mnemonic = "";
-  let url = "https://speedy-nodes-nyc.moralis.io/" + MORALIS_API_KEY;
-
-  switch (network) {
-    case "mainnet":
-    case "rinkeby":
-      url = url + "/eth/" + network;
-      blockchain = "eth";
-      break;
-    case "polygon":
-    case "mumbai":
-      url = url + "/polygon/" + network;
-      blockchain = "polygon";
-      break;
-  }
-
-  switch (network) {
-    case "mainnet":
-    case "polygon":
-      mnemonic = MNEMONIC_MAINNET;
-      break;
-    case "rinkeby":
-    case "mumbai":
-      mnemonic = MNEMONIC_TESTNET;
-      break;
-  }
-
-  url = "https://polygon-mainnet.g.alchemy.com/v2/2hy-4P86bHQbdnKMtyPgG5FBeatJuXMN";
-  // url = "https://rinkeby.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161";
-
-  return {
-    accounts: {
-      count: 10,
-      initialIndex: 0,
-      mnemonic,
-      path: "m/44'/60'/0'/0",
-    },
-    chainId: chainIds[network],
-    url,
-  };
-}
+import "./tasks/account";
+import "./tasks/verify";
 
 const config: HardhatUserConfig = {
   defaultNetwork: "hardhat",
+  networks: {
+    hardhat: {
+      chainId: 31337,
+      forking: {
+        enabled: process.env.FORKING_ENABLED === "true",
+        blockNumber: Number(process.env.FORKING_BLOCK_NUM) || undefined,
+        url: node_url("mainnet"),
+      },
+      accounts: accounts("localhost"),
+      mining: {
+        auto: process.env.AUTO_MINING_ENABLED === "true",
+        interval: Number(process.env.MINING_INTERVAL),
+      },
+    },
+    localhost: {
+      url: node_url("localhost"),
+      accounts: accounts("localhost"),
+      tags: ["local", "test"],
+    },
+    polygon: {
+      url: node_url("polygon"),
+      accounts: accounts("polygon"),
+      tags: ["prod"],
+    },
+    rinkeby: {
+      url: node_url("rinkeby"),
+      accounts: accounts("rinkeby"),
+      tags: ["test"],
+    },
+  },
+  etherscan: {
+    apiKey: {
+      mainnet: verifyKey("etherscan"),
+      rinkeby: verifyKey("etherscan"),
+      polygon: verifyKey("polyscan"),
+    },
+  },
   solidity: {
     compilers: [
       {
         version: "0.8.9",
         settings: {
           optimizer: {
-            enabled: true,
-            runs: 200,
-          },
-        },
-      },
-      {
-        version: "0.6.12",
-        settings: {
-          optimizer: {
-            enabled: true,
-            runs: 200,
+            enabled: process.env.OPTIMIZER_ENABLED === "true",
+            runs: Number(process.env.OPTIMIZER_RUNS || 1),
           },
         },
       },
     ],
   },
-  networks: {
-    hardhat: {
-      accounts: {
-        mnemonic: MNEMONIC_LOCALHOST,
-      },
-      chainId: 137,
-      mining: {
-        auto: true,
-        interval: 1000
-      }
-    },
-    mainnet: createNetworkConfig("mainnet"),
-    rinkeby: createNetworkConfig("rinkeby"),
-    polygon: createNetworkConfig("polygon"),
-    mumbai: createNetworkConfig("mumbai"),
+  namedAccounts: {
+    deployer: 0,
+    signer: 1,
+    vault: 2,
   },
-  etherscan: {
-    apiKey: blockchain === "eth" ? ETHERSCAN_API_KEY : POLYSCAN_API_KEY
+  abiExporter: {
+    path: "./abis",
+    runOnCompile: false,
+    clear: true,
+    flat: true,
+    spacing: 2,
+    pretty: true,
   },
-  gasReporter: {
-    currency: "USD",
-    gasPrice: 100,
-    enabled: REPORT_GAS === "true"
+  paths: {
+    artifacts: "./artifacts",
+    cache: "./cache",
+    sources: "./contracts",
+    tests: "./test",
   },
   typechain: {
-    outDir: "typechain",
+    outDir: "types",
     target: "ethers-v5",
   },
   mocha: {
-    timeout: 20000000,
+    timeout: 30000,
+  },
+  gasReporter: {
+    coinmarketcap: process.env.COINMARKETCAP_API_KEY,
+    currency: "USD",
+    enabled: process.env.REPORT_GAS === "true",
+    src: "./contracts",
+  },
+  preprocess: {
+    eachLine: removeConsoleLog((hre) => hre.network.name !== "hardhat" && hre.network.name !== "localhost"),
   },
 };
 
