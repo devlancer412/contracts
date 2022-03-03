@@ -1,16 +1,16 @@
 import chai from "chai";
 import { solidity } from "ethereum-waffle";
-import { SignerWithAddress } from "hardhat-deploy-ethers/dist/src/signers";
-import { advanceTimeAndBlock, MacroChain, toBN, toWei } from "../utils";
-import { RoosterEgg, RoosterEgg__factory, USDC, USDC__factory } from "../typechain";
+import { advanceTimeAndBlock, Ship, toBN, toWei } from "../utils";
+import { RoosterEgg, RoosterEgg__factory, MockUsdc, MockUsdc__factory } from "../types";
 import { ethers } from "hardhat";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 chai.use(solidity);
 const { expect } = chai;
 
-let macrochain: MacroChain;
+let ship: Ship;
 let egg: RoosterEgg;
-let usdc: USDC;
+let usdc: MockUsdc;
 let owner: SignerWithAddress;
 let wallet: SignerWithAddress;
 let rooster: SignerWithAddress;
@@ -20,8 +20,8 @@ let charlie: SignerWithAddress;
 
 describe("Egg test", () => {
   before(async () => {
-    macrochain = await MacroChain.init();
-    const { users } = macrochain;
+    ship = await Ship.init();
+    const { users } = ship;
     owner = users[0];
     wallet = users[1];
     rooster = users[2];
@@ -31,20 +31,15 @@ describe("Egg test", () => {
   });
 
   before(async () => {
-    const { deployer } = macrochain;
+    const { deploy } = ship;
 
-    //Deploy USDC
-    usdc = await deployer<USDC__factory>("USDC", []);
+    //Deploy MockUsdc
+    usdc = await deploy(MockUsdc__factory);
 
     //Deploy RoosterEgg
     const uri = "https://api.roosterwars.io/metadata/egg/";
     const initialTokenId = 1;
-    egg = await deployer<RoosterEgg__factory>("RoosterEgg", [
-      usdc.address,
-      wallet.address,
-      initialTokenId,
-      uri,
-    ]);
+    egg = await deploy(RoosterEgg__factory, { args: [usdc.address, wallet.address, initialTokenId, uri] });
 
     const balance = await usdc.balanceOf(owner.address);
     await usdc.transfer(alice.address, balance.div(4));
