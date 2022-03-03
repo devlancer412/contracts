@@ -63,6 +63,10 @@ describe("GWIT Deploy Test", () => {
 
         let balance_fp = await gwit.balanceOf(farmpool.address);
         expect(balance_fp).to.eq((supply_size * .1).toFixed());
+
+        let balance_caller = await gwit.balanceOf(owner.address);
+        expect(balance_caller).to.eq((supply_size * .44).toFixed());
+        
     });
 
     it("Should emit new signer", async () => {
@@ -70,41 +74,35 @@ describe("GWIT Deploy Test", () => {
         await expect(tx).to.emit(grp, "UpdateSigner").withArgs(issuer.address);
     });
 
+    it("Should fail with invalid signature", async () => {
+        const claimData = await manager.generate_claim(client.address, 10);
+        claimData.amount = 1000;
+        await expect(grp.claim(claimData)).to.be.revertedWith("invalid signature")
+    });
+
     it("Should fail with claimed nonce", async () => {
         const claimData = await manager.generate_claim(client.address, 10);
-        claimData.nonce = 0;
-        // const claimData = {nonce: 0, target: client.address, amount: 37, signature: {r: "aa", s: "bb", v: 47}}
-        await expect(grp.claim(claimData)).to.be.revertedWith("claim already claimed")
-    })
 
-    it("__signature_test", async () => {
-        await grp.setSigner(issuer.address);
-        const claimData = await manager.generate_claim(client.address, 10);
-        const tx = await grp.view_Test(claimData);
-        console.log("Result Hash", tx);
-    })
+        await expect(grp.claim(claimData)).to.emit(grp, "Claimed").withArgs(claimData.nonce, claimData.target, claimData.amount);
+        
+        const second_tx = grp.claim(claimData)
+        expect(second_tx).to.be.revertedWith("claim already claimed")
 
-    it("__erc_signature_test", async () => {
-        await grp.setSigner(issuer.address);
-        const claimData = await manager.generate_claim(client.address, 10);
-        const tx = await grp.view_ercrec(claimData);
-        console.log("Expect", issuer.address)
-        console.log("Result", tx);
-        expect(tx).to.eq(issuer.address);
-    })
-
+        let balance = await gwit.balanceOf(client.address);
+        expect(balance).to.eq(10); 
+    });
 
     it("Should validate claim", async () => {
-        await grp.setSigner(issuer.address);
-
+        const reserves = await grp.reserves();
+        const original = await gwit.balanceOf(client.address);
         const tx_amt = 10;
-        const claimData = await manager.generate_claim(client.address, 10);
-        console.log("Claim", claimData);
-        // const tx = await grp.claim(claimData);
-        // console.log("claim transaction:", tx.data);
+        const claimData = await manager.generate_claim(client.address, tx_amt);
         await expect(grp.claim(claimData)).not.be.revertedWith("invalid signature");
 
         let balance = await gwit.balanceOf(client.address);
-        expect(balance).to.eq(tx_amt);
-    })
+        expect(balance).to.eq(original.add(tx_amt));
+        
+        let new_reserves = await grp.reserves();
+        expect(new_reserves).to.eq(reserves.sub(tx_amt));
+    });
 })

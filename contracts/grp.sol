@@ -8,8 +8,6 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 
-
-
 contract GRP is Ownable {
     address _token;
     mapping (uint => bool) public claimed;
@@ -33,7 +31,6 @@ contract GRP is Ownable {
 
     constructor(address _signer) {
         setSigner(_signer);
-        claimed[0] = true;
     }
 
     function setSigner(address newSigner) public onlyOwner {
@@ -72,20 +69,11 @@ contract GRP is Ownable {
         // Cleanup
         claimed[claimData.nonce] = true;
         emit Claimed(claimData.nonce, claimData.target, claimData.amount);
-    }
+    } 
 
-
-    function view_Test(Claim calldata claimData) public pure returns(bytes32) {
-        bytes32 messageHash = keccak256(abi.encodePacked(claimData.nonce, claimData.target, claimData.amount));
-        return messageHash;
-    }
-
-    function view_ercrec(Claim calldata claimData) public pure returns(address) {
-        bytes32 messageHash = keccak256(abi.encodePacked(claimData.nonce, claimData.target, claimData.amount));
-        bytes32 ethSignedMessageHash = keccak256(
-            abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash)
-        );
-        return ecrecover(ethSignedMessageHash, claimData.signature.v, claimData.signature.r, claimData.signature.s);
+    function reserves() public view returns(uint) {
+        IERC20 token = IERC20(_token);
+        return token.balanceOf(address(this));
     }
 
 }
