@@ -36,7 +36,7 @@ jobs:
           node-version: "16.x"
 
       - name: Install dependencies
-        run: yarn --prod --frozen-lockfile --mode skip-build
+        run: yarn install --ignore-scripts --frozen-lockfile --prod
 
       - name: Install dapp tools
         run: nix-env -f https://github.com/dapphub/dapptools/archive/master.tar.gz -iA solc-static-versions.solc_0_8_9
