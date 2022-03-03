@@ -1,28 +1,43 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
+import "@rari-capital/solmate/src/tokens/ERC1155.sol";
 import "./AccessControl.sol";
-import "hardhat/console.sol";
 
 contract Gaff is ERC1155, AccessControl {
-  constructor(string memory uri) ERC1155(uri) {}
+  //Base Uri of gem metadata
+  string private _uri;
+
+  //Fires when base uri is updated
+  event UpdateUri(string uri);
+
+  constructor(string memory uri_) {
+    setUri(uri_);
+  }
+
+  function uri(uint256) public view override returns (string memory) {
+    return _uri;
+  }
 
   function mint(
     address to,
-    uint256 id,
+    uint256 gemId,
     uint256 amount
   ) external onlyMinter {
-    _mint(to, id, amount, "");
+    _mint(to, gemId, amount, "");
   }
 
-  function mintBatch(address to, uint256[] memory amounts) external onlyMinter {
-    for (uint256 gaffId = 0; gaffId < amounts.length; gaffId++) {
+  function batchMint(address to, uint256[] memory amounts) external onlyMinter {
+    for (uint256 gaffId = 0; gaffId < amounts.length; ) {
       _mint(to, gaffId, amounts[gaffId], "");
+      unchecked {
+        gaffId++;
+      }
     }
   }
 
-  function setURI(string memory newuri) external onlyOwner {
-    _setURI(newuri);
+  function setUri(string memory newUri) public onlyOwner {
+    _uri = newUri;
+    emit UpdateUri(newUri);
   }
 }
