@@ -9,11 +9,11 @@ interface IEgg {
 }
 
 interface IRooster {
-  function mintBatch(address to, uint8[] memory breeds) external;
+  function batchMint(address to, uint8[] memory breeds) external;
 }
 
 interface IGaff {
-  function mintBatch(address to, uint256[] memory amounts) external;
+  function batchMint(address to, uint256[] memory amounts) external;
 }
 
 interface IGem {
@@ -32,6 +32,9 @@ contract RoosterEggHatching is Ownable, Pausable {
   //Address of signer
   address public signer;
 
+  //Fires when eggs are hatched
+  event EggsHatched(address indexed user, uint24[] eggIds);
+  //Fires when signer address is updated
   event UpdateSigner(address indexed signer);
 
   struct Sig {
@@ -74,11 +77,13 @@ contract RoosterEggHatching is Ownable, Pausable {
     //Burn eggs
     IEgg(egg).burnBatch(eggIds);
     //Mint roosters
-    IRooster(rooster).mintBatch(to, breeds);
+    IRooster(rooster).batchMint(to, breeds);
     //Mint gaffs
-    IGaff(gaff).mintBatch(to, gaffAmounts);
+    IGaff(gaff).batchMint(to, gaffAmounts);
     //Mint gems
     IGem(gem).mintByIds(to, gemIds);
+
+    emit EggsHatched(msg.sender, eggIds);
   }
 
   function _isParamValid(
