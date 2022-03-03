@@ -1,8 +1,8 @@
 import chai from "chai";
 import { solidity } from "ethereum-waffle";
-import { advanceTimeAndBlock, Ship, toBN, toWei } from "../utils";
+import { advanceTimeAndBlock, fromWei, Ship, toBN, toWei } from "../utils";
 import { RoosterEgg, RoosterEgg__factory, MockUsdc, MockUsdc__factory } from "../types";
-import { ethers } from "hardhat";
+import { deployments, ethers } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 chai.use(solidity);
@@ -18,29 +18,39 @@ let alice: SignerWithAddress;
 let bob: SignerWithAddress;
 let charlie: SignerWithAddress;
 
+const setup = deployments.createFixture(async (hre) => {
+  const ship = await Ship.init(hre);
+  const { connect, accounts, users } = ship;
+  await deployments.fixture(["mocks", "egg"]);
+
+  const usdc = await connect(MockUsdc__factory);
+  const egg = await connect(RoosterEgg__factory);
+
+  return {
+    ship,
+    usdc,
+    egg,
+    rooster,
+    accounts,
+    users,
+  };
+});
+
 describe("Egg test", () => {
   before(async () => {
-    ship = await Ship.init();
-    const { users } = ship;
-    owner = users[0];
-    wallet = users[1];
-    rooster = users[2];
-    alice = users[3];
-    bob = users[4];
-    charlie = users[5];
+    const cache = await setup();
+    ship = cache.ship;
+    usdc = cache.usdc;
+    egg = cache.egg;
+    owner = cache.accounts.deployer;
+    wallet = cache.accounts.vault;
+    rooster = cache.users[8];
+    alice = cache.users[5];
+    bob = cache.users[6];
+    charlie = cache.users[7];
   });
 
   before(async () => {
-    const { deploy } = ship;
-
-    //Deploy MockUsdc
-    usdc = await deploy(MockUsdc__factory);
-
-    //Deploy RoosterEgg
-    const uri = "https://api.roosterwars.io/metadata/egg/";
-    const initialTokenId = 1;
-    egg = await deploy(RoosterEgg__factory, { args: [usdc.address, wallet.address, initialTokenId, uri] });
-
     const balance = await usdc.balanceOf(owner.address);
     await usdc.transfer(alice.address, balance.div(4));
     await usdc.transfer(bob.address, balance.div(4));
@@ -143,6 +153,7 @@ describe("Egg test", () => {
         const value = toBN(amount).mul(price);
 
         await usdc.connect(charlie).approve(egg.address, value);
+        await usdc.connect(charlie).transfer(alice.address, await usdc.balanceOf(charlie.address));
         const promi = egg.connect(charlie).buyEggs(amount);
 
         await expect(promi).to.be.reverted;
