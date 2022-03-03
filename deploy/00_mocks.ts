@@ -11,4 +11,4 @@ const func: DeployFunction = async (hre) => {
 };
 
 export default func;
-func.tags = [""];
+func.tags = ["mocks"];
