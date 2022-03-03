@@ -21,6 +21,7 @@ class Ship {
   constructor(hre: HardhatRuntimeEnvironment, accounts: Accounts, users: SignerWithAddress[], log?: boolean) {
     this.hre = hre;
     this.log = log;
+    this.users = users;
     this.accounts = accounts;
   }
 

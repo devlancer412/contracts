@@ -1,5 +1,5 @@
 import { DeployFunction } from "hardhat-deploy/types";
-import { RoosterEgg__factory, USDC__factory } from "../types";
+import { RoosterEgg__factory, MockUsdc__factory } from "../types";
 import { Ship } from "../utils";
 
 const func: DeployFunction = async (hre) => {
@@ -14,7 +14,7 @@ const func: DeployFunction = async (hre) => {
       args: [usdcAddr, walletAddr, initialTokenId, baseUri],
     });
   } else {
-    const usdc = await connect(USDC__factory);
+    const usdc = await connect(MockUsdc__factory);
     const wallet = accounts.vault.address;
     const baseUri = "https://mds-roosterwars-backend-test.azurewebsites.net/egg/metadata/";
     await deploy(RoosterEgg__factory, {
