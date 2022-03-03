@@ -1,7 +1,7 @@
 export * from "./bn";
 export * from "./network";
-export * from "./Timer";
+export * from "./Time";
 
 import Ship from "./Ship";
-import Time from "./Timer";
+import Time from "./Time";
 export { Ship, Time };
