@@ -6,10 +6,12 @@ pragma solidity ^0.8.9;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 contract GRP is Ownable {
   address _token;
   mapping(uint256 => bool) public burned;
+  using SafeERC20 for IERC20;
 
   event Claimed(uint256 indexed nonce, address indexed target, uint256 amount);
   struct Claim {
@@ -53,18 +55,24 @@ contract GRP is Ownable {
     return _token;
   }
 
-  function claim(Claim calldata claimData) public {
+  function validateClaim(Claim calldata claimData) public view returns (bool) {
+    require(claimData.amount > 0, "cannot claim <0");
     // Validation
     require(!burned[claimData.nonce], "claim already burned");
 
     bytes32 messageHash = keccak256(
       abi.encodePacked(claimData.nonce, claimData.target, claimData.amount)
     );
-    require(authorize(claimData.signature, messageHash), "invalid signature");
+    return authorize(claimData.signature, messageHash);
+  }
+
+  function claim(Claim calldata claimData) public {
+    // bytes32 messageHash = keccak256(abi.encodePacked(claimData.nonce, claimData.target, claimData.amount));
+    require(validateClaim(claimData), "invalid signature");
 
     // Transfer
     IERC20 token = IERC20(_token);
-    token.transfer(claimData.target, claimData.amount);
+    token.safeTransfer(claimData.target, claimData.amount);
 
     // Cleanup
     burned[claimData.nonce] = true;

@@ -81,10 +81,29 @@ describe("GWIT Deploy Test", () => {
     await expect(tx).to.emit(grp, "UpdateSigner").withArgs(issuer.address);
   });
 
+  it("Should validate claim", async () => {
+    const reserves = await grp.reserves();
+    const original = await gwit.balanceOf(client.address);
+    const tx_amt = 10;
+    const claimData = await manager.generate_claim(client.address, tx_amt);
+    await expect(await grp.claim(claimData))
+      .to.emit(grp, "Claimed")
+      .withArgs(claimData.nonce, claimData.target, claimData.amount);
+
+    let balance = await gwit.balanceOf(client.address);
+    await expect(balance).to.eq(original.add(tx_amt));
+
+    let new_reserves = await grp.reserves();
+    await expect(new_reserves).to.eq(reserves.sub(tx_amt));
+
+    // return the tokens back to the GRP
+    await gwit.connect(client).transfer(grp.address, 10);
+  });
+
   it("Should fail with invalid signature", async () => {
     const claimData = await manager.generate_claim(client.address, 10);
     claimData.amount = 1000;
-    await expect(grp.claim(claimData)).to.be.revertedWith("invalid signature");
+    await expect(await grp.validateClaim(claimData)).to.be.false;
   });
 
   it("Should fail with claimed nonce", async () => {
@@ -99,21 +118,5 @@ describe("GWIT Deploy Test", () => {
 
     let balance = await gwit.balanceOf(client.address);
     expect(balance).to.eq(10);
-  });
-
-  it("Should validate claim", async () => {
-    const reserves = await grp.reserves();
-    const original = await gwit.balanceOf(client.address);
-    const tx_amt = 10;
-    const claimData = await manager.generate_claim(client.address, tx_amt);
-    await expect(grp.claim(claimData))
-      .to.emit(grp, "Claimed")
-      .withArgs(claimData.nonce, claimData.target, claimData.amount);
-
-    let balance = await gwit.balanceOf(client.address);
-    expect(balance).to.eq(original.add(tx_amt));
-
-    let new_reserves = await grp.reserves();
-    expect(new_reserves).to.eq(reserves.sub(tx_amt));
   });
 });
