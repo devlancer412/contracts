@@ -35,7 +35,7 @@ const setup = deployments.createFixture(async (hre) => {
 const sign = async (user: string, breeds: number[], gaffAmounts: number[], gemIds: number[]) => {
   const { accounts } = await Ship.init();
   const hash = solidityKeccak256(
-    ["address", "uint8[]", "uint256[]", "uint256[]"],
+    ["address", "uint256[]", "uint256[]", "uint256[]"],
     [user, breeds, gaffAmounts, gemIds],
   );
   const sig = await accounts.signer.signMessage(arrayify(hash));

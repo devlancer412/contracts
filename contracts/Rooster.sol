@@ -17,7 +17,7 @@ contract Rooster is ERC721, AccessControl, RoosterMetadata {
     return _roosterIdCounter;
   }
 
-  function mint(address to, Breed breed) external onlyMinter {
+  function mint(address to, uint256 breed) external onlyMinter {
     uint256 roosterId = _roosterIdCounter;
 
     unchecked {
@@ -27,7 +27,7 @@ contract Rooster is ERC721, AccessControl, RoosterMetadata {
     _mint(to, roosterId, breed);
   }
 
-  function batchMint(address to, Breed[] memory breeds) external onlyMinter {
+  function batchMint(address to, uint256[] memory breeds) external onlyMinter {
     uint256 roosterId = _roosterIdCounter;
 
     for (uint256 i = 0; i < breeds.length; ) {
@@ -45,7 +45,7 @@ contract Rooster is ERC721, AccessControl, RoosterMetadata {
   function _mint(
     address to,
     uint256 roosterId,
-    Breed breed
+    uint256 breed
   ) private {
     _safeMint(to, roosterId);
     _setBreed(roosterId, breed);
