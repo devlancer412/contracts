@@ -1,10 +1,2 @@
-**/export
-**/deployments
-**/artifacts
-**/cache
-**/coverage
-**/typechain
-**/dapp_test/lib
-**/artifacts
-**/node_modules/
-**/z/
+# directories
+dapp_test/

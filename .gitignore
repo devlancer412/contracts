@@ -23,3 +23,4 @@ types
 .idea
 deployments
 /z
+!deployments/polygon
