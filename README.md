@@ -7,7 +7,7 @@
 ### Pre-requisites
 
 - [Node.js](https://nodejs.org/en/) version 14.0+ and [yarn](https://yarnpkg.com/) for Javascript environment.
-- [Foundry](https://github.com/gakonst/foundry#installation)
+- [Foundry](https://github.com/gakonst/foundry#installation) for running forge tests.
 
 1. Clone this repository
 
