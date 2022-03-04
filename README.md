@@ -7,8 +7,7 @@
 ### Pre-requisites
 
 - [Node.js](https://nodejs.org/en/) version 14.0+ and [yarn](https://yarnpkg.com/) for Javascript environment.
-- [dapp.tools](https://github.com/dapphub/dapptools#installation) with [Nix](https://nixos.org/download.html) for running dapp tests.
-  For Apple Silicon macs, install Nix v2.3.16-x86_64 (see [this issue](https://github.com/dapphub/dapptools/issues/878)).
+- [Foundry](https://github.com/gakonst/foundry#installation) for running forge tests.
 
 1. Clone this repository
 
@@ -43,10 +42,10 @@ yarn compile
 yarn test:hh
 ```
 
-- To run dapp tests
+- To run forge(foundry) tests
 
 ```bash
-yarn test:dapp
+yarn test:forge
 ```
 
 - To start local blockchain
@@ -81,7 +80,7 @@ Contracts are developed using well-known open-source software for utility librar
 
 [hardhat-deploy](https://github.com/wighawag/hardhat-deploy)
 
-[dapp.tools](https://github.com/dapphub/dapptools)
+[foundry](https://github.com/gakonst/foundry)
 
 [ethers.js](https://github.com/ethers-io/ethers.js/)
 

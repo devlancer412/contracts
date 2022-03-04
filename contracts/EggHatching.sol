@@ -11,7 +11,7 @@ interface IEgg {
 }
 
 interface IRooster {
-  function batchMint(address to, uint8[] memory breeds) external;
+  function batchMint(address to, uint256[] memory breeds) external;
 }
 
 interface IGaff {
@@ -68,7 +68,7 @@ contract RoosterEggHatching is Ownable, Pausable {
   function hatch(
     address to,
     uint24[] calldata eggIds,
-    uint8[] calldata breeds,
+    uint256[] calldata breeds,
     uint256[] calldata gaffAmounts,
     uint256[] calldata gemIds,
     Sig calldata sig
@@ -91,7 +91,7 @@ contract RoosterEggHatching is Ownable, Pausable {
   }
 
   function _isParamValid(
-    uint8[] calldata breeds,
+    uint256[] calldata breeds,
     uint256[] calldata gaffAmounts,
     uint256[] calldata gemIds,
     Sig calldata sig
