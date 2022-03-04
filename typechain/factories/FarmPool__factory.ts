@@ -42,13 +42,10 @@ const _abi = [
 const _bytecode =
   "0x608060405234801561001057600080fd5b5061011f806100206000396000f3fe6080604052348015600f57600080fd5b506004361060325760003560e01c80637991dbb21460375780638b56b77a146048575b600080fd5b6046604236600460a5565b6067565b005b600054604080516001600160a01b039092168252519081900360200190f35b600054600160a01b900460ff1615607e57607e60d3565b600080546001600160a81b0319166001600160a01b0390921691909117600160a01b179055565b60006020828403121560b657600080fd5b81356001600160a01b038116811460cc57600080fd5b9392505050565b634e487b7160e01b600052600160045260246000fdfea26469706673582212207311b1d74d58ba3b8b6909af60cff45354b4b0ab39b26f58c04c27610f24062764736f6c63430008090033";
 
-type FarmPoolConstructorParams =
-  | [signer?: Signer]
-  | ConstructorParameters<typeof ContractFactory>;
+type FarmPoolConstructorParams = [signer?: Signer] | ConstructorParameters<typeof ContractFactory>;
 
-const isSuperArgs = (
-  xs: FarmPoolConstructorParams
-): xs is ConstructorParameters<typeof ContractFactory> => xs.length > 1;
+const isSuperArgs = (xs: FarmPoolConstructorParams): xs is ConstructorParameters<typeof ContractFactory> =>
+  xs.length > 1;
 
 export class FarmPool__factory extends ContractFactory {
   constructor(...args: FarmPoolConstructorParams) {
@@ -59,14 +56,10 @@ export class FarmPool__factory extends ContractFactory {
     }
   }
 
-  deploy(
-    overrides?: Overrides & { from?: string | Promise<string> }
-  ): Promise<FarmPool> {
+  deploy(overrides?: Overrides & { from?: string | Promise<string> }): Promise<FarmPool> {
     return super.deploy(overrides || {}) as Promise<FarmPool>;
   }
-  getDeployTransaction(
-    overrides?: Overrides & { from?: string | Promise<string> }
-  ): TransactionRequest {
+  getDeployTransaction(overrides?: Overrides & { from?: string | Promise<string> }): TransactionRequest {
     return super.getDeployTransaction(overrides || {});
   }
   attach(address: string): FarmPool {
@@ -80,10 +73,7 @@ export class FarmPool__factory extends ContractFactory {
   static createInterface(): FarmPoolInterface {
     return new utils.Interface(_abi) as FarmPoolInterface;
   }
-  static connect(
-    address: string,
-    signerOrProvider: Signer | Provider
-  ): FarmPool {
+  static connect(address: string, signerOrProvider: Signer | Provider): FarmPool {
     return new Contract(address, _abi, signerOrProvider) as FarmPool;
   }
 }

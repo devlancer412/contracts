@@ -22,19 +22,10 @@ export interface FarmPoolInterface extends utils.Interface {
     "token_addr()": FunctionFragment;
   };
 
-  encodeFunctionData(
-    functionFragment: "set_token_addr",
-    values: [string]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "token_addr",
-    values?: undefined
-  ): string;
+  encodeFunctionData(functionFragment: "set_token_addr", values: [string]): string;
+  encodeFunctionData(functionFragment: "token_addr", values?: undefined): string;
 
-  decodeFunctionResult(
-    functionFragment: "set_token_addr",
-    data: BytesLike
-  ): Result;
+  decodeFunctionResult(functionFragment: "set_token_addr", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "token_addr", data: BytesLike): Result;
 
   events: {};
@@ -50,16 +41,12 @@ export interface FarmPool extends BaseContract {
   queryFilter<TEvent extends TypedEvent>(
     event: TypedEventFilter<TEvent>,
     fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined
+    toBlock?: string | number | undefined,
   ): Promise<Array<TEvent>>;
 
-  listeners<TEvent extends TypedEvent>(
-    eventFilter?: TypedEventFilter<TEvent>
-  ): Array<TypedListener<TEvent>>;
+  listeners<TEvent extends TypedEvent>(eventFilter?: TypedEventFilter<TEvent>): Array<TypedListener<TEvent>>;
   listeners(eventName?: string): Array<Listener>;
-  removeAllListeners<TEvent extends TypedEvent>(
-    eventFilter: TypedEventFilter<TEvent>
-  ): this;
+  removeAllListeners<TEvent extends TypedEvent>(eventFilter: TypedEventFilter<TEvent>): this;
   removeAllListeners(eventName?: string): this;
   off: OnEvent<this>;
   on: OnEvent<this>;
@@ -69,7 +56,7 @@ export interface FarmPool extends BaseContract {
   functions: {
     set_token_addr(
       addr: string,
-      overrides?: Overrides & { from?: string | Promise<string> }
+      overrides?: Overrides & { from?: string | Promise<string> },
     ): Promise<ContractTransaction>;
 
     token_addr(overrides?: CallOverrides): Promise<[string]>;
@@ -77,7 +64,7 @@ export interface FarmPool extends BaseContract {
 
   set_token_addr(
     addr: string,
-    overrides?: Overrides & { from?: string | Promise<string> }
+    overrides?: Overrides & { from?: string | Promise<string> },
   ): Promise<ContractTransaction>;
 
   token_addr(overrides?: CallOverrides): Promise<string>;
@@ -93,7 +80,7 @@ export interface FarmPool extends BaseContract {
   estimateGas: {
     set_token_addr(
       addr: string,
-      overrides?: Overrides & { from?: string | Promise<string> }
+      overrides?: Overrides & { from?: string | Promise<string> },
     ): Promise<BigNumber>;
 
     token_addr(overrides?: CallOverrides): Promise<BigNumber>;
@@ -102,7 +89,7 @@ export interface FarmPool extends BaseContract {
   populateTransaction: {
     set_token_addr(
       addr: string,
-      overrides?: Overrides & { from?: string | Promise<string> }
+      overrides?: Overrides & { from?: string | Promise<string> },
     ): Promise<PopulatedTransaction>;
 
     token_addr(overrides?: CallOverrides): Promise<PopulatedTransaction>;

@@ -53,10 +53,7 @@ export class Pausable__factory {
   static createInterface(): PausableInterface {
     return new utils.Interface(_abi) as PausableInterface;
   }
-  static connect(
-    address: string,
-    signerOrProvider: Signer | Provider
-  ): Pausable {
+  static connect(address: string, signerOrProvider: Signer | Provider): Pausable {
     return new Contract(address, _abi, signerOrProvider) as Pausable;
   }
 }

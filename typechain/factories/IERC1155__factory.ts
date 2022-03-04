@@ -307,10 +307,7 @@ export class IERC1155__factory {
   static createInterface(): IERC1155Interface {
     return new utils.Interface(_abi) as IERC1155Interface;
   }
-  static connect(
-    address: string,
-    signerOrProvider: Signer | Provider
-  ): IERC1155 {
+  static connect(address: string, signerOrProvider: Signer | Provider): IERC1155 {
     return new Contract(address, _abi, signerOrProvider) as IERC1155;
   }
 }

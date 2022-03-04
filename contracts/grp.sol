@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 contract GRP is Ownable {
-  address _token;
+  address public _token;
   mapping(uint256 => bool) public burned;
   using SafeERC20 for IERC20;
 
@@ -46,12 +46,12 @@ contract GRP is Ownable {
   }
 
   // run once
-  function set_token_addr(address addr) public onlyOwner {
+  function setTokenAddr(address addr) public onlyOwner {
     assert(_token == address(0));
     _token = addr;
   }
 
-  function token_addr() public view returns (address) {
+  function tokenAddr() public view returns (address) {
     return _token;
   }
 

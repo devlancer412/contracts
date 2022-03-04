@@ -16,7 +16,7 @@ let ship: Ship;
 let grp: GRP;
 let gwit: GWITToken;
 let farmpool: FarmPool;
-let issuer: Wallet = Wallet.createRandom();
+const issuer: Wallet = Wallet.createRandom();
 let owner: SignerWithAddress;
 let wallet: SignerWithAddress;
 let client: SignerWithAddress;
@@ -58,26 +58,26 @@ describe("GWIT Deploy Test", () => {
   });
 
   it("Should have the right address", async () => {
-    let addr = await grp.token_addr();
+    const addr = await grp.token_addr();
     expect(addr).to.eq(gwit.address);
 
-    let addr_fp = await farmpool.token_addr();
+    const addr_fp = await farmpool.token_addr();
     expect(addr_fp).to.eq(gwit.address);
   });
 
   it("Should allocate the right amount of tokens", async () => {
-    let balance = await gwit.balanceOf(grp.address);
+    const balance = await gwit.balanceOf(grp.address);
     expect(balance).to.eq((supply_size * 0.46).toFixed());
 
-    let balance_fp = await gwit.balanceOf(farmpool.address);
+    const balance_fp = await gwit.balanceOf(farmpool.address);
     expect(balance_fp).to.eq((supply_size * 0.1).toFixed());
 
-    let balance_caller = await gwit.balanceOf(owner.address);
+    const balance_caller = await gwit.balanceOf(owner.address);
     expect(balance_caller).to.eq((supply_size * 0.44).toFixed());
   });
 
   it("Should emit new signer", async () => {
-    let tx = grp.setSigner(issuer.address);
+    const tx = grp.setSigner(issuer.address);
     await expect(tx).to.emit(grp, "UpdateSigner").withArgs(issuer.address);
   });
 
@@ -90,10 +90,10 @@ describe("GWIT Deploy Test", () => {
       .to.emit(grp, "Claimed")
       .withArgs(claimData.nonce, claimData.target, claimData.amount);
 
-    let balance = await gwit.balanceOf(client.address);
+    const balance = await gwit.balanceOf(client.address);
     await expect(balance).to.eq(original.add(tx_amt));
 
-    let new_reserves = await grp.reserves();
+    const new_reserves = await grp.reserves();
     await expect(new_reserves).to.eq(reserves.sub(tx_amt));
 
     // return the tokens back to the GRP
@@ -116,7 +116,7 @@ describe("GWIT Deploy Test", () => {
     const second_tx = grp.claim(claimData);
     expect(second_tx).to.be.revertedWith("claim already claimed");
 
-    let balance = await gwit.balanceOf(client.address);
+    const balance = await gwit.balanceOf(client.address);
     expect(balance).to.eq(10);
   });
 });

@@ -4,10 +4,7 @@
 
 import { Contract, Signer, utils } from "ethers";
 import { Provider } from "@ethersproject/providers";
-import type {
-  ERC721Burnable,
-  ERC721BurnableInterface,
-} from "../ERC721Burnable";
+import type { ERC721Burnable, ERC721BurnableInterface } from "../ERC721Burnable";
 
 const _abi = [
   {
@@ -360,10 +357,7 @@ export class ERC721Burnable__factory {
   static createInterface(): ERC721BurnableInterface {
     return new utils.Interface(_abi) as ERC721BurnableInterface;
   }
-  static connect(
-    address: string,
-    signerOrProvider: Signer | Provider
-  ): ERC721Burnable {
+  static connect(address: string, signerOrProvider: Signer | Provider): ERC721Burnable {
     return new Contract(address, _abi, signerOrProvider) as ERC721Burnable;
   }
 }

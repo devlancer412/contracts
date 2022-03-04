@@ -32,7 +32,7 @@ export class ClaimsManager {
     const issuerWallet = new Wallet(this.config.IssuerPrivateKey);
     const nonce: number = Date.now();
 
-    let hash = solidityKeccak256(["uint", "address", "uint"], [nonce, target, amount]);
+    const hash = solidityKeccak256(["uint", "address", "uint"], [nonce, target, amount]);
     const signature = await issuerWallet.signMessage(ethers.utils.arrayify(hash));
 
     const { v, r, s } = splitSignature(signature);

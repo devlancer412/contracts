@@ -4,10 +4,7 @@
 
 import { Contract, Signer, utils } from "ethers";
 import { Provider } from "@ethersproject/providers";
-import type {
-  IERC1155MetadataURI,
-  IERC1155MetadataURIInterface,
-} from "../IERC1155MetadataURI";
+import type { IERC1155MetadataURI, IERC1155MetadataURIInterface } from "../IERC1155MetadataURI";
 
 const _abi = [
   {
@@ -329,10 +326,7 @@ export class IERC1155MetadataURI__factory {
   static createInterface(): IERC1155MetadataURIInterface {
     return new utils.Interface(_abi) as IERC1155MetadataURIInterface;
   }
-  static connect(
-    address: string,
-    signerOrProvider: Signer | Provider
-  ): IERC1155MetadataURI {
+  static connect(address: string, signerOrProvider: Signer | Provider): IERC1155MetadataURI {
     return new Contract(address, _abi, signerOrProvider) as IERC1155MetadataURI;
   }
 }
