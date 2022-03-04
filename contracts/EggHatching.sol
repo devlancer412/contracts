@@ -6,6 +6,8 @@ import "@openzeppelin/contracts/security/Pausable.sol";
 
 interface IEgg {
   function burnBatch(uint24[] memory eggIds) external;
+
+  function ownerOf(uint256 tokenId) external view returns (address);
 }
 
 interface IRooster {
@@ -35,7 +37,7 @@ contract RoosterEggHatching is Ownable, Pausable {
   //Fires when eggs are hatched
   event EggsHatched(address indexed user, uint24[] eggIds);
   //Fires when signer address is updated
-  event UpdateSigner(address indexed signer);
+  event UpdateSigner(address indexed previousSigner, address indexed newSigner);
 
   struct Sig {
     bytes32 r;
@@ -65,7 +67,7 @@ contract RoosterEggHatching is Ownable, Pausable {
    */
   function hatch(
     address to,
-    uint24[] memory eggIds,
+    uint24[] calldata eggIds,
     uint8[] calldata breeds,
     uint256[] calldata gaffAmounts,
     uint256[] calldata gemIds,
@@ -73,6 +75,8 @@ contract RoosterEggHatching is Ownable, Pausable {
   ) external whenNotPaused {
     //Check if parameters are valid
     require(_isParamValid(breeds, gaffAmounts, gemIds, sig), "Invalid parameter");
+    //Check if egg owner
+    require(_isOwnerCorrect(eggIds), "Invalid owner");
 
     //Burn eggs
     IEgg(egg).burnBatch(eggIds);
@@ -100,9 +104,22 @@ contract RoosterEggHatching is Ownable, Pausable {
     return ecrecover(ethSignedMessageHash, sig.v, sig.r, sig.s) == signer;
   }
 
+  function _isOwnerCorrect(uint24[] calldata eggIds) private view returns (bool) {
+    unchecked {
+      for (uint256 i = 0; i < eggIds.length; i++) {
+        if (IEgg(egg).ownerOf(eggIds[i]) != msg.sender) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
   function setSigner(address newSigner) public onlyOwner {
+    require(newSigner != address(0), "No address(0)");
+    address oldSigner = signer;
     signer = newSigner;
-    emit UpdateSigner(signer);
+    emit UpdateSigner(oldSigner, newSigner);
   }
 
   function pause() external onlyOwner {
