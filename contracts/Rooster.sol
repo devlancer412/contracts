@@ -27,7 +27,7 @@ contract Rooster is ERC721, AccessControl, RoosterMetadata {
     _mint(to, roosterId, breed);
   }
 
-  function mintBatch(address to, Breed[] memory breeds) external onlyMinter {
+  function batchMint(address to, Breed[] memory breeds) external onlyMinter {
     uint256 roosterId = _roosterIdCounter;
 
     for (uint256 i = 0; i < breeds.length; ) {
