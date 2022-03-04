@@ -2,7 +2,7 @@ import chai from "chai";
 import { solidity } from "ethereum-waffle";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { advanceTimeAndBlock, Ship, toBN, toWei } from "../utils";
-import { FarmPool, FarmPool__factory, GRP, GRP__factory, GWITToken, GWITToken__factory } from "../types";
+import { GRP, GRP__factory, GWITToken, GWITToken__factory } from "../types";
 import { ClaimsManager, Configuration, SignedClaim } from "../claims_lib/manager";
 import { ContractTransaction, Wallet } from "ethers";
 import { deployments, hardhatArguments } from "hardhat";
@@ -15,7 +15,6 @@ const supply_size = 1_000_000_000;
 let ship: Ship;
 let grp: GRP;
 let gwit: GWITToken;
-let farmpool: FarmPool;
 const issuer: Wallet = Wallet.createRandom();
 let owner: SignerWithAddress;
 let wallet: SignerWithAddress;
@@ -43,13 +42,11 @@ describe("GWIT Deploy Test", () => {
     client = scaffold.users[2];
 
     grp = await scaffold.ship.deploy(GRP__factory, { args: [issuer.address] });
-    farmpool = await scaffold.ship.deploy(FarmPool__factory);
     gwit = await scaffold.ship.deploy(GWITToken__factory, {
-      args: [supply_size, grp.address, farmpool.address],
+      args: [supply_size, grp.address],
     });
 
-    await grp.set_token_addr(gwit.address);
-    await farmpool.set_token_addr(gwit.address);
+    await grp.setTokenAddr(gwit.address);
 
     manager = new ClaimsManager({
       IssuerPrivateKey: issuer.privateKey,
@@ -58,22 +55,13 @@ describe("GWIT Deploy Test", () => {
   });
 
   it("Should have the right address", async () => {
-    const addr = await grp.token_addr();
+    const addr = await grp.tokenAddr();
     expect(addr).to.eq(gwit.address);
-
-    const addr_fp = await farmpool.token_addr();
-    expect(addr_fp).to.eq(gwit.address);
   });
 
   it("Should allocate the right amount of tokens", async () => {
     const balance = await gwit.balanceOf(grp.address);
     expect(balance).to.eq((supply_size * 0.46).toFixed());
-
-    const balance_fp = await gwit.balanceOf(farmpool.address);
-    expect(balance_fp).to.eq((supply_size * 0.1).toFixed());
-
-    const balance_caller = await gwit.balanceOf(owner.address);
-    expect(balance_caller).to.eq((supply_size * 0.44).toFixed());
   });
 
   it("Should emit new signer", async () => {
