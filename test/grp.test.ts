@@ -102,7 +102,7 @@ describe("GWIT Deploy Test", () => {
       .withArgs(claimData.nonce, claimData.target, claimData.amount);
 
     const second_tx = grp.claim(claimData);
-    expect(second_tx).to.be.revertedWith("claim already claimed");
+    expect(second_tx).to.not.emit(grp, "Claimed");
 
     const balance = await gwit.balanceOf(client.address);
     expect(balance).to.eq(10);
