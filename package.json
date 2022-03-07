@@ -21,6 +21,8 @@
     "test": "npm-run-all test:dapp test:hh",
     "test:dapp": "dapp test",
     "test:hh": "npx hardhat test",
+    "test:hh:docker": "docker build --build-arg='target=test:hh' -f test.Dockerfile .",
+    "test:hh:node-17:windows": "SET NODE_OPTIONS=--openssl-legacy-provider && npx hardhat test",
     "test:gas": "cross-env REPORT_GAS=true hardhat test",
     "prettier:check": "prettier --check \"**/*.{ts,js,sol}\"",
     "prettier:fix": "prettier --write \"**/*.{ts,js,sol}\"",
