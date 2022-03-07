@@ -13,11 +13,6 @@ contract GWITToken is ERC20Capped, Ownable {
     ERC20Capped._mint(grp, SafeMath.div(SafeMath.mul(initialSupply, 46), 100));
   }
 
-  function mint(address account, uint256 amount) public {
-    require(msg.sender == Ownable.owner() || msg.sender == farm_pool, "unauthorized");
-    ERC20Capped._mint(account, amount);
-  }
-
   function burn(uint256 amount) public {
     transfer(_BURN_ADDRESS, amount);
   }

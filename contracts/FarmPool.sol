@@ -3,389 +3,259 @@
 pragma solidity ^0.8.0;
 pragma experimental ABIEncoderV2;
 
-import "./dependencies/boring/libraries/BoringMath.sol";
-import "./dependencies/boring/BoringBatchable.sol";
-import "./dependencies/boring/BoringOwnable.sol";
-import "./dependencies/sushi/libraries/SignedSafeMath.sol";
-import "./dependencies/interfaces/IRewarder.sol";
-import "./dependencies/interfaces/IMasterChef.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 interface IMigratorChef {
+  // Perform LP token migration from legacy UniswapV2 to GwitSwap.
   // Take the current LP token address and return the new LP token address.
   // Migrator should have full access to the caller's LP token.
+  // Return the new LP token address.
+  //
+  // XXX Migrator must have allowance access to UniswapV2 LP tokens.
+  // GwitSwap must mint EXACTLY the same amount of GwitSwap LP tokens or
+  // else something bad will happen. Traditional UniswapV2 does not
+  // do that so be careful!
   function migrate(IERC20 token) external returns (IERC20);
 }
 
-/// @notice The (older) MasterChef contract gives out a constant number of SUSHI tokens per block.
-/// It is the only address with minting rights for SUSHI.
-/// The idea for this MasterChef V2 (MCV2) contract is therefore to be the owner of a dummy token
-/// that is deposited into the MasterChef V1 (MCV1) contract.
-/// The allocation point for this pool on MCV1 is the total allocation point for all pools that receive double incentives.
-contract MasterChefV2 is BoringOwnable, BoringBatchable {
-  using BoringMath for uint256;
-  using BoringMath128 for uint128;
-  using BoringERC20 for IERC20;
-  using SignedSafeMath for int256;
+// MasterChef is the master of Gwit. He can make Gwit and he is a fair guy.
+//
+// Note that it's ownable and the owner wields tremendous power. The ownership
+// will be transferred to a governance smart contract once GWIT is sufficiently
+// distributed and the community can show to govern itself.
+//
+// Have fun reading it. Hopefully it's bug-free. God bless.
+contract MasterChef is Ownable {
+  using SafeMath for uint256;
+  using SafeERC20 for IERC20;
 
-  /// @notice Info of each MCV2 user.
-  /// `amount` LP token amount the user has provided.
-  /// `rewardDebt` The amount of SUSHI entitled to the user.
+  // Info of each user.
   struct UserInfo {
-    uint256 amount;
-    int256 rewardDebt;
+    uint256 amount; // How many LP tokens the user has provided.
+    uint256 rewardDebt; // Reward debt. See explanation below.
+    //
+    // We do some fancy math here. Basically, any point in time, the amount of GWITs
+    // entitled to a user but is pending to be distributed is:
+    //
+    //   pending reward = (user.amount * pool.accGwitPerShare) - user.rewardDebt
+    //
+    // Whenever a user deposits or withdraws LP tokens to a pool. Here's what happens:
+    //   1. The pool's `accGwitPerShare` (and `lastRewardBlock`) gets updated.
+    //   2. User receives the pending reward sent to his/her address.
+    //   3. User's `amount` gets updated.
+    //   4. User's `rewardDebt` gets updated.
   }
 
-  /// @notice Info of each MCV2 pool.
-  /// `allocPoint` The amount of allocation points assigned to the pool.
-  /// Also known as the amount of SUSHI to distribute per block.
+  // Info of each pool.
   struct PoolInfo {
-    uint128 accSushiPerShare;
-    uint64 lastRewardBlock;
-    uint64 allocPoint;
+    IERC20 lpToken; // Address of LP token contract.
+    uint256 allocPoint; // How many allocation points assigned to this pool. GWITs to distribute per block.
+    uint256 lastRewardBlock; // Last block number that GWITs distribution occurs.
+    uint256 accGwitPerShare; // Accumulated GWITs per share, times 1e12. See below.
   }
 
-  /// @notice Address of MCV1 contract.
-  IMasterChef public immutable MASTER_CHEF;
-  /// @notice Address of SUSHI contract.
-  IERC20 public immutable SUSHI;
-  /// @notice The index of MCV2 master pool in MCV1.
-  uint256 public immutable MASTER_PID;
-  // @notice The migrator contract. It has a lot of power. Can only be set through governance (owner).
+  // The GWIT TOKEN!
+  IERC20 public gwit;
+  // Dev address.
+  address public devaddr;
+  // Block number when bonus GWIT period ends.
+  uint256 public bonusEndBlock;
+  // GWIT tokens created per block.
+  uint256 public gwitPerBlock;
+  // Bonus muliplier for early gwit makers.
+  uint256 public constant BONUS_MULTIPLIER = 10;
+  // The migrator contract. It has a lot of power. Can only be set through governance (owner).
   IMigratorChef public migrator;
 
-  /// @notice Info of each MCV2 pool.
+  // Info of each pool.
   PoolInfo[] public poolInfo;
-  /// @notice Address of the LP token for each MCV2 pool.
-  IERC20[] public lpToken;
-  /// @notice Address of each `IRewarder` contract in MCV2.
-  IRewarder[] public rewarder;
-
-  /// @notice Info of each user that stakes LP tokens.
+  // Info of each user that stakes LP tokens.
   mapping(uint256 => mapping(address => UserInfo)) public userInfo;
-  /// @dev Total allocation points. Must be the sum of all allocation points in all pools.
-  uint256 public totalAllocPoint;
+  // Total allocation poitns. Must be the sum of all allocation points in all pools.
+  uint256 public totalAllocPoint = 0;
+  // The block number when GWIT mining starts.
+  uint256 public startBlock;
 
-  uint256 private constant MASTERCHEF_SUSHI_PER_BLOCK = 1e20;
-  uint256 private constant ACC_SUSHI_PRECISION = 1e12;
+  event Deposit(address indexed user, uint256 indexed pid, uint256 amount);
+  event Withdraw(address indexed user, uint256 indexed pid, uint256 amount);
+  event EmergencyWithdraw(address indexed user, uint256 indexed pid, uint256 amount);
 
-  event Deposit(address indexed user, uint256 indexed pid, uint256 amount, address indexed to);
-  event Withdraw(address indexed user, uint256 indexed pid, uint256 amount, address indexed to);
-  event EmergencyWithdraw(
-    address indexed user,
-    uint256 indexed pid,
-    uint256 amount,
-    address indexed to
-  );
-  event Harvest(address indexed user, uint256 indexed pid, uint256 amount);
-  event LogPoolAddition(
-    uint256 indexed pid,
-    uint256 allocPoint,
-    IERC20 indexed lpToken,
-    IRewarder indexed rewarder
-  );
-  event LogSetPool(
-    uint256 indexed pid,
-    uint256 allocPoint,
-    IRewarder indexed rewarder,
-    bool overwrite
-  );
-  event LogUpdatePool(
-    uint256 indexed pid,
-    uint64 lastRewardBlock,
-    uint256 lpSupply,
-    uint256 accSushiPerShare
-  );
-  event LogInit();
-
-  /// @param _MASTER_CHEF The SushiSwap MCV1 contract address.
-  /// @param _sushi The SUSHI token contract address.
-  /// @param _MASTER_PID The pool ID of the dummy token on the base MCV1 contract.
   constructor(
-    IMasterChef _MASTER_CHEF,
-    IERC20 _sushi,
-    uint256 _MASTER_PID
+    IERC20 _gwit,
+    address _devaddr,
+    uint256 _gwitPerBlock,
+    uint256 _startBlock,
+    uint256 _bonusEndBlock
   ) public {
-    MASTER_CHEF = _MASTER_CHEF;
-    SUSHI = _sushi;
-    MASTER_PID = _MASTER_PID;
+    gwit = _gwit;
+    devaddr = _devaddr;
+    gwitPerBlock = _gwitPerBlock;
+    bonusEndBlock = _bonusEndBlock;
+    startBlock = _startBlock;
   }
 
-  /// @notice Deposits a dummy token to `MASTER_CHEF` MCV1. This is required because MCV1 holds the minting rights for SUSHI.
-  /// Any balance of transaction sender in `dummyToken` is transferred.
-  /// The allocation point for the pool on MCV1 is the total allocation point for all pools that receive double incentives.
-  /// @param dummyToken The address of the ERC-20 token to deposit into MCV1.
-  function init(IERC20 dummyToken) external {
-    uint256 balance = dummyToken.balanceOf(msg.sender);
-    require(balance != 0, "MasterChefV2: Balance must exceed 0");
-    dummyToken.safeTransferFrom(msg.sender, address(this), balance);
-    dummyToken.approve(address(MASTER_CHEF), balance);
-    MASTER_CHEF.deposit(MASTER_PID, balance);
-    emit LogInit();
+  function poolLength() external view returns (uint256) {
+    return poolInfo.length;
   }
 
-  /// @notice Returns the number of MCV2 pools.
-  function poolLength() public view returns (uint256 pools) {
-    pools = poolInfo.length;
-  }
-
-  /// @notice Add a new LP to the pool. Can only be called by the owner.
-  /// DO NOT add the same LP token more than once. Rewards will be messed up if you do.
-  /// @param allocPoint AP of the new pool.
-  /// @param _lpToken Address of the LP ERC-20 token.
-  /// @param _rewarder Address of the rewarder delegate.
+  // Add a new lp to the pool. Can only be called by the owner.
+  // XXX DO NOT add the same LP token more than once. Rewards will be messed up if you do.
   function add(
-    uint256 allocPoint,
+    uint256 _allocPoint,
     IERC20 _lpToken,
-    IRewarder _rewarder
+    bool _withUpdate
   ) public onlyOwner {
-    uint256 lastRewardBlock = block.number;
-    totalAllocPoint = totalAllocPoint.add(allocPoint);
-    lpToken.push(_lpToken);
-    rewarder.push(_rewarder);
-
+    if (_withUpdate) {
+      massUpdatePools();
+    }
+    uint256 lastRewardBlock = block.number > startBlock ? block.number : startBlock;
+    totalAllocPoint = totalAllocPoint.add(_allocPoint);
     poolInfo.push(
       PoolInfo({
-        allocPoint: allocPoint.to64(),
-        lastRewardBlock: lastRewardBlock.to64(),
-        accSushiPerShare: 0
+        lpToken: _lpToken,
+        allocPoint: _allocPoint,
+        lastRewardBlock: lastRewardBlock,
+        accGwitPerShare: 0
       })
     );
-    emit LogPoolAddition(lpToken.length.sub(1), allocPoint, _lpToken, _rewarder);
   }
 
-  /// @notice Update the given pool's SUSHI allocation point and `IRewarder` contract. Can only be called by the owner.
-  /// @param _pid The index of the pool. See `poolInfo`.
-  /// @param _allocPoint New AP of the pool.
-  /// @param _rewarder Address of the rewarder delegate.
-  /// @param overwrite True if _rewarder should be `set`. Otherwise `_rewarder` is ignored.
+  // Update the given pool's GWIT allocation point. Can only be called by the owner.
   function set(
     uint256 _pid,
     uint256 _allocPoint,
-    IRewarder _rewarder,
-    bool overwrite
+    bool _withUpdate
   ) public onlyOwner {
-    totalAllocPoint = totalAllocPoint.sub(poolInfo[_pid].allocPoint).add(_allocPoint);
-    poolInfo[_pid].allocPoint = _allocPoint.to64();
-    if (overwrite) {
-      rewarder[_pid] = _rewarder;
+    if (_withUpdate) {
+      massUpdatePools();
     }
-    emit LogSetPool(_pid, _allocPoint, overwrite ? _rewarder : rewarder[_pid], overwrite);
+    totalAllocPoint = totalAllocPoint.sub(poolInfo[_pid].allocPoint).add(_allocPoint);
+    poolInfo[_pid].allocPoint = _allocPoint;
   }
 
-  /// @notice Set the `migrator` contract. Can only be called by the owner.
-  /// @param _migrator The contract address to set.
+  // Set the migrator contract. Can only be called by the owner.
   function setMigrator(IMigratorChef _migrator) public onlyOwner {
     migrator = _migrator;
   }
 
-  /// @notice Migrate LP token to another LP contract through the `migrator` contract.
-  /// @param _pid The index of the pool. See `poolInfo`.
+  // Migrate lp token to another lp contract. Can be called by anyone. We trust that migrator contract is good.
   function migrate(uint256 _pid) public {
-    require(address(migrator) != address(0), "MasterChefV2: no migrator set");
-    IERC20 _lpToken = lpToken[_pid];
-    uint256 bal = _lpToken.balanceOf(address(this));
-    _lpToken.approve(address(migrator), bal);
-    IERC20 newLpToken = migrator.migrate(_lpToken);
-    require(
-      bal == newLpToken.balanceOf(address(this)),
-      "MasterChefV2: migrated balance must match"
-    );
-    lpToken[_pid] = newLpToken;
+    require(address(migrator) != address(0), "migrate: no migrator");
+    PoolInfo storage pool = poolInfo[_pid];
+    IERC20 lpToken = pool.lpToken;
+    uint256 bal = lpToken.balanceOf(address(this));
+    lpToken.safeApprove(address(migrator), bal);
+    IERC20 newLpToken = migrator.migrate(lpToken);
+    require(bal == newLpToken.balanceOf(address(this)), "migrate: bad");
+    pool.lpToken = newLpToken;
   }
 
-  /// @notice View function to see pending SUSHI on frontend.
-  /// @param _pid The index of the pool. See `poolInfo`.
-  /// @param _user Address of user.
-  /// @return pending SUSHI reward for a given user.
-  function pendingSushi(uint256 _pid, address _user) external view returns (uint256 pending) {
-    PoolInfo memory pool = poolInfo[_pid];
+  // Return reward multiplier over the given _from to _to block.
+  function getMultiplier(uint256 _from, uint256 _to) public view returns (uint256) {
+    if (_to <= bonusEndBlock) {
+      return _to.sub(_from).mul(BONUS_MULTIPLIER);
+    } else if (_from >= bonusEndBlock) {
+      return _to.sub(_from);
+    } else {
+      return bonusEndBlock.sub(_from).mul(BONUS_MULTIPLIER).add(_to.sub(bonusEndBlock));
+    }
+  }
+
+  // View function to see pending GWITs on frontend.
+  function pendingGwit(uint256 _pid, address _user) external view returns (uint256) {
+    PoolInfo storage pool = poolInfo[_pid];
     UserInfo storage user = userInfo[_pid][_user];
-    uint256 accSushiPerShare = pool.accSushiPerShare;
-    uint256 lpSupply = lpToken[_pid].balanceOf(address(this));
+    uint256 accGwitPerShare = pool.accGwitPerShare;
+    uint256 lpSupply = pool.lpToken.balanceOf(address(this));
     if (block.number > pool.lastRewardBlock && lpSupply != 0) {
-      uint256 blocks = block.number.sub(pool.lastRewardBlock);
-      uint256 sushiReward = blocks.mul(sushiPerBlock()).mul(pool.allocPoint) / totalAllocPoint;
-      accSushiPerShare = accSushiPerShare.add(sushiReward.mul(ACC_SUSHI_PRECISION) / lpSupply);
+      uint256 multiplier = getMultiplier(pool.lastRewardBlock, block.number);
+      uint256 gwitReward = multiplier.mul(gwitPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
+      accGwitPerShare = accGwitPerShare.add(gwitReward.mul(1e12).div(lpSupply));
     }
-    pending = int256(user.amount.mul(accSushiPerShare) / ACC_SUSHI_PRECISION)
-      .sub(user.rewardDebt)
-      .toUInt256();
+    return user.amount.mul(accGwitPerShare).div(1e12).sub(user.rewardDebt);
   }
 
-  /// @notice Update reward variables for all pools. Be careful of gas spending!
-  /// @param pids Pool IDs of all to be updated. Make sure to update all active pools.
-  function massUpdatePools(uint256[] calldata pids) external {
-    uint256 len = pids.length;
-    for (uint256 i = 0; i < len; ++i) {
-      updatePool(pids[i]);
+  // Update reward vairables for all pools. Be careful of gas spending!
+  function massUpdatePools() public {
+    uint256 length = poolInfo.length;
+    for (uint256 pid = 0; pid < length; ++pid) {
+      updatePool(pid);
     }
   }
 
-  /// @notice Calculates and returns the `amount` of SUSHI per block.
-  function sushiPerBlock() public view returns (uint256 amount) {
-    amount =
-      uint256(MASTERCHEF_SUSHI_PER_BLOCK).mul(MASTER_CHEF.poolInfo(MASTER_PID).allocPoint) /
-      MASTER_CHEF.totalAllocPoint();
-  }
-
-  /// @notice Update reward variables of the given pool.
-  /// @param pid The index of the pool. See `poolInfo`.
-  /// @return pool Returns the pool that was updated.
-  function updatePool(uint256 pid) public returns (PoolInfo memory pool) {
-    pool = poolInfo[pid];
-    if (block.number > pool.lastRewardBlock) {
-      uint256 lpSupply = lpToken[pid].balanceOf(address(this));
-      if (lpSupply > 0) {
-        uint256 blocks = block.number.sub(pool.lastRewardBlock);
-        uint256 sushiReward = blocks.mul(sushiPerBlock()).mul(pool.allocPoint) / totalAllocPoint;
-        pool.accSushiPerShare = pool.accSushiPerShare.add(
-          (sushiReward.mul(ACC_SUSHI_PRECISION) / lpSupply).to128()
-        );
-      }
-      pool.lastRewardBlock = block.number.to64();
-      poolInfo[pid] = pool;
-      emit LogUpdatePool(pid, pool.lastRewardBlock, lpSupply, pool.accSushiPerShare);
+  // Update reward variables of the given pool to be up-to-date.
+  function updatePool(uint256 _pid) public {
+    PoolInfo storage pool = poolInfo[_pid];
+    if (block.number <= pool.lastRewardBlock) {
+      return;
     }
-  }
-
-  /// @notice Deposit LP tokens to MCV2 for SUSHI allocation.
-  /// @param pid The index of the pool. See `poolInfo`.
-  /// @param amount LP token amount to deposit.
-  /// @param to The receiver of `amount` deposit benefit.
-  function deposit(
-    uint256 pid,
-    uint256 amount,
-    address to
-  ) public {
-    PoolInfo memory pool = updatePool(pid);
-    UserInfo storage user = userInfo[pid][to];
-
-    // Effects
-    user.amount = user.amount.add(amount);
-    user.rewardDebt = user.rewardDebt.add(
-      int256(amount.mul(pool.accSushiPerShare) / ACC_SUSHI_PRECISION)
-    );
-
-    // Interactions
-    IRewarder _rewarder = rewarder[pid];
-    if (address(_rewarder) != address(0)) {
-      _rewarder.onSushiReward(pid, to, to, 0, user.amount);
+    uint256 lpSupply = pool.lpToken.balanceOf(address(this));
+    if (lpSupply == 0) {
+      pool.lastRewardBlock = block.number;
+      return;
     }
-
-    lpToken[pid].safeTransferFrom(msg.sender, address(this), amount);
-
-    emit Deposit(msg.sender, pid, amount, to);
+    uint256 multiplier = getMultiplier(pool.lastRewardBlock, block.number);
+    uint256 gwitReward = multiplier.mul(gwitPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
+    gwit.transfer(devaddr, gwitReward.div(10));
+    // gwit.mint(address(this), gwitReward);
+    pool.accGwitPerShare = pool.accGwitPerShare.add(gwitReward.mul(1e12).div(lpSupply));
+    pool.lastRewardBlock = block.number;
   }
 
-  /// @notice Withdraw LP tokens from MCV2.
-  /// @param pid The index of the pool. See `poolInfo`.
-  /// @param amount LP token amount to withdraw.
-  /// @param to Receiver of the LP tokens.
-  function withdraw(
-    uint256 pid,
-    uint256 amount,
-    address to
-  ) public {
-    PoolInfo memory pool = updatePool(pid);
-    UserInfo storage user = userInfo[pid][msg.sender];
-
-    // Effects
-    user.rewardDebt = user.rewardDebt.sub(
-      int256(amount.mul(pool.accSushiPerShare) / ACC_SUSHI_PRECISION)
-    );
-    user.amount = user.amount.sub(amount);
-
-    // Interactions
-    IRewarder _rewarder = rewarder[pid];
-    if (address(_rewarder) != address(0)) {
-      _rewarder.onSushiReward(pid, msg.sender, to, 0, user.amount);
+  // Deposit LP tokens to MasterChef for GWIT allocation.
+  function deposit(uint256 _pid, uint256 _amount) public {
+    PoolInfo storage pool = poolInfo[_pid];
+    UserInfo storage user = userInfo[_pid][msg.sender];
+    updatePool(_pid);
+    if (user.amount > 0) {
+      uint256 pending = user.amount.mul(pool.accGwitPerShare).div(1e12).sub(user.rewardDebt);
+      safeGwitTransfer(msg.sender, pending);
     }
-
-    lpToken[pid].safeTransfer(to, amount);
-
-    emit Withdraw(msg.sender, pid, amount, to);
+    pool.lpToken.safeTransferFrom(address(msg.sender), address(this), _amount);
+    user.amount = user.amount.add(_amount);
+    user.rewardDebt = user.amount.mul(pool.accGwitPerShare).div(1e12);
+    emit Deposit(msg.sender, _pid, _amount);
   }
 
-  /// @notice Harvest proceeds for transaction sender to `to`.
-  /// @param pid The index of the pool. See `poolInfo`.
-  /// @param to Receiver of SUSHI rewards.
-  function harvest(uint256 pid, address to) public {
-    PoolInfo memory pool = updatePool(pid);
-    UserInfo storage user = userInfo[pid][msg.sender];
-    int256 accumulatedSushi = int256(user.amount.mul(pool.accSushiPerShare) / ACC_SUSHI_PRECISION);
-    uint256 _pendingSushi = accumulatedSushi.sub(user.rewardDebt).toUInt256();
-
-    // Effects
-    user.rewardDebt = accumulatedSushi;
-
-    // Interactions
-    if (_pendingSushi != 0) {
-      SUSHI.safeTransfer(to, _pendingSushi);
-    }
-
-    IRewarder _rewarder = rewarder[pid];
-    if (address(_rewarder) != address(0)) {
-      _rewarder.onSushiReward(pid, msg.sender, to, _pendingSushi, user.amount);
-    }
-
-    emit Harvest(msg.sender, pid, _pendingSushi);
+  // Withdraw LP tokens from MasterChef.
+  function withdraw(uint256 _pid, uint256 _amount) public {
+    PoolInfo storage pool = poolInfo[_pid];
+    UserInfo storage user = userInfo[_pid][msg.sender];
+    require(user.amount >= _amount, "withdraw: not good");
+    updatePool(_pid);
+    uint256 pending = user.amount.mul(pool.accGwitPerShare).div(1e12).sub(user.rewardDebt);
+    safeGwitTransfer(msg.sender, pending);
+    user.amount = user.amount.sub(_amount);
+    user.rewardDebt = user.amount.mul(pool.accGwitPerShare).div(1e12);
+    pool.lpToken.safeTransfer(address(msg.sender), _amount);
+    emit Withdraw(msg.sender, _pid, _amount);
   }
 
-  /// @notice Withdraw LP tokens from MCV2 and harvest proceeds for transaction sender to `to`.
-  /// @param pid The index of the pool. See `poolInfo`.
-  /// @param amount LP token amount to withdraw.
-  /// @param to Receiver of the LP tokens and SUSHI rewards.
-  function withdrawAndHarvest(
-    uint256 pid,
-    uint256 amount,
-    address to
-  ) public {
-    PoolInfo memory pool = updatePool(pid);
-    UserInfo storage user = userInfo[pid][msg.sender];
-    int256 accumulatedSushi = int256(user.amount.mul(pool.accSushiPerShare) / ACC_SUSHI_PRECISION);
-    uint256 _pendingSushi = accumulatedSushi.sub(user.rewardDebt).toUInt256();
-
-    // Effects
-    user.rewardDebt = accumulatedSushi.sub(
-      int256(amount.mul(pool.accSushiPerShare) / ACC_SUSHI_PRECISION)
-    );
-    user.amount = user.amount.sub(amount);
-
-    // Interactions
-    SUSHI.safeTransfer(to, _pendingSushi);
-
-    IRewarder _rewarder = rewarder[pid];
-    if (address(_rewarder) != address(0)) {
-      _rewarder.onSushiReward(pid, msg.sender, to, _pendingSushi, user.amount);
-    }
-
-    lpToken[pid].safeTransfer(to, amount);
-
-    emit Withdraw(msg.sender, pid, amount, to);
-    emit Harvest(msg.sender, pid, _pendingSushi);
-  }
-
-  /// @notice Harvests SUSHI from `MASTER_CHEF` MCV1 and pool `MASTER_PID` to this MCV2 contract.
-  function harvestFromMasterChef() public {
-    MASTER_CHEF.deposit(MASTER_PID, 0);
-  }
-
-  /// @notice Withdraw without caring about rewards. EMERGENCY ONLY.
-  /// @param pid The index of the pool. See `poolInfo`.
-  /// @param to Receiver of the LP tokens.
-  function emergencyWithdraw(uint256 pid, address to) public {
-    UserInfo storage user = userInfo[pid][msg.sender];
-    uint256 amount = user.amount;
+  // Withdraw without caring about rewards. EMERGENCY ONLY.
+  function emergencyWithdraw(uint256 _pid) public {
+    PoolInfo storage pool = poolInfo[_pid];
+    UserInfo storage user = userInfo[_pid][msg.sender];
+    pool.lpToken.safeTransfer(address(msg.sender), user.amount);
+    emit EmergencyWithdraw(msg.sender, _pid, user.amount);
     user.amount = 0;
     user.rewardDebt = 0;
+  }
 
-    IRewarder _rewarder = rewarder[pid];
-    if (address(_rewarder) != address(0)) {
-      _rewarder.onSushiReward(pid, msg.sender, to, 0, 0);
+  // Safe gwit transfer function, just in case if rounding error causes pool to not have enough GWITs.
+  function safeGwitTransfer(address _to, uint256 _amount) internal {
+    uint256 gwitBal = gwit.balanceOf(address(this));
+    if (_amount > gwitBal) {
+      gwit.transfer(_to, gwitBal);
+    } else {
+      gwit.transfer(_to, _amount);
     }
+  }
 
-    // Note: transfer can fail or succeed if `amount` is zero.
-    lpToken[pid].safeTransfer(to, amount);
-    emit EmergencyWithdraw(msg.sender, pid, amount, to);
+  // Update dev address by the previous dev.
+  function dev(address _devaddr) public {
+    require(msg.sender == devaddr, "dev: wut?");
+    devaddr = _devaddr;
   }
 }
