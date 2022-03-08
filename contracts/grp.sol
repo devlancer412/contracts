@@ -46,8 +46,8 @@ contract GRP is Ownable {
   }
 
   // run once
-  function setTokenAddr(address addr) public onlyOwner {
-    assert(_token == address(0));
+  function setTokenAddr(address addr) external onlyOwner {
+    require(_token == address(0), "token address is 0");
     _token = addr;
   }
 
