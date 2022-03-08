@@ -20,10 +20,9 @@ const func: DeployFunction = async (hre) => {
     args: [accounts.signer.address, egg.address, rooster.address, gaff.address, gem.address],
   });
 
-  const p1 = rooster.grantMinterRole(hatching.address);
-  const p2 = gaff.grantMinterRole(hatching.address);
-  const p3 = gem.grantMinterRole(hatching.address);
-  await Promise.all([p1, p2, p3]);
+  await rooster.grantMinterRole(hatching.address);
+  await gaff.grantMinterRole(hatching.address);
+  await gem.grantMinterRole(hatching.address);
 };
 
 export default func;
