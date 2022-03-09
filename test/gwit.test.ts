@@ -50,7 +50,6 @@ describe("GWIT Deploy Test", () => {
       "0x0000000000000000000000000000000000001337",
       "0x0000000000000000000000000000000000001337",
     );
-    await gwit.setTaxRate(5);
 
     supply_size = BigNumber.from("1000000000000000000000000000000");
   });
@@ -70,40 +69,59 @@ describe("GWIT Deploy Test", () => {
     await expect(await gwit.tax_address()).to.eq(tax_address.address);
   });
 
-  it("Should calculate tax", async () => {
-    const tx = await gwit.calcTaxRate(1000);
-    await expect(tx).to.eq(50);
-  });
-
   it("Should make an address taxed", async () => {
-    await gwit.setTaxable(taxed_destination.address, true);
-    await expect(await gwit.isTaxed(taxed_destination.address)).to.eq(true);
+    await gwit.setTaxRate(taxed_destination.address, 500);
+    await expect(await gwit.taxRate(taxed_destination.address)).to.eq(500);
   });
 
-  it("Should tax on taxed address", async () => {
-    const taxRate = 5;
-    const amount = 500;
-    const expectedTax = (taxRate / 100) * amount;
+  describe("Taxing", async () => {
+    let expectedTax: BigNumber;
+    let taxRate: BigNumber;
+    let amount: BigNumber;
+    let tx: ContractTransaction;
 
-    await gwit.setTaxRate(taxRate);
-    await gwit.connect(user).approve(taxed_destination.address, amount);
+    before(async () => {
+      taxRate = BigNumber.from(525);
+      amount = BigNumber.from(500);
+      expectedTax = taxRate.mul(amount).div(10_000);
 
-    const tx = await gwit
-      .connect(taxed_destination)
-      .transferFrom(user.address, taxed_destination.address, amount);
+      await gwit.setTaxRate(taxed_destination.address, 525);
+      await gwit.connect(user).approve(taxed_destination.address, amount);
 
-    await expect(tx).to.emit(gwit, "Taxed").withArgs(user.address, taxed_destination.address, expectedTax);
-    await expect(tx)
-      .to.emit(gwit, "Transfer")
-      .withArgs(user.address, taxed_destination.address, amount - expectedTax);
-    await expect(await gwit.balanceOf(tax_address.address)).to.eq(expectedTax);
-    await expect(await gwit.balanceOf(taxed_destination.address)).to.eq(amount - expectedTax);
+      tx = await gwit
+        .connect(taxed_destination)
+        .transferFrom(user.address, taxed_destination.address, amount);
+    });
+
+    it("Should calculate tax", async () => {
+      const tx = await gwit.calcTaxRate(taxed_destination.address, 1000);
+      await expect(tx).to.eq(50);
+    });
+
+    it("Should emit taxed event", async () => {
+      await expect(tx).to.emit(gwit, "Taxed").withArgs(user.address, taxed_destination.address, expectedTax);
+    });
+
+    it("Should emit transfer event", async () => {
+      await expect(tx)
+        .to.emit(gwit, "Transfer")
+        .withArgs(user.address, taxed_destination.address, amount.sub(expectedTax));
+    });
+
+    it("Should send the tax fees to the tax address", async () => {
+      await expect(await gwit.balanceOf(tax_address.address)).to.eq(expectedTax);
+    });
+
+    it("Should send the deducted amount to the taxed address", async () => {
+      await expect(await gwit.balanceOf(taxed_destination.address)).to.eq(amount.sub(expectedTax));
+    });
   });
 
-  it("Should approve on non-taxed approve", async () => {
+  it("Should transfer on non taxed approve", async () => {
     const amount = 10;
-    const tx = await gwit.connect(user).approve(shinji.address, amount);
-    await expect(tx).to.emit(gwit, "Approval").withArgs(user.address, shinji.address, amount);
+    await gwit.connect(user).approve(shinji.address, amount);
+    const tx = await gwit.connect(shinji).transferFrom(user.address, shinji.address, amount);
+    await expect(tx).to.emit(gwit, "Transfer").withArgs(user.address, shinji.address, amount);
     await expect(tx).to.not.emit(gwit, "Taxed");
   });
 });

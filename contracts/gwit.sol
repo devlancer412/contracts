@@ -19,9 +19,8 @@ contract GWITToken is ERC20, Ownable {
 
   uint256 public initialSupply;
 
-  uint256 public tax_rate;
   address public tax_address;
-  mapping(address => bool) private _taxable;
+  mapping(address => uint256) private tax_table;
   event Taxed(address from, address to, uint256 tax_ammount);
 
   constructor(uint256 _initialSupply) ERC20("GWIT", "GWIT") {
@@ -34,9 +33,6 @@ contract GWITToken is ERC20, Ownable {
     require(_grp != address(0) && _farm_pool != address(0), "invalid init address");
     grp = _grp;
     farm_pool = _farm_pool;
-
-    // set default tax rate
-    tax_rate = 5;
 
     // token distribution
     _mint(grp, SafeMath.div(SafeMath.mul(initialSupply, 46), 100)); // 46%
@@ -51,29 +47,16 @@ contract GWITToken is ERC20, Ownable {
     transfer(_BURN_ADDRESS, amount);
   }
 
-  // Approve on a taxed spender has the total amount deducted by a percentage specified in
-  // tax_rate. Deducted funds are then transfered to the taxed address
-  // function approve(address spender, uint256 amount) public override returns (bool) {
-  //   if (isTaxed(spender)) {
-  //     uint256 bal = balanceOf(msg.sender);
-  //     require(bal >= amount, "not enough balance");
-
-  //     uint256 tax = calcTaxRate(amount); // 5% tax
-  //     amount = SafeMath.sub(amount, tax);
-  //     ERC20.approve(tax_address, tax);
-  //   }
-
-  //   return ERC20.approve(spender, amount);
-  // }
-
   function transferFrom(
     address from,
     address to,
     uint256 amount
   ) public override returns (bool) {
-    if (isTaxed(to)) {
-      uint256 tax = calcTaxRate(amount);
+    if (taxRate(to) != 0) {
+      uint256 tax = calcTaxRate(to, amount);
       amount = SafeMath.sub(amount, tax);
+
+      // send the taxed tokens to the tax_address
       ERC20._transfer(from, tax_address, tax);
       _spendAllowance(from, to, tax);
       emit Taxed(from, to, tax);
@@ -83,14 +66,9 @@ contract GWITToken is ERC20, Ownable {
     return result;
   }
 
-  // any approvals sent to that address gets tacked on a set tax rate
-  function setTaxable(address target, bool val) public onlyOwner {
-    _taxable[target] = val;
-  }
-
-  // set the tax rate for future approvals. e.g. 5 = 5% tax rate
-  function setTaxRate(uint256 _tax_Rate) public onlyOwner {
-    tax_rate = _tax_Rate;
+  // set the tax rate for future approvals. minium 1 = 0.01% e.g. 525 = 5.25% tax rate
+  function setTaxRate(address target, uint256 _tax_Rate) public onlyOwner {
+    tax_table[target] = _tax_Rate;
   }
 
   // set the address to where the tax gets transfered for tax
@@ -98,14 +76,14 @@ contract GWITToken is ERC20, Ownable {
     tax_address = _tax_address;
   }
 
-  function isTaxed(address spender) public view returns (bool) {
-    return _taxable[spender];
+  function taxRate(address to) public view returns (uint256) {
+    return tax_table[to];
   }
 
-  function calcTaxRate(uint256 amount) public view returns (uint256) {
-    if (tax_rate == 0) {
+  function calcTaxRate(address to, uint256 amount) public view returns (uint256) {
+    if (taxRate(to) == 0) {
       return 0;
     }
-    return SafeMath.div(SafeMath.mul(amount, tax_rate), 100); // 5% tax
+    return SafeMath.div(SafeMath.mul(amount, taxRate(to)), 10_000); // tax_rate 525 = 5.25%
   }
 }
