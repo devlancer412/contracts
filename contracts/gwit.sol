@@ -19,7 +19,7 @@ contract GWITToken is ERC20, Ownable {
 
   uint256 public initialSupply;
 
-  uint256 tax_rate;
+  uint256 public tax_rate;
   address public tax_address;
   mapping(address => bool) private _taxable;
   event Taxed(address from, address to, uint256 tax_ammount);
@@ -51,16 +51,36 @@ contract GWITToken is ERC20, Ownable {
     transfer(_BURN_ADDRESS, amount);
   }
 
-  function approve(address spender, uint256 amount) public override returns (bool) {
-    if (isTaxed(spender)) {
-      uint256 bal = balanceOf(msg.sender);
-      uint256 tax = calcTaxRate(amount); // 5% tax
-      require(bal >= SafeMath.add(amount, tax), "not enough balance");
-      transfer(tax_address, tax);
-      emit Taxed(msg.sender, spender, tax);
+  // Approve on a taxed spender has the total amount deducted by a percentage specified in
+  // tax_rate. Deducted funds are then transfered to the taxed address
+  // function approve(address spender, uint256 amount) public override returns (bool) {
+  //   if (isTaxed(spender)) {
+  //     uint256 bal = balanceOf(msg.sender);
+  //     require(bal >= amount, "not enough balance");
+
+  //     uint256 tax = calcTaxRate(amount); // 5% tax
+  //     amount = SafeMath.sub(amount, tax);
+  //     ERC20.approve(tax_address, tax);
+  //   }
+
+  //   return ERC20.approve(spender, amount);
+  // }
+
+  function transferFrom(
+    address from,
+    address to,
+    uint256 amount
+  ) public override returns (bool) {
+    if (isTaxed(to)) {
+      uint256 tax = calcTaxRate(amount);
+      amount = SafeMath.sub(amount, tax);
+      ERC20._transfer(from, tax_address, tax);
+      _spendAllowance(from, to, tax);
+      emit Taxed(from, to, tax);
     }
 
-    return ERC20.approve(spender, amount);
+    bool result = ERC20.transferFrom(from, to, amount);
+    return result;
   }
 
   // any approvals sent to that address gets tacked on a set tax rate
@@ -68,10 +88,12 @@ contract GWITToken is ERC20, Ownable {
     _taxable[target] = val;
   }
 
+  // set the tax rate for future approvals. e.g. 5 = 5% tax rate
   function setTaxRate(uint256 _tax_Rate) public onlyOwner {
     tax_rate = _tax_Rate;
   }
 
+  // set the address to where the tax gets transfered for tax
   function setTaxAddress(address _tax_address) public onlyOwner {
     tax_address = _tax_address;
   }

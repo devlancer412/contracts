@@ -80,27 +80,28 @@ describe("GWIT Deploy Test", () => {
     await expect(await gwit.isTaxed(taxed_destination.address)).to.eq(true);
   });
 
-  it("Should fail approve on insufficient tax", async () => {
-    const balance = await gwit.balanceOf(user.address);
-    await expect(await gwit.connect(user).approve(taxed_destination.address, balance)).to.not.emit(
-      gwit,
-      "Approval",
-    );
-  });
-
-  it("Should approve on sufficient tax", async () => {
+  it("Should tax on taxed address", async () => {
+    const taxRate = 5;
     const amount = 500;
-    const expectedTax = 25;
+    const expectedTax = (taxRate / 100) * amount;
 
-    const tx = await gwit.connect(user).approve(taxed_destination.address, amount);
-    await expect(tx).to.emit(gwit, "Approval").withArgs(user.address, taxed_destination.address, amount);
+    await gwit.setTaxRate(taxRate);
+    await gwit.connect(user).approve(taxed_destination.address, amount);
+
+    const tx = await gwit
+      .connect(taxed_destination)
+      .transferFrom(user.address, taxed_destination.address, amount);
+
     await expect(tx).to.emit(gwit, "Taxed").withArgs(user.address, taxed_destination.address, expectedTax);
+    await expect(tx)
+      .to.emit(gwit, "Transfer")
+      .withArgs(user.address, taxed_destination.address, amount - expectedTax);
     await expect(await gwit.balanceOf(tax_address.address)).to.eq(expectedTax);
+    await expect(await gwit.balanceOf(taxed_destination.address)).to.eq(amount - expectedTax);
   });
 
   it("Should approve on non-taxed approve", async () => {
     const amount = 10;
-
     const tx = await gwit.connect(user).approve(shinji.address, amount);
     await expect(tx).to.emit(gwit, "Approval").withArgs(user.address, shinji.address, amount);
     await expect(tx).to.not.emit(gwit, "Taxed");
