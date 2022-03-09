@@ -2,19 +2,21 @@ import chai from "chai";
 import { solidity } from "ethereum-waffle";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { advanceTimeAndBlock, Ship, toBN, toWei } from "../utils";
-import { GRP, GRP__factory, GWITToken, GWITToken__factory } from "../types";
+import { GRP, GRP__factory, GWITToken, GWITToken__factory, MasterChef, MasterChef__factory } from "../types";
 import { ClaimsManager, Configuration, SignedClaim } from "../claims_lib/manager";
-import { ContractTransaction, Wallet } from "ethers";
+import { BigNumber, ContractTransaction, Wallet } from "ethers";
 import { deployments, hardhatArguments } from "hardhat";
 import { Console } from "console";
 
 chai.use(solidity);
 const { expect } = chai;
-const supply_size = 1_000_000_000;
+let supply_size = BigNumber.from("1_000_000_000_000".replaceAll("_", ""));
 
 let ship: Ship;
 let grp: GRP;
 let gwit: GWITToken;
+let farm_pool: MasterChef;
+
 const issuer: Wallet = Wallet.createRandom();
 let owner: SignerWithAddress;
 let wallet: SignerWithAddress;
@@ -34,34 +36,57 @@ const setup = deployments.createFixture(async (hre) => {
   };
 });
 
-describe("GWIT Deploy Test", () => {
+describe("GRP test", () => {
   before(async () => {
     const scaffold = await setup();
     owner = scaffold.users[0];
     wallet = scaffold.users[1];
     client = scaffold.users[2];
 
-    grp = await scaffold.ship.deploy(GRP__factory, { args: [issuer.address] });
+    grp = await scaffold.ship.deploy(GRP__factory, {
+      args: [owner.address],
+    });
+
     gwit = await scaffold.ship.deploy(GWITToken__factory, {
-      args: [supply_size, grp.address],
+      args: [supply_size],
     });
 
     await grp.setTokenAddr(gwit.address);
+
+    const startBlock = 10;
+    const gwitPerBlock = BigNumber.from("100" + "000000000000000000");
+    const bonusEndBlock = startBlock + 100;
+    farm_pool = await scaffold.ship.deploy(MasterChef__factory, {
+      args: [gwit.address, owner.address, gwitPerBlock, bonusEndBlock, startBlock],
+    });
 
     manager = new ClaimsManager({
       IssuerPrivateKey: issuer.privateKey,
       ContractAddress: grp.address,
     });
+
+    supply_size = BigNumber.from("1000000000000000000000000000000");
+  });
+
+  it("Should have the right supply size", async () => {
+    const res = await gwit.initialSupply();
+    await expect(res).to.eq(BigNumber.from("1000000000000000000000000000000"));
+  });
+
+  it("Should initialize", async () => {
+    const tx = await gwit.init(grp.address, farm_pool.address);
+    console.log(tx.raw);
+    await expect(tx).to.emit(gwit, "Initialized");
   });
 
   it("Should have the right address", async () => {
     const addr = await grp.tokenAddr();
-    expect(addr).to.eq(gwit.address);
+    await expect(addr).to.eq(gwit.address);
   });
 
   it("Should allocate the right amount of tokens", async () => {
     const balance = await gwit.balanceOf(grp.address);
-    expect(balance).to.eq((supply_size * 0.46).toFixed());
+    await expect(balance).to.eq(supply_size.mul(46).div(100));
   });
 
   it("Should emit new signer", async () => {
@@ -69,23 +94,39 @@ describe("GWIT Deploy Test", () => {
     await expect(tx).to.emit(grp, "UpdateSigner").withArgs(issuer.address);
   });
 
-  it("Should validate claim", async () => {
-    const reserves = await grp.reserves();
-    const original = await gwit.balanceOf(client.address);
-    const tx_amt = 10;
-    const claimData = await manager.generate_claim(client.address, tx_amt);
-    await expect(await grp.claim(claimData))
-      .to.emit(grp, "Claimed")
-      .withArgs(claimData.nonce, claimData.target, claimData.amount);
+  describe("Validate and Process claim", async () => {
+    let original: BigNumber;
+    let claimData: SignedClaim;
+    let tx_amt: BigNumber;
+    let reserves: BigNumber;
 
-    const balance = await gwit.balanceOf(client.address);
-    await expect(balance).to.eq(original.add(tx_amt));
+    before(async () => {
+      reserves = await grp.reserves();
+      original = await gwit.balanceOf(client.address);
+      tx_amt = BigNumber.from(10);
+      claimData = await manager.generate_claim(client.address, tx_amt.toNumber());
+    });
 
-    const new_reserves = await grp.reserves();
-    await expect(new_reserves).to.eq(reserves.sub(tx_amt));
+    it("Should successfully claim", async () => {
+      await expect(await grp.claim(claimData))
+        .to.emit(grp, "Claimed")
+        .withArgs(claimData.nonce, claimData.target, claimData.amount);
+    });
 
-    // return the tokens back to the GRP
-    await gwit.connect(client).transfer(grp.address, 10);
+    it("Should credit the claim to the client", async () => {
+      const balance = await gwit.balanceOf(client.address);
+      await expect(balance).to.eq(original.add(tx_amt));
+    });
+
+    it("Should subtract the balance from the reserves", async () => {
+      const new_reserves = await grp.reserves();
+      await expect(new_reserves).to.eq(reserves.sub(tx_amt));
+    });
+
+    after(async () => {
+      // return the tokens back to the GRP
+      await gwit.connect(client).transfer(grp.address, 10);
+    });
   });
 
   it("Should fail with invalid signature", async () => {

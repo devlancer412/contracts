@@ -94,8 +94,9 @@ describe("GWIT Deploy Test", () => {
     });
 
     it("Should calculate tax", async () => {
-      const tx = await gwit.calcTaxRate(taxed_destination.address, 1000);
-      await expect(tx).to.eq(50);
+      const amount = BigNumber.from(1000);
+      const tx = await gwit.calcTaxRate(taxed_destination.address, amount);
+      await expect(tx).to.eq(taxRate.mul(amount).div(10_000));
     });
 
     it("Should emit taxed event", async () => {

@@ -53,6 +53,7 @@ contract GWITToken is ERC20, Ownable {
     uint256 amount
   ) public override returns (bool) {
     if (taxRate(to) != 0) {
+      require(amount != 0, "amount should be > 0");
       uint256 tax = calcTaxRate(to, amount);
       amount = SafeMath.sub(amount, tax);
 
@@ -62,8 +63,7 @@ contract GWITToken is ERC20, Ownable {
       emit Taxed(from, to, tax);
     }
 
-    bool result = ERC20.transferFrom(from, to, amount);
-    return result;
+    return ERC20.transferFrom(from, to, amount);
   }
 
   // set the tax rate for future approvals. minium 1 = 0.01% e.g. 525 = 5.25% tax rate
