@@ -64,7 +64,7 @@ class Ship {
         log?: boolean;
       }
     >,
-  ): Promise<ContractInstance<T>> => {
+  ) => {
     const contractName = contractFactory.name.split("__")[0];
     const from = option?.from || this.accounts.deployer;
     const fromAddr = from.address;
@@ -77,16 +77,23 @@ class Ship {
         log = false;
       }
     }
-    const { address } = await this.hre.deployments.deploy(contractName, {
+    const deployResult = await this.hre.deployments.deploy(contractName, {
       ...option,
       from: fromAddr,
       args: option?.args,
       log,
     });
 
-    const contract = (await ethers.getContractAt(contractName, address, from)) as ContractInstance<T>;
+    const contract = (await ethers.getContractAt(
+      contractName,
+      deployResult.address,
+      from,
+    )) as ContractInstance<T>;
 
-    return contract;
+    return {
+      contract,
+      ...deployResult,
+    };
   };
 
   connect = async <T extends ContractFactory>(
