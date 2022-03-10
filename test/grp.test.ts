@@ -6,11 +6,11 @@ import { GRP, GRP__factory, GWITToken, GWITToken__factory, MasterChef, MasterChe
 import { generate_claim, SignedClaim } from "../utils/claims";
 import { BigNumber, Wallet } from "ethers";
 import { deployments } from "hardhat";
+import { parseSpecial } from "../utils/parseSpecial";
 
 chai.use(solidity);
 const { expect } = chai;
-//                                                000000000000000000
-const supply_size = BigNumber.from("1_000_000_000_000000000000000000".replaceAll("_", ""));
+const supply_size = parseSpecial("1bi|18");
 
 let ship: Ship;
 let grp: GRP;

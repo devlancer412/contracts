@@ -5,10 +5,11 @@ import { Ship } from "../utils";
 import { GWITToken, GWITToken__factory } from "../types";
 import { BigNumber, ContractTransaction } from "ethers";
 import { deployments } from "hardhat";
+import { parseSpecial } from "../utils/parseSpecial";
 
 chai.use(solidity);
 const { expect } = chai;
-const supply_size = BigNumber.from("1_000_000_000_000000000000000000".replaceAll("_", ""));
+const supply_size = parseSpecial("1bi|18");
 
 let ship: Ship;
 let gwit: GWITToken;
