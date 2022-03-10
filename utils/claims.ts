@@ -1,3 +1,4 @@
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { Wallet } from "ethers";
 import { AbiCoder, solidityKeccak256, splitSignature, toUtf8Bytes } from "ethers/lib/utils";
 import { ethers } from "hardhat";
@@ -44,4 +45,24 @@ export class ClaimsManager {
       nonce,
     };
   }
+}
+
+export async function generate_claim(
+  issuerWallet: SignerWithAddress,
+  target: string,
+  amount: number,
+): Promise<SignedClaim> {
+  const nonce: number = Date.now();
+
+  const hash = solidityKeccak256(["uint", "address", "uint"], [nonce, target, amount]);
+  const signature = await issuerWallet.signMessage(ethers.utils.arrayify(hash));
+
+  const { v, r, s } = splitSignature(signature);
+
+  return {
+    signature: { v, r, s },
+    target,
+    amount,
+    nonce,
+  };
 }

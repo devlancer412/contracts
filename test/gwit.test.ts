@@ -1,16 +1,14 @@
-import chai, { use } from "chai";
+import chai from "chai";
 import { solidity } from "ethereum-waffle";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { advanceTimeAndBlock, Ship, toBN, toWei } from "../utils";
-import { GRP, GRP__factory, GWITToken, GWITToken__factory, MasterChef, MasterChef__factory } from "../types";
-import { ClaimsManager, Configuration, SignedClaim } from "../claims_lib/manager";
-import { BigNumber, ContractTransaction, Wallet } from "ethers";
-import { deployments, hardhatArguments } from "hardhat";
-import { Console } from "console";
+import { Ship } from "../utils";
+import { GWITToken, GWITToken__factory } from "../types";
+import { BigNumber, ContractTransaction } from "ethers";
+import { deployments } from "hardhat";
 
 chai.use(solidity);
 const { expect } = chai;
-let supply_size = BigNumber.from("1_000_000_000_000".replaceAll("_", ""));
+const supply_size = BigNumber.from("1_000_000_000_000000000000000000".replaceAll("_", ""));
 
 let ship: Ship;
 let gwit: GWITToken;
@@ -42,21 +40,12 @@ describe("GWIT Deploy Test", () => {
     taxed_destination = scaffold.users[3];
     shinji = scaffold.users[4];
 
-    gwit = await scaffold.ship.deploy(GWITToken__factory, {
-      args: [supply_size],
-    });
-
-    await gwit.init(
-      "0x0000000000000000000000000000000000001337",
-      "0x0000000000000000000000000000000000001337",
-    );
-
-    supply_size = BigNumber.from("1000000000000000000000000000000");
+    gwit = await scaffold.ship.connect(GWITToken__factory);
   });
 
   it("Should have the right supply size", async () => {
     const res = await gwit.initialSupply();
-    await expect(res).to.eq(BigNumber.from("1000000000000000000000000000000"));
+    await expect(res).to.eq(supply_size);
   });
 
   it("Should transfer tokens", async () => {
