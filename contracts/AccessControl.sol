@@ -10,9 +10,9 @@ contract AccessControl {
   mapping(address => bool) public isMinter;
 
   //Fires when new owner is pushed
-  event OwnerPushed(address indexed account);
+  event OwnerPushed(address indexed pushedOwner);
   //Fires when new owner pulled
-  event OwnerPulled(address indexed account);
+  event OwnerPulled(address indexed previousOwner, address indexed newOwner);
   //Fires when minter role is granted
   event MinterRoleGranted(address indexed account);
   //Fires when minter role is revoked
@@ -20,7 +20,7 @@ contract AccessControl {
 
   constructor() {
     owner = msg.sender;
-    emit OwnerPulled(msg.sender);
+    emit OwnerPulled(msg.sender, address(0));
   }
 
   modifier onlyOwner() {
@@ -41,8 +41,9 @@ contract AccessControl {
 
   function pullOwner() external {
     require(msg.sender == newOwner, "Only new owner");
+    address oldOwner = owner;
     owner = msg.sender;
-    emit OwnerPulled(msg.sender);
+    emit OwnerPulled(oldOwner, msg.sender);
   }
 
   function grantMinterRole(address account) external onlyOwner {

@@ -4,6 +4,7 @@ module.exports = {
   parserOptions: {
     ecmaVersion: 2021,
     sourceType: "module",
+    warnOnUnsupportedTypeScriptVersion: false,
   },
   env: {
     commonjs: true,

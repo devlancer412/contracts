@@ -21,5 +21,6 @@ yalc.lock
 abis
 types
 .idea
-deployments
 /z
+deployments/localhost
+deployments/hardhat

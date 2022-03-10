@@ -11,28 +11,14 @@ abstract contract RoosterMetadata is ERC721, AccessControl {
   //Rooster metadata base uri
   string private _baseUri;
   //Maps rooster id to breed
-  mapping(uint256 => Breed) private _breeds;
+  mapping(uint256 => uint256) private _breeds;
 
   //Fires when base uri is updated
   event UpdateBaseUri(string baseUri);
   //Fires when breed is set
-  event BreedSet(uint256 roosterId, Breed breed);
+  event BreedSet(uint256 roosterId, uint256 breed);
 
-  //May change to uint256 for scalability
-  enum Breed {
-    Swansons,
-    Kelians,
-    Rotundan,
-    Hatch,
-    Greybacks,
-    Claira,
-    Redheart,
-    Pylia,
-    Jonians,
-    Henis
-  }
-
-  function breeds(uint256 roosterId) public view returns (Breed) {
+  function breeds(uint256 roosterId) public view returns (uint256) {
     require(_exists(roosterId), "Query for nonexistent rooster");
     return _breeds[roosterId];
   }
@@ -47,7 +33,7 @@ abstract contract RoosterMetadata is ERC721, AccessControl {
     emit UpdateBaseUri(newUri);
   }
 
-  function _setBreed(uint256 roosterId, Breed breed) internal {
+  function _setBreed(uint256 roosterId, uint256 breed) internal {
     _breeds[roosterId] = breed;
     emit BreedSet(roosterId, breed);
   }
