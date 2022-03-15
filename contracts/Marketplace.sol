@@ -14,7 +14,7 @@ contract Marketplace is Ownable {
   uint256 public feeRate;
 
   struct Listing {
-    address operator;
+    address token;
     uint256 tokenId;
     uint256 cost;
     address owner;
@@ -23,15 +23,25 @@ contract Marketplace is Ownable {
   }
 
   uint256 public counter;
+  // { listingId: Listing}
   mapping(uint256 => Listing) public listings;
+  // { listingId: inStock }
   mapping(uint256 => uint256) public stocks;
+  // { contractAddress: allowed }
+  mapping(address => bool) public allowedContracts;
+  // { contractAddress: { tokenId: ownerAddress } }
+  mapping(address => mapping(uint256 => address)) public transfers;
+
+  // { contractAddress: { tokenId: { ownerAddress: amount } } }
+  mapping(address => mapping(uint256 => mapping(address => uint256))) public fungibleTransfers;
 
   event Listed(
     uint256 listingId,
-    address operator,
-    uint256 tokenId,
+    address indexed token,
+    uint256 indexed tokenId,
     address indexed owner,
-    uint256 amount
+    uint256 amount,
+    uint256 price
   );
   event Live(uint256 listingId);
   event Sold(uint256 listingId, address indexed owner, uint256 amount);
@@ -42,33 +52,82 @@ contract Marketplace is Ownable {
     feeRate = _fee;
   }
 
+  function setAllowedToken(address tokenAddress, bool allowed) public onlyOwner {
+    allowedContracts[tokenAddress] = allowed;
+  }
+
+  function getListing(uint256 listingId)
+    public
+    view
+    returns (
+      address token,
+      uint256 tokenId,
+      uint256 cost,
+      address owner,
+      bool fungible,
+      bool inactive
+    )
+  {
+    token = listings[listingId].token;
+    tokenId = listings[listingId].tokenId;
+    cost = listings[listingId].cost;
+    owner = listings[listingId].owner;
+    fungible = listings[listingId].fungible;
+    inactive = listings[listingId].inactive;
+  }
+
   function onERC721Received(
-    address operator,
+    address,
     address from,
     uint256 tokenId,
     bytes calldata
   ) public returns (bytes4) {
-    counter += 1;
-    listings[counter] = Listing(operator, tokenId, 0, from, false, false);
-    emit Listed(counter, operator, tokenId, from, 1);
+    require(allowedContracts[msg.sender], "operator not allowed");
+    transfers[msg.sender][tokenId] = from;
     return this.onERC721Received.selector;
   }
 
   function onERC1155Received(
-    address operator,
+    address,
     address from,
-    uint256 id,
-    uint256 value,
+    uint256 tokenId,
+    uint256 amount,
     bytes calldata
   ) public returns (bytes4) {
-    counter += 1;
-    listings[counter] = Listing(operator, id, 0, from, true, false);
-    stocks[counter] = value;
-    emit Listed(counter, operator, id, from, value);
+    require(allowedContracts[msg.sender], "operator not allowed");
+    fungibleTransfers[msg.sender][tokenId][from] = amount;
     return this.onERC1155Received.selector;
   }
 
-  function setLive(uint256 listingId, uint256 cost) public {
+  function makeListing(
+    address token,
+    uint256 tokenId,
+    uint256 amount,
+    uint256 price,
+    bool fungible
+  ) public returns (uint256) {
+    uint256 id = counter;
+    if (fungible) {
+      uint256 balance = fungibleTransfers[token][tokenId][msg.sender];
+      require(balance >= amount, "not enough tokens to create listing");
+      stocks[id] = amount;
+      fungibleTransfers[token][tokenId][msg.sender] -= amount;
+    } else {
+      require(
+        IERC721(token).ownerOf(tokenId) == address(this),
+        "nft not transfered to marketplace"
+      );
+    }
+
+    listings[id] = Listing(token, tokenId, price, msg.sender, fungible, false);
+
+    counter += 1;
+
+    emit Listed(id, token, tokenId, msg.sender, amount, price);
+    return id;
+  }
+
+  function setCost(uint256 listingId, uint256 cost) public {
     require(listings[listingId].owner == msg.sender, "only owner can set the listing as live");
     require(!listings[listingId].inactive, "cannnot reactivate revoked/sold listing");
 
@@ -81,11 +140,21 @@ contract Marketplace is Ownable {
   }
 
   function revoke(uint256 listingId) public {
-    require(listings[listingId].owner == msg.sender, "only owner can revoke the listing");
+    require(listings[listingId].owner == msg.sender, "only listing owner can revoke the listing");
     require(!listings[listingId].inactive, "cannnot revoke revoked/sold listing");
 
-    if (listings[listingId].fungible) {} else {
-      IERC721 op = IERC721(listings[listingId].operator);
+    if (listings[listingId].fungible) {
+      IERC1155 op = IERC1155(listings[listingId].token);
+      op.safeTransferFrom(
+        address(this),
+        msg.sender,
+        listings[listingId].tokenId,
+        fungibleTransfers[listings[listingId].token][listings[listingId].tokenId][msg.sender],
+        ""
+      );
+      fungibleTransfers[listings[listingId].token][listings[listingId].tokenId][msg.sender] = 0;
+    } else {
+      IERC721 op = IERC721(listings[listingId].token);
       op.safeTransferFrom(address(this), msg.sender, listings[listingId].tokenId);
       listings[listingId].inactive = true;
     }
@@ -95,7 +164,7 @@ contract Marketplace is Ownable {
 
   function purchase(uint256 listingId, uint256 amount) public {
     require(amount > 0, "amount is 0");
-    require(listings[listingId].cost != 0, "listing is not live");
+    require(isLive(listingId), "listing is not live");
     require(!listings[listingId].inactive, "cannnot purchase revoked/sold listing");
 
     uint256 cost = listings[listingId].cost;
