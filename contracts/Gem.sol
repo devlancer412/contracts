@@ -1,51 +1,66 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import "@rari-capital/solmate/src/tokens/ERC1155.sol";
+import {ERC721} from "@rari-capital/solmate/src/tokens/ERC721.sol";
+import "./GemMetadata.sol";
 import "./AccessControl.sol";
 
-contract Gem is ERC1155, AccessControl {
-  //Base Uri of gem metadata
-  string private _uri;
+contract Gem is ERC721, AccessControl, GemMetadata {
+  //Current gemId count
+  uint256 private _gemIdCounter = 0;
 
-  //Fires when base uri is updated
-  event UpdateUri(string uri);
-
-  constructor(string memory uri_) {
-    setUri(uri_);
+  constructor(string memory baseUri_) ERC721("Gem", "GEM") {
+    setBaseUri(baseUri_);
   }
 
-  function uri(uint256) public view override returns (string memory) {
-    return _uri;
+  function totalSupply() public view returns (uint256) {
+    return _gemIdCounter;
   }
 
-  function mint(
+  function safeBatchTransferFrom(
+    address from,
     address to,
-    uint256 gemId,
-    uint256 amount
-  ) external onlyMinter {
-    _mint(to, gemId, amount, "");
-  }
-
-  function batchMint(
-    address to,
-    uint256[] memory gemIds,
-    uint256[] memory amounts
-  ) external onlyMinter {
-    _batchMint(to, gemIds, amounts, "");
-  }
-
-  function mintByIds(address to, uint256[] memory gemIds) external onlyMinter {
+    uint256[] memory gemIds
+  ) external {
     for (uint256 i = 0; i < gemIds.length; ) {
-      _mint(to, gemIds[i], 1, "");
+      safeTransferFrom(from, to, gemIds[i]);
       unchecked {
         i++;
       }
     }
   }
 
-  function setUri(string memory newUri) public onlyOwner {
-    _uri = newUri;
-    emit UpdateUri(newUri);
+  function mint(address to, uint256 gemType) external onlyMinter {
+    uint256 gemId = _gemIdCounter;
+
+    unchecked {
+      _gemIdCounter++;
+    }
+
+    _mint(to, gemId, gemType);
+  }
+
+  function batchMint(address to, uint256[] memory gemTypes) external onlyMinter {
+    uint256 gemId = _gemIdCounter;
+
+    for (uint256 i = 0; i < gemTypes.length; ) {
+      _mint(to, gemId, gemTypes[i]);
+
+      unchecked {
+        gemId++;
+        i++;
+      }
+    }
+
+    _gemIdCounter = gemId;
+  }
+
+  function _mint(
+    address to,
+    uint256 gemId,
+    uint256 gemType
+  ) private {
+    _safeMint(to, gemId);
+    _setGemType(gemId, gemType);
   }
 }

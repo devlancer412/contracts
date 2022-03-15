@@ -32,11 +32,11 @@ const setup = deployments.createFixture(async (hre) => {
   };
 });
 
-const sign = async (user: string, breeds: number[], gaffAmounts: number[], gemIds: number[]) => {
+const sign = async (user: string, breeds: number[], gaffTypes: number[], gemTypes: number[]) => {
   const { accounts } = await Ship.init();
   const hash = solidityKeccak256(
     ["address", "uint256[]", "uint256[]", "uint256[]"],
-    [user, breeds, gaffAmounts, gemIds],
+    [user, breeds, gaffTypes, gemTypes],
   );
   const sig = await accounts.signer.signMessage(arrayify(hash));
   const { r, s, v } = splitSignature(sig);
@@ -73,19 +73,23 @@ describe("Egg hatching test", () => {
     await egg.connect(alice).setApprovalForAll(hatching.address, true);
 
     //Hatch egg
+    const eggIds = [1];
     const breeds = [0];
-    const gaffAmounts = [1, 0, 0];
-    const gemIds = [3];
-    const sig = await sign(alice.address, breeds, gaffAmounts, gemIds);
-    await expect(hatching.connect(alice).hatch(alice.address, [1], breeds, gaffAmounts, gemIds, sig))
+    const gaffTypes = [1];
+    const gemTypes = [3];
+    const sig = await sign(alice.address, breeds, gaffTypes, gemTypes);
+    await expect(hatching.connect(alice).hatch(alice.address, eggIds, breeds, gaffTypes, gemTypes, sig))
       .to.emit(hatching, "EggsHatched")
-      .withArgs(alice.address, [1]);
+      .withArgs(alice.address, eggIds);
 
     //Check balances
     expect(await egg.balanceOf(alice.address)).to.eq(0);
     expect(await rooster.balanceOf(alice.address)).to.eq(1);
-    expect(await gaff.balanceOf(alice.address, 0)).to.eq(1);
-    expect(await gem.balanceOf(alice.address, 3)).to.eq(1);
+    expect(await rooster.breeds(0)).to.eq(0);
+    expect(await gaff.balanceOf(alice.address)).to.eq(1);
+    expect(await gaff.gaffTypes(0)).to.eq(1);
+    expect(await gem.balanceOf(alice.address)).to.eq(1);
+    expect(await gem.gemTypes(0)).to.eq(3);
   });
 
   it("Hatches 10eggs", async () => {
@@ -99,20 +103,17 @@ describe("Egg hatching test", () => {
 
     const eggs = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
     const breeds = [3, 2, 5, 6, 0, 9, 4, 2, 1, 7];
-    const gaffAmounts = [2, 5, 3];
-    const gemIds = [7, 1, 2, 4, 9, 10, 5, 6, 0, 3];
-    const sig = await sign(alice.address, breeds, gaffAmounts, gemIds);
-    await expect(hatching.connect(alice).hatch(alice.address, eggs, breeds, gaffAmounts, gemIds, sig))
+    const gaffTypes = [4, 7, 10, 8, 6, 5, 4, 2, 1, 8];
+    const gemTypes = [7, 1, 2, 4, 9, 10, 5, 6, 0, 3];
+    const sig = await sign(alice.address, breeds, gaffTypes, gemTypes);
+    await expect(hatching.connect(alice).hatch(alice.address, eggs, breeds, gaffTypes, gemTypes, sig))
       .to.emit(hatching, "EggsHatched")
       .withArgs(alice.address, eggs);
 
     expect(await egg.balanceOf(alice.address)).to.eq(0);
     expect(await rooster.balanceOf(alice.address)).to.eq(10);
-    const threeAlice = new Array<string>(3).fill(alice.address);
-    expect(await gaff.balanceOfBatch(threeAlice, [0, 1, 2])).to.deep.equal(toBNArray([2, 5, 3]));
-    const tenAlice = new Array<string>(10).fill(alice.address);
-    const ten1s = new Array<number>(10).fill(1);
-    expect(await gem.balanceOfBatch(tenAlice, gemIds)).to.deep.equal(toBNArray(ten1s));
+    expect(await gaff.balanceOf(alice.address)).to.eq(10);
+    expect(await gem.balanceOf(alice.address)).to.eq(10);
   });
 
   it("Reverts when hatched by non egg owner", async () => {
@@ -125,11 +126,11 @@ describe("Egg hatching test", () => {
     await egg.connect(alice).setApprovalForAll(hatching.address, true);
 
     const breeds = [0];
-    const gaffAmounts = [1, 0, 0];
-    const gemIds = [3];
-    const sig = await sign(bob.address, breeds, gaffAmounts, gemIds);
+    const gaffTypes = [0];
+    const gemTypes = [3];
+    const sig = await sign(bob.address, breeds, gaffTypes, gemTypes);
     await expect(
-      hatching.connect(bob).hatch(bob.address, [1], breeds, gaffAmounts, gemIds, sig),
+      hatching.connect(bob).hatch(bob.address, [1], breeds, gaffTypes, gemTypes, sig),
     ).to.revertedWith("Invalid owner");
   });
 
@@ -144,16 +145,16 @@ describe("Egg hatching test", () => {
 
     const eggs = [1, 2, 3];
     const breeds = [0, 1, 2];
-    const gaffAmounts = [1, 1, 1];
-    const gemIds = [0, 1, 2];
-    const sig = await sign(alice.address, breeds, gaffAmounts, gemIds);
-    const promi1 = hatching.connect(alice).hatch(alice.address, eggs, breeds, gaffAmounts, gemIds, emptySig);
+    const gaffTypes = [1, 1, 1];
+    const gemTypes = [0, 1, 2];
+    const sig = await sign(alice.address, breeds, gaffTypes, gemTypes);
+    const promi1 = hatching.connect(alice).hatch(alice.address, eggs, breeds, gaffTypes, gemTypes, emptySig);
     const promi2 = hatching
       .connect(alice)
-      .hatch(alice.address, eggs, [...breeds, 3], gaffAmounts, gemIds, sig);
+      .hatch(alice.address, eggs, [...breeds, 3], gaffTypes, gemTypes, sig);
     const promi3 = hatching
       .connect(alice)
-      .hatch(alice.address, eggs, breeds.reverse(), gaffAmounts, gemIds, emptySig);
+      .hatch(alice.address, eggs, breeds.reverse(), gaffTypes, gemTypes, emptySig);
 
     await expect(promi1).to.be.revertedWith("Invalid parameter");
     await expect(promi2).to.be.revertedWith("Invalid parameter");
