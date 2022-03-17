@@ -3,7 +3,7 @@ import { RoosterEgg__factory, MockUsdc__factory, GWITToken__factory, GRP__factor
 import { Ship } from "../utils";
 
 const func: DeployFunction = async (hre) => {
-  const { deploy, users } = await Ship.init(hre);
+  const { deploy, users, accounts } = await Ship.init(hre);
 
   if (hre.network.tags.prod) {
     await deploy(GRP__factory, {

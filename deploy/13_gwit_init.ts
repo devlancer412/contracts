@@ -4,7 +4,7 @@ import { GRP__factory, GWITToken__factory, MasterChef__factory } from "../types"
 import { Ship } from "../utils";
 
 const func: DeployFunction = async (hre) => {
-  const { connect } = await Ship.init(hre);
+  const { connect, users, accounts } = await Ship.init(hre);
 
   const grp = await connect(GRP__factory);
   const gwit = await connect(GWITToken__factory);
@@ -14,4 +14,4 @@ const func: DeployFunction = async (hre) => {
 };
 
 export default func;
-func.tags = ["grp"];
+func.tags = ["gwit_init"];

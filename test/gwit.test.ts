@@ -23,7 +23,7 @@ let shinji: SignerWithAddress;
 const setup = deployments.createFixture(async (hre) => {
   ship = await Ship.init(hre);
   const { accounts, users } = ship;
-  await deployments.fixture(["mocks", "gwit", "grp"]);
+  await deployments.fixture(["mocks", "gwit", "grp", "gwit_init"]);
 
   return {
     ship,

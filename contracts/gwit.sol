@@ -21,10 +21,10 @@ contract GWITToken is ERC20, Ownable {
 
   address public tax_address;
   mapping(address => uint256) private tax_table;
-  event Taxed(address from, address to, uint256 tax_ammount);
+  event Taxed(address from, address to, uint256 tax_amount);
 
   constructor(uint256 _initialSupply) ERC20("GWIT", "GWIT") {
-    initialSupply = SafeMath.mul(_initialSupply, 1_000_000_000_000_000_000);
+    initialSupply = SafeMath.mul(_initialSupply, 1e18);
     _init = false;
   }
 
@@ -52,6 +52,10 @@ contract GWITToken is ERC20, Ownable {
     address to,
     uint256 amount
   ) public override returns (bool) {
+    console.log("TX From", from);
+    console.log("TX To", to);
+    console.log("TX Caller", _msgSender());
+    console.log("Transfer with tax? %s", taxRate(to) != 0);
     if (taxRate(to) != 0) {
       require(amount != 0, "amount should be > 0");
       uint256 tax = calcTaxRate(to, amount);
@@ -63,6 +67,7 @@ contract GWITToken is ERC20, Ownable {
       emit Taxed(from, to, tax);
     }
 
+    console.log("Transferring %s", amount);
     return ERC20.transferFrom(from, to, amount);
   }
 

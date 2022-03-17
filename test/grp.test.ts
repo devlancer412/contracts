@@ -25,7 +25,7 @@ let client: SignerWithAddress;
 const setup = deployments.createFixture(async (hre) => {
   const ship = await Ship.init(hre);
   const { accounts, users } = ship;
-  await deployments.fixture(["mocks", "gwit", "grp"]);
+  await deployments.fixture(["mocks", "gwit", "grp", "gwit_init"]);
 
   return {
     ship,
@@ -112,17 +112,25 @@ describe("GRP test", () => {
     await expect(await grp.validateClaim(claimData)).to.be.false;
   });
 
-  it("Should fail with claimed nonce", async () => {
-    const claimData = await generate_claim(owner, client.address, 10);
+  describe("Should fail with claimed nonce", async () => {
+    let claimData: SignedClaim;
+    before(async () => {
+      claimData = await generate_claim(owner, client.address, 10);
+    });
 
-    await expect(await grp.claim(claimData))
-      .to.emit(grp, "Claimed")
-      .withArgs(claimData.nonce, claimData.target, claimData.amount);
+    it("Should successfully claim first", async () => {
+      await expect(grp.claim(claimData))
+        .to.emit(grp, "Claimed")
+        .withArgs(claimData.nonce, claimData.target, claimData.amount);
+    });
 
-    const second_tx = await grp.claim(claimData);
-    await expect(second_tx).to.not.emit(grp, "Claimed");
+    it("Should fail on the second claim attempt", async () => {
+      await expect(grp.claim(claimData)).to.revertedWith("claim already burned");
+    });
 
-    const balance = await gwit.balanceOf(client.address);
-    await expect(balance).to.eq(10);
+    it("Should have the right balance", async () => {
+      const balance = await gwit.balanceOf(client.address);
+      await expect(balance).to.eq(10);
+    });
   });
 });

@@ -1,5 +1,5 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { Wallet } from "ethers";
+import { BigNumber, BigNumberish, Wallet } from "ethers";
 import { AbiCoder, solidityKeccak256, splitSignature, toUtf8Bytes } from "ethers/lib/utils";
 import { ethers } from "hardhat";
 
@@ -18,7 +18,7 @@ export interface Signature {
 export interface SignedClaim {
   nonce: number;
   target: string;
-  amount: number;
+  amount: BigNumberish;
   signature: Signature;
 }
 
@@ -50,10 +50,10 @@ export class ClaimsManager {
 export async function generate_claim(
   issuerWallet: SignerWithAddress,
   target: string,
-  amount: number,
+  amount: BigNumberish,
 ): Promise<SignedClaim> {
   const nonce: number = Date.now();
-
+  amount = BigNumber.from(amount);
   const hash = solidityKeccak256(["uint", "address", "uint"], [nonce, target, amount]);
   const signature = await issuerWallet.signMessage(ethers.utils.arrayify(hash));
 
