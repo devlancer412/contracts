@@ -16,7 +16,7 @@ abstract contract GemMetadata is ERC721, AccessControl {
   //Fires when base uri is updated
   event UpdateBaseUri(string baseUri);
   //Fires when gem type is set
-  event GemTypeSet(uint256 gemId, uint256 gemType);
+  event GemTypeSet(uint256 indexed gemId, uint256 gemType);
 
   function gemTypes(uint256 gemId) public view returns (uint256) {
     require(_exists(gemId), "Query for nonexistent gem");

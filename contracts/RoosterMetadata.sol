@@ -16,7 +16,7 @@ abstract contract RoosterMetadata is ERC721, AccessControl {
   //Fires when base uri is updated
   event UpdateBaseUri(string baseUri);
   //Fires when breed is set
-  event BreedSet(uint256 roosterId, uint256 breed);
+  event BreedSet(uint256 indexed roosterId, uint256 breed);
 
   function breeds(uint256 roosterId) public view returns (uint256) {
     require(_exists(roosterId), "Query for nonexistent rooster");

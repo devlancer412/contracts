@@ -16,7 +16,7 @@ abstract contract GaffMetadata is ERC721, AccessControl {
   //Fires when base uri is updated
   event UpdateBaseUri(string baseUri);
   //Fires when gaff type is set
-  event GaffTypeSet(uint256 gaffId, uint256 gaffType);
+  event GaffTypeSet(uint256 indexed gaffId, uint256 gaffType);
 
   function gaffTypes(uint256 gaffId) public view returns (uint256) {
     require(_exists(gaffId), "Query for nonexistent gaff");
