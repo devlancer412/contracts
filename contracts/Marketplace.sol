@@ -32,12 +32,6 @@ contract Marketplace is Ownable {
   // { contractAddress: allowed }
   mapping(address => bool) public allowedContracts;
 
-  // { contractAddress: { tokenId: ownerAddress } }
-  mapping(address => mapping(uint256 => address)) public erc721transfers;
-  // { contractAddress: { tokenId: listed } }
-  mapping(address => mapping(uint256 => bool)) public nftInMarketplace;
-  // { contractAddress: { tokenId: { ownerAddress: amount } } }
-  mapping(address => mapping(uint256 => mapping(address => uint256))) public erc1155transfers;
 
   event Listed(
     uint256 listingId,
@@ -86,9 +80,6 @@ contract Marketplace is Ownable {
     uint256 tokenId,
     bytes calldata
   ) public returns (bytes4) {
-    console.log("Recieved", from, tokenId);
-    require(allowedContracts[msg.sender], "operator not allowed");
-    erc721transfers[msg.sender][tokenId] = from;
     return this.onERC721Received.selector;
   }
 
@@ -99,8 +90,6 @@ contract Marketplace is Ownable {
     uint256 amount,
     bytes calldata
   ) public returns (bytes4) {
-    require(allowedContracts[msg.sender], "operator not allowed");
-    erc1155transfers[msg.sender][tokenId][from] = amount;
     return this.onERC1155Received.selector;
   }
 
@@ -113,39 +102,20 @@ contract Marketplace is Ownable {
   ) public returns (uint256) {
     nextId++;
 
-    // console.log("Recieving: %s", nextId);
-    // console.log("Token Contract: %s", token);
-    // console.log("Amount: %s", amount);
-    // console.log("Price: %s", price);
-    // console.log("Fungible: %s", fungible);
-    // console.log("Caller: %s", msg.sender);
 
     if (fungible) {
-      uint256 balance = erc1155transfers[token][tokenId][msg.sender];
-      require(balance >= amount, "not enough tokens to create listing");
-      stocks[nextId] = amount;
-      erc1155transfers[token][tokenId][msg.sender] -= amount;
+        IERC1155(token).transferFrom(msg.sender, address(this), tokenId, amount);      
+        stocks[nextId] = amount;
     } else {
-      require(
-        IERC721(token).ownerOf(tokenId) == address(this),
-        "nft not transfered to marketplace"
-      );
-      // console.log("Owner: %s", erc721transfers[token][tokenId]);
-      // console.log("Owner?", erc721transfers[token][tokenId] == msg.sender);
-      // console.log("Listed?", nftInMarketplace[token][tokenId]);
-
-      require(erc721transfers[token][tokenId] == msg.sender, "not the original sender of the nft");
-      require(!nftInMarketplace[token][tokenId], "nft already listed");
+        IERC721(token).transferFrom(msg.sender, address(this), tokenId);
     }
 
-    // console.log("Assigning listing");
     listings[nextId] = Listing(token, tokenId, price, msg.sender, fungible, false);
 
     emit Listed(nextId, token, tokenId, msg.sender, amount, price);
     if (price > 0) {
       emit Live(nextId);
     }
-    nftInMarketplace[token][tokenId] = true;
     return nextId;
   }
 
@@ -199,7 +169,6 @@ contract Marketplace is Ownable {
 
   function _purchase721(uint256 id) private returns (uint256 price) {
     Listing memory listing = listings[id];
-    nftInMarketplace[listing.token][listing.tokenId] = false;
 
     IERC721 op = IERC721(listing.token);
     op.safeTransferFrom(address(this), msg.sender, listing.tokenId);
