@@ -76,20 +76,20 @@ contract Marketplace is Ownable {
 
   function onERC721Received(
     address,
-    address from,
-    uint256 tokenId,
+    address,
+    uint256,
     bytes calldata
-  ) public returns (bytes4) {
+  ) public pure returns (bytes4) {
     return this.onERC721Received.selector;
   }
 
   function onERC1155Received(
     address,
-    address from,
-    uint256 tokenId,
-    uint256 amount,
+    address,
+    uint256,
+    uint256,
     bytes calldata
-  ) public returns (bytes4) {
+  ) public pure returns (bytes4) {
     return this.onERC1155Received.selector;
   }
 
@@ -104,7 +104,7 @@ contract Marketplace is Ownable {
 
 
     if (fungible) {
-        IERC1155(token).transferFrom(msg.sender, address(this), tokenId, amount);      
+        IERC1155(token).safeTransferFrom(msg.sender, address(this), tokenId, amount, "");      
         stocks[nextId] = amount;
     } else {
         IERC721(token).transferFrom(msg.sender, address(this), tokenId);
@@ -143,10 +143,10 @@ contract Marketplace is Ownable {
         address(this),
         msg.sender,
         listings[listingId].tokenId,
-        erc1155transfers[listings[listingId].token][listings[listingId].tokenId][msg.sender],
+        stocks[listingId],
         ""
       );
-      erc1155transfers[listings[listingId].token][listings[listingId].tokenId][msg.sender] = 0;
+      stocks[listingId] = 0;
     } else {
       IERC721 op = IERC721(listings[listingId].token);
       op.safeTransferFrom(address(this), msg.sender, listings[listingId].tokenId);
