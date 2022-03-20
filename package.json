@@ -18,7 +18,7 @@
     "deploy:localhost": "npx hardhat deploy --network localhost",
     "deploy:rinkeby": "npx hardhat deploy --network rinkeby",
     "deploy:polygon": "npx hardhat deploy --network polygon",
-    "test": "npm-run-all test:dapp test:hh",
+    "test": "npm-run-all test:forge test:hh",
     "test:forge": "forge test",
     "test:hh": "npx hardhat test",
     "test:gas": "cross-env REPORT_GAS=true hardhat test",

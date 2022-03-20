@@ -10,16 +10,8 @@ interface IEgg {
   function ownerOf(uint256 tokenId) external view returns (address);
 }
 
-interface IRooster {
-  function batchMint(address to, uint256[] memory breeds) external;
-}
-
-interface IGaff {
-  function batchMint(address to, uint256[] memory amounts) external;
-}
-
-interface IGem {
-  function mintByIds(address to, uint256[] memory gemIds) external;
+interface INft {
+  function batchMint(address to, uint256[] memory types) external;
 }
 
 contract RoosterEggHatching is Ownable, Pausable {
@@ -62,41 +54,41 @@ contract RoosterEggHatching is Ownable, Pausable {
   /**
    * @param eggIds Array of rooster egg ids to burn
    * @param breeds Array of rooster breeds to mint
-   * @param gaffAmounts Array of gaff amounts to mint (Index number corresponds to gaff id)
-   * @param gemIds Array of gem ids to mint
+   * @param gaffTypes Array of gaff amounts to mint (Index number corresponds to gaff id)
+   * @param gemTypes Array of gem ids to mint
    */
   function hatch(
     address to,
     uint24[] calldata eggIds,
     uint256[] calldata breeds,
-    uint256[] calldata gaffAmounts,
-    uint256[] calldata gemIds,
+    uint256[] calldata gaffTypes,
+    uint256[] calldata gemTypes,
     Sig calldata sig
   ) external whenNotPaused {
     //Check if parameters are valid
-    require(_isParamValid(breeds, gaffAmounts, gemIds, sig), "Invalid parameter");
+    require(_isParamValid(breeds, gaffTypes, gemTypes, sig), "Invalid parameter");
     //Check if egg owner
     require(_isOwnerCorrect(eggIds), "Invalid owner");
 
     //Burn eggs
     IEgg(egg).burnBatch(eggIds);
     //Mint roosters
-    IRooster(rooster).batchMint(to, breeds);
+    INft(rooster).batchMint(to, breeds);
     //Mint gaffs
-    IGaff(gaff).batchMint(to, gaffAmounts);
+    INft(gaff).batchMint(to, gaffTypes);
     //Mint gems
-    IGem(gem).mintByIds(to, gemIds);
+    INft(gem).batchMint(to, gemTypes);
 
     emit EggsHatched(msg.sender, eggIds);
   }
 
   function _isParamValid(
     uint256[] calldata breeds,
-    uint256[] calldata gaffAmounts,
-    uint256[] calldata gemIds,
+    uint256[] calldata gaffTypes,
+    uint256[] calldata gemTypes,
     Sig calldata sig
   ) private view returns (bool) {
-    bytes32 messageHash = keccak256(abi.encodePacked(msg.sender, breeds, gaffAmounts, gemIds));
+    bytes32 messageHash = keccak256(abi.encodePacked(msg.sender, breeds, gaffTypes, gemTypes));
     bytes32 ethSignedMessageHash = keccak256(
       abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash)
     );
