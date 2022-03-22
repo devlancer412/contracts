@@ -32,16 +32,16 @@ contract Marketplace is Ownable {
   // { contractAddress: allowed }
   mapping(address => bool) public allowedContracts;
 
-
   event Listed(
     uint256 listingId,
     address indexed token,
     uint256 indexed tokenId,
     address indexed owner,
     uint256 amount,
-    uint256 price
+    uint256 price,
+    bool fungible
   );
-  event Live(uint256 listingId);
+  event Live(uint256 listingId, uint256 price);
   event Sold(uint256 listingId, address indexed owner, uint256 amount);
   event Revoke(uint256 listingId);
 
@@ -102,19 +102,18 @@ contract Marketplace is Ownable {
   ) public returns (uint256) {
     nextId++;
 
-
     if (fungible) {
-        IERC1155(token).safeTransferFrom(msg.sender, address(this), tokenId, amount, "");      
-        stocks[nextId] = amount;
+      IERC1155(token).safeTransferFrom(msg.sender, address(this), tokenId, amount, "");
+      stocks[nextId] = amount;
     } else {
-        IERC721(token).transferFrom(msg.sender, address(this), tokenId);
+      IERC721(token).transferFrom(msg.sender, address(this), tokenId);
     }
 
     listings[nextId] = Listing(token, tokenId, price, msg.sender, fungible, false);
 
-    emit Listed(nextId, token, tokenId, msg.sender, amount, price);
+    emit Listed(nextId, token, tokenId, msg.sender, amount, price, fungible);
     if (price > 0) {
-      emit Live(nextId);
+      emit Live(nextId, price);
     }
     return nextId;
   }
@@ -125,7 +124,7 @@ contract Marketplace is Ownable {
 
     listings[listingId].price = price;
     if (price > 0) {
-      emit Live(listingId);
+      emit Live(listingId, price);
     }
   }
 
@@ -137,19 +136,15 @@ contract Marketplace is Ownable {
     require(listings[listingId].owner == msg.sender, "only listing owner can revoke the listing");
     require(!listings[listingId].inactive, "cannnot revoke revoked/sold listing");
 
-    if (listings[listingId].fungible) {
+    Listing storage listing = listings[listingId];
+
+    if (listing.fungible) {
       IERC1155 op = IERC1155(listings[listingId].token);
-      op.safeTransferFrom(
-        address(this),
-        msg.sender,
-        listings[listingId].tokenId,
-        stocks[listingId],
-        ""
-      );
+      op.safeTransferFrom(address(this), msg.sender, listing.tokenId, stocks[listingId], "");
       stocks[listingId] = 0;
     } else {
-      IERC721 op = IERC721(listings[listingId].token);
-      op.safeTransferFrom(address(this), msg.sender, listings[listingId].tokenId);
+      IERC721 op = IERC721(listing.token);
+      op.safeTransferFrom(address(this), msg.sender, listing.tokenId);
       listings[listingId].inactive = true;
     }
 
@@ -168,7 +163,7 @@ contract Marketplace is Ownable {
   }
 
   function _purchase721(uint256 id) private returns (uint256 price) {
-    Listing memory listing = listings[id];
+    Listing storage listing = listings[id];
 
     IERC721 op = IERC721(listing.token);
     op.safeTransferFrom(address(this), msg.sender, listing.tokenId);
@@ -185,28 +180,20 @@ contract Marketplace is Ownable {
 
     uint256 price = 0;
 
-    console.log("Pruchasing");
     if (listing.fungible) {
       price = _purchase1155(listingId, amount);
     } else {
       price = _purchase721(listingId);
     }
-    uint256 allowance = operatingToken.allowance(msg.sender, address(this));
-    console.log("Allowance: %s: %s", address(this), allowance);
 
-    // operatingToken.transferFrom(msg.sender, address(this), amount);
-    console.log("Transferring tokens: %s", price);
     if (feeRate != 0) {
       uint256 fee = (price * feeRate) / 10_000;
       price = SafeMath.sub(price, fee);
       // Send the fee to the contract owner
-      console.log(" > Fee: %s", fee);
       operatingToken.transferFrom(msg.sender, owner(), fee);
     }
-    console.log(" > Listing Owner: %s: %s", price, listing.owner);
     operatingToken.transferFrom(msg.sender, listing.owner, price);
 
-    console.log("Sold");
     emit Sold(listingId, msg.sender, amount);
   }
 }

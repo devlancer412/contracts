@@ -47,6 +47,16 @@ const setup = deployments.createFixture(async (hre) => {
   };
 });
 
+const keypress = async () => {
+  process.stdin.setRawMode(true);
+  return new Promise((resolve) =>
+    process.stdin.once("data", () => {
+      process.stdin.setRawMode(false);
+      resolve(undefined);
+    }),
+  );
+};
+
 describe("Marketplace test", () => {
   before(async () => {
     const scaffold = await setup();
@@ -58,6 +68,9 @@ describe("Marketplace test", () => {
     marketplace = await scaffold.ship.connect(Marketplace__factory);
     gwit = await scaffold.ship.connect(GWITToken__factory);
     rooster = await scaffold.ship.connect(Rooster__factory);
+    console.log("Marketplace Address", marketplace.address);
+    console.log("Press any key to continue");
+    await keypress();
 
     await rooster.grantMinterRole(seller.address);
     await gwit.transfer(seller.address, 10_000);
@@ -65,105 +78,105 @@ describe("Marketplace test", () => {
     await marketplace.setAllowedToken(rooster.address, true);
   });
 
-  describe("Listing of NFT", async () => {
-    let nftId: BigNumber;
-    let listingId: BigNumber;
-    const price: BigNumber = toBN(420);
+  for (let i = 0; i < 10; i++) {
+    describe("Listing of NFT", async () => {
+      let nftId: BigNumber;
+      let listingId: BigNumber;
+      const price: BigNumber = toBN(Math.floor(Math.random() * 100));
+      const should_sell = (Math.random() * 1000) % 2 > 1;
 
-    it("Should mint a rooster", async () => {
-      let rx: ContractReceipt = await (await rooster.connect(seller).mint(seller.address, 0)).wait();
+      it("Should mint a rooster", async () => {
+        const breed = Math.floor((Math.random() * 1000) % 10);
+        const rx: ContractReceipt = await (await rooster.connect(seller).mint(seller.address, breed)).wait();
 
-      for (let i = 0; i < Math.random() * 20 + 1; i++) {
-        rx = await (await rooster.connect(seller).mint(seller.address, 0)).wait();
-      }
-
-      rx.events?.forEach((ev) => {
-        if (ev.event === "Transfer" && ev.args?.to === seller.address) {
-          nftId = ev.args.id;
-        }
+        rx.events?.forEach((ev) => {
+          if (ev.event === "Transfer" && ev.args?.to === seller.address) {
+            nftId = ev.args.id;
+          }
+        });
+        await expect(nftId.toString()).to.not.eq("");
       });
-      await expect(nftId.toString()).to.not.eq("");
-    });
 
-    it("Should transfer the nft to the marketplace", async () => {
-      const tx = await rooster
-        .connect(seller)
-        ["safeTransferFrom(address,address,uint256)"](seller.address, marketplace.address, nftId);
-      await expect(tx).to.emit(rooster, "Transfer");
-    });
-
-    it("Should have nft transferred to the marketplace", async () => {
-      const tx = await rooster.ownerOf(nftId);
-      await expect(tx).to.equal(marketplace.address);
-    });
-
-    it("Should not allow non owner to list the nft", async () => {
-      await expect(marketplace.makeListing(rooster.address, nftId, 1, 0, false)).to.be.revertedWith(
-        "not the original sender of the nft",
-      );
-    });
-
-    it("Should list the nft", async () => {
-      const tx = await marketplace.connect(seller).makeListing(rooster.address, nftId, 1, 0, false);
-      const rx = await tx.wait();
-
-      rx.events?.forEach((ev) => {
-        if (ev.event === "Listed" && ev.args?.owner === seller.address) {
-          listingId = ev.args.listingId;
-        }
+      it("Should have nft transferred to the marketplace", async () => {
+        await rooster.connect(seller).approve(marketplace.address, nftId);
+        const tx = await rooster.getApproved(nftId);
+        await expect(tx).to.equal(marketplace.address);
       });
-      await expect(listingId.toString()).to.not.eq("");
+
+      it("Should not allow non owner to list the nft", async () => {
+        await expect(marketplace.makeListing(rooster.address, nftId, 1, 0, false)).to.be.revertedWith(
+          "WRONG_FROM",
+        );
+      });
+
+      it("Should list the nft", async () => {
+        const tx = await marketplace.connect(seller).makeListing(rooster.address, nftId, 1, 0, false);
+        const rx = await tx.wait();
+
+        rx.events?.forEach((ev) => {
+          if (ev.event === "Listed" && ev.args?.owner === seller.address) {
+            listingId = ev.args.listingId;
+          }
+        });
+        await expect(listingId.toString()).to.not.eq("");
+      });
+
+      it("Should not be live", async () => {
+        await expect(await marketplace.isLive(listingId)).to.eq(false);
+        await expect(marketplace.connect(buyer).purchase(listingId, 1)).to.be.revertedWith(
+          "listing is not live",
+        );
+      });
+
+      it("Should set the price and emit Live", async () => {
+        await expect(await marketplace.connect(seller).setPrice(listingId, price))
+          .to.emit(marketplace, "Live")
+          .withArgs(listingId, price);
+      });
+
+      it("Should have the right listing information", async () => {
+        const tx = await marketplace.getListing(listingId);
+        expect(tx.token).to.equal(rooster.address);
+        expect(tx.tokenId).to.equal(nftId);
+        expect(tx.price).to.eq(price);
+        expect(tx.owner).to.eq(seller.address);
+        expect(tx.fungible).to.eq(false);
+        expect(tx.inactive).to.eq(false);
+      });
+
+      it("Should not allow double relisting", async () => {
+        await expect(
+          marketplace.connect(seller).makeListing(rooster.address, nftId, 1, 0, false),
+        ).to.be.revertedWith("WRONG_FROM");
+      });
+
+      it("Should revert purchase with insufficient funds", async () => {
+        await expect(marketplace.connect(buyer).purchase(listingId, 1)).to.be.revertedWith(
+          "ERC20: insufficient allowance",
+        );
+      });
+
+      it("Should proceed purchase with sufficient funds", async () => {
+        if (!should_sell) {
+          return;
+        }
+        const listing = await marketplace.getListing(listingId);
+        await gwit.connect(buyer).approve(marketplace.address, listing.price);
+
+        await expect(await gwit.allowance(buyer.address, marketplace.address)).to.eq(listing.price);
+
+        const tx = await marketplace.connect(buyer).purchase(listingId, 1);
+        await expect(tx).to.emit(marketplace, "Sold");
+      });
+
+      it("Should transfer the nft to the buyer", async () => {
+        if (!should_sell) {
+          return;
+        }
+        await expect(await rooster.ownerOf(nftId)).to.equal(buyer.address);
+      });
     });
-
-    it("Should not be live", async () => {
-      await expect(await marketplace.isLive(listingId)).to.eq(false);
-      await expect(marketplace.connect(buyer).purchase(listingId, 1)).to.be.revertedWith(
-        "listing is not live",
-      );
-    });
-
-    it("Should set the price and emit Live", async () => {
-      await expect(await marketplace.connect(seller).setPrice(listingId, price))
-        .to.emit(marketplace, "Live")
-        .withArgs(listingId);
-    });
-
-    it("Should have the right listing information", async () => {
-      const tx = await marketplace.getListing(listingId);
-      expect(tx.token).to.equal(rooster.address);
-      expect(tx.tokenId).to.equal(nftId);
-      expect(tx.price).to.eq(price);
-      expect(tx.owner).to.eq(seller.address);
-      expect(tx.fungible).to.eq(false);
-      expect(tx.inactive).to.eq(false);
-    });
-
-    it("Should not allow double relisting", async () => {
-      await expect(
-        marketplace.connect(seller).makeListing(rooster.address, nftId, 1, 0, false),
-      ).to.be.revertedWith("nft already listed");
-    });
-
-    it("Should revert purchase with insufficient funds", async () => {
-      await expect(marketplace.connect(buyer).purchase(listingId, 1)).to.be.revertedWith(
-        "ERC20: insufficient allowance",
-      );
-    });
-
-    it("Should proceed purchase with sufficient funds", async () => {
-      const listing = await marketplace.getListing(listingId);
-      await gwit.connect(buyer).approve(marketplace.address, listing.price);
-
-      await expect(await gwit.allowance(buyer.address, marketplace.address)).to.eq(listing.price);
-
-      const tx = await marketplace.connect(buyer).purchase(listingId, 1);
-      await expect(tx).to.emit(marketplace, "Sold");
-    });
-
-    it("Should transfer the nft to the buyer", async () => {
-      await expect(await rooster.ownerOf(nftId)).to.equal(buyer.address);
-    });
-  });
+  }
 
   describe("Listing of ERC1155", async () => {
     it("TODO: Should succ", async () => {

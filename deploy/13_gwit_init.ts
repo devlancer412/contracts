@@ -10,7 +10,10 @@ const func: DeployFunction = async (hre) => {
   const gwit = await connect(GWITToken__factory);
   const farm_pool = await connect(MasterChef__factory);
 
-  await gwit.init(grp.address, farm_pool.address);
+  const grpAddr = await gwit.grp();
+  if (grpAddr !== grp.address) {
+    await gwit.init(grp.address, farm_pool.address);
+  }
 };
 
 export default func;
