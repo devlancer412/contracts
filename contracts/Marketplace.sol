@@ -93,6 +93,24 @@ contract Marketplace is Ownable {
     return this.onERC1155Received.selector;
   }
 
+  function setFeeRate(uint256 _feeRate) public onlyOwner {
+    feeRate = _feeRate;
+  }
+
+  function restock(uint256 listingId, uint256 amount) public {
+    require(!listings[listingId].fungible, "can only restock fungible tokens");
+    require(listings[listingId].owner == msg.sender, "not listing owner");
+
+    IERC1155(listings[listingId].token).safeTransferFrom(
+      msg.sender,
+      address(this),
+      listings[listingId].tokenId,
+      amount,
+      ""
+    );
+    stocks[listingId] += amount;
+  }
+
   function makeListing(
     address token,
     uint256 tokenId,
@@ -109,6 +127,10 @@ contract Marketplace is Ownable {
       IERC721(token).transferFrom(msg.sender, address(this), tokenId);
     }
 
+    if (feeRate != 0) {
+      price += (price * feeRate) / 10_000;
+    }
+
     listings[nextId] = Listing(token, tokenId, price, msg.sender, fungible, false);
 
     emit Listed(nextId, token, tokenId, msg.sender, amount, price, fungible);
@@ -121,6 +143,10 @@ contract Marketplace is Ownable {
   function setPrice(uint256 listingId, uint256 price) public {
     require(listings[listingId].owner == msg.sender, "only owner can set the listing as live");
     require(!listings[listingId].inactive, "cannnot reactivate revoked/sold listing");
+
+    if (feeRate != 0) {
+      price += (price * feeRate) / 10_000;
+    }
 
     listings[listingId].price = price;
     if (price > 0) {
@@ -195,5 +221,12 @@ contract Marketplace is Ownable {
     operatingToken.transferFrom(msg.sender, listing.owner, price);
 
     emit Sold(listingId, msg.sender, amount);
+  }
+
+  function purchaseBulk(uint256[] calldata listingIds, uint256[] calldata amounts) public {
+    require(listingIds.length == amounts.length, "array count mismatch");
+    for (uint256 i = 0; i < listingIds.length; i++) {
+      purchase(listingIds[i], amounts[i]);
+    }
   }
 }
