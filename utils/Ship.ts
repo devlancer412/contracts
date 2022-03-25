@@ -15,7 +15,7 @@ export interface Accounts {
 class Ship {
   public accounts: Accounts;
   public users: SignerWithAddress[];
-  private hre: HardhatRuntimeEnvironment;
+  public hre: HardhatRuntimeEnvironment;
   private log: boolean | undefined;
 
   constructor(hre: HardhatRuntimeEnvironment, accounts: Accounts, users: SignerWithAddress[], log?: boolean) {
@@ -52,6 +52,10 @@ class Ship {
       addresses.push(user.address);
     }
     return addresses;
+  }
+
+  get provider() {
+    return this.hre.ethers.provider;
   }
 
   deploy = async <T extends ContractFactory>(
