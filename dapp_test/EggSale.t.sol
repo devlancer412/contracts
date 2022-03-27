@@ -185,6 +185,14 @@ contract EggSaleTest is EggSaleSetup {
     buyEggs(alice, 2);
   }
 
+  function testCannotBuyIfPaused() public {
+    setNonWhitelistSale();
+    eggsale.pause();
+
+    vm.expectRevert(bytes("Pausable: paused"));
+    buyEggs(alice, 2);
+  }
+
   function testCannotBuyIfItExceedsMaxSupply() public {
     setNonWhitelistSale();
     depositMaticForCashback();
