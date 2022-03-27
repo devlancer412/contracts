@@ -2,20 +2,21 @@
 pragma solidity ^0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
+import "./AccessControl.sol";
 import "hardhat/console.sol";
 
 interface Egg {
   function mintEggs(address to, uint256 amount) external;
 
+  function setBaseURI(string memory baseURI_) external;
+
   function purchasedAmount(address user) external view returns (uint8);
 }
 
 //solhint-disable avoid-low-level-calls
-contract RoosterEggSale is Pausable, Ownable {
-  //Presale struct
-  Presale public presale;
+contract RoosterEggSale is AccessControl {
+  //EggSale struct
+  EggSale public eggsale;
 
   //RoosterEgg address
   Egg public immutable egg;
@@ -26,24 +27,22 @@ contract RoosterEggSale is Pausable, Ownable {
   //Vault address
   address public immutable vault;
 
-  //Signer address
+  //Whitelist verification signer address
   address public immutable signer;
 
   //Total minted
   uint256 public minted;
 
-  //Max supply
+  //Max supply of eggs
   uint256 public constant maxSupply = 150_000;
 
-  //user => amount
+  //User egg purchased amount (user => amount)
   mapping(address => uint256) public purchasedAmount;
-  //Egg minter
-  mapping(address => bool) public minter;
-  //Nonce used
+  //Check if nonce is used (nonce => boolean)
   mapping(bytes32 => bool) private _nonceUsed;
 
   event Purchase(address indexed purchaser, uint256 amount, uint256 value);
-  event NewPresale(
+  event EggSaleSet(
     uint256 supply,
     uint256 cap,
     uint256 openingTime,
@@ -55,7 +54,7 @@ contract RoosterEggSale is Pausable, Ownable {
   event MaticCashback(address user, uint256 amount);
   event MaticCashbackFailed(address indexed user, uint256 balance);
 
-  struct Presale {
+  struct EggSale {
     uint32 supply;
     uint32 cap;
     uint32 sold;
@@ -73,14 +72,14 @@ contract RoosterEggSale is Pausable, Ownable {
   }
 
   constructor(
-    IERC20 usdc_,
-    Egg egg_,
+    address usdc_,
+    address egg_,
     address vault_,
     address signer_,
     uint256 minted_
   ) {
-    usdc = usdc_;
-    egg = egg_;
+    usdc = IERC20(usdc_);
+    egg = Egg(egg_);
     vault = vault_;
     signer = signer_;
     minted = minted_;
@@ -89,7 +88,7 @@ contract RoosterEggSale is Pausable, Ownable {
   receive() external payable {}
 
   function isOpen() public view returns (bool) {
-    return block.timestamp >= presale.openingTime && block.timestamp <= presale.closingTime;
+    return block.timestamp >= eggsale.openingTime && block.timestamp < eggsale.closingTime;
   }
 
   function getTime() external view returns (uint32) {
@@ -102,30 +101,36 @@ contract RoosterEggSale is Pausable, Ownable {
     Sig calldata sig
   ) external whenNotPaused {
     address purchaser = msg.sender;
-    uint256 value = presale.price * amount;
-    uint256 cashbackAmount = presale.cashback * amount;
+    uint256 value = eggsale.price * amount;
+    uint256 cashbackAmount = eggsale.cashback * amount;
 
-    //Checks
+    //Basic chekcs
     require(isOpen(), "Not open");
     require(minted + amount <= maxSupply, "Exceeds max supply");
-    require(presale.sold + amount <= presale.supply, "Exceeds supply");
+    require(eggsale.sold + amount <= eggsale.supply, "Exceeds supply");
     require(
-      purchasedAmount[purchaser] + egg.purchasedAmount(purchaser) + amount <= presale.cap,
+      purchasedAmount[purchaser] + egg.purchasedAmount(purchaser) + amount <= eggsale.cap,
       "Exceeds cap"
     );
-    if (presale.whitelist) {
-      require(_nonceUsed[nonce], "Nonce used");
+
+    //Whitelist check
+    if (eggsale.whitelist) {
+      require(!_nonceUsed[nonce], "Nonce used");
       require(_isWhitelisted(purchaser, nonce, sig), "Not whitelisted");
       _nonceUsed[nonce] = true;
     }
 
     //Effects
-    minted += amount;
-    presale.sold += amount;
-    purchasedAmount[purchaser] += amount;
+    unchecked {
+      minted += amount;
+      eggsale.sold += amount;
+      purchasedAmount[purchaser] += amount;
+    }
 
     //Interactions
     usdc.transferFrom(purchaser, vault, value);
+
+    egg.mintEggs(purchaser, amount);
 
     if (cashbackAmount > 0) {
       (bool success, ) = payable(purchaser).call{value: cashbackAmount}("");
@@ -154,7 +159,7 @@ contract RoosterEggSale is Pausable, Ownable {
 
   /* Only owner functions */
 
-  function setPresale(
+  function setEggSale(
     uint32 openingTime,
     uint32 closingTime,
     uint32 supply,
@@ -163,49 +168,38 @@ contract RoosterEggSale is Pausable, Ownable {
     uint256 price,
     uint256 cashback
   ) external onlyOwner {
+    require(closingTime >= openingTime, "Closing time < Opening time");
+
     if (!isOpen()) {
-      require(closingTime >= openingTime, "Closing time < Opening time");
       require(openingTime > block.timestamp, "Invalid opening time");
-      presale.openingTime = openingTime;
+      eggsale.openingTime = openingTime;
+      eggsale.sold = 0;
     }
 
-    presale.closingTime = closingTime;
-    presale.supply = supply;
-    presale.cap = cap;
-    presale.whitelist = whitelist;
-    presale.price = price;
-    presale.cashback = cashback;
+    eggsale.closingTime = closingTime;
+    eggsale.supply = supply;
+    eggsale.cap = cap;
+    eggsale.whitelist = whitelist;
+    eggsale.price = price;
+    eggsale.cashback = cashback;
 
-    emit NewPresale(supply, cap, openingTime, closingTime, whitelist, price, cashback);
+    emit EggSaleSet(supply, cap, openingTime, closingTime, whitelist, price, cashback);
   }
 
-  function mintEggs(address to, uint256 amount) external {
-    require(minter[msg.sender], "Only minter");
-    require(minted + amount <= presale.supply, "Exceeds supply");
-    minted += amount;
+  function mintEggs(address to, uint256 amount) external onlyMinter {
+    require(minted + amount <= maxSupply, "Exceeds max supply");
+    unchecked {
+      minted += amount;
+    }
     egg.mintEggs(to, amount);
   }
 
-  function withdrawMatic(uint256 amount) external {
-    address user = msg.sender;
-    require(user == owner() || user == vault, "Invalid access");
+  function setBaseURI(string memory baseURI_) external onlyOwner {
+    egg.setBaseURI(baseURI_);
+  }
+
+  function withdrawMatic(uint256 amount) external onlyOwner {
     (bool success, ) = payable(vault).call{value: amount}("");
     require(success, "Withdraw failed");
-  }
-
-  function grantMinterRole(address user) external onlyOwner {
-    minter[user] = true;
-  }
-
-  function revokeMinterRole(address user) external onlyOwner {
-    minter[user] = false;
-  }
-
-  function pause() external onlyOwner {
-    _pause();
-  }
-
-  function unpause() external onlyOwner {
-    _unpause();
   }
 }

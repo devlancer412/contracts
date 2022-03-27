@@ -12,6 +12,7 @@ import "hardhat-deploy";
 import "hardhat-gas-reporter";
 import "hardhat-watcher";
 import "solidity-coverage";
+import "hardhat-storage-layout";
 import "dotenv/config";
 
 import "./tasks/account";
@@ -64,6 +65,11 @@ const config: HardhatUserConfig = {
           optimizer: {
             enabled: process.env.OPTIMIZER_ENABLED === "true",
             runs: Number(process.env.OPTIMIZER_RUNS || 1),
+          },
+          outputSelection: {
+            "*": {
+              "*": ["storageLayout"],
+            },
           },
         },
       },
