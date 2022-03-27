@@ -14,11 +14,13 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
-    env:
-      RPC_URL_POLYGON: ${{ secrets.RPC_URL_POLYGON }}
-
     steps:
       - uses: actions/checkout@v2
+
+      - name: Create env
+        run: |
+          touch .env
+          echo RPC_URL_POLYGON=${{ secrets.RPC_URL_POLYGON }} >> .env
 
       - name: Set up Node.js version
         uses: actions/setup-node@v1
