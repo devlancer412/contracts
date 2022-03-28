@@ -65,6 +65,11 @@ class Time {
     return time;
   };
 
+  static fromDay = (d: number): Time => {
+    const time = new Time(d * 1000 * 60 * 60 * 24);
+    return time;
+  };
+
   static fromNow = (ms = 0): Time => {
     const time = new Time(Date.now() + ms);
     return time;
