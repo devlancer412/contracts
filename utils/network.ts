@@ -1,5 +1,5 @@
 export function node_url(networkName: string): string {
-  const uri = process.env["RPC_URL_" + networkName.toUpperCase()];
+  const uri = process.env[networkName.toUpperCase() + "_RPC_URL"];
   if (uri && uri !== "") {
     return uri;
   } else {

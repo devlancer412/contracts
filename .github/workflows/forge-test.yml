@@ -20,7 +20,7 @@ jobs:
       - name: Create env
         run: |
           touch .env
-          echo RPC_URL_POLYGON=${{ secrets.RPC_URL_POLYGON }} >> .env
+          echo POLYGON_RPC_URL=${{ secrets.RPC_URL_POLYGON }} >> .env
 
       - name: Set up Node.js version
         uses: actions/setup-node@v1

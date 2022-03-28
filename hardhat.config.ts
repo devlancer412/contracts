@@ -26,7 +26,7 @@ const config: HardhatUserConfig = {
       forking: {
         enabled: process.env.FORKING_ENABLED === "true",
         blockNumber: Number(process.env.FORKING_BLOCK_NUM) || undefined,
-        url: node_url("mainnet"),
+        url: node_url("polygon"),
       },
       accounts: accounts("localhost"),
       mining: {
@@ -42,12 +42,12 @@ const config: HardhatUserConfig = {
     polygon: {
       url: node_url("polygon"),
       accounts: accounts("polygon"),
-      tags: ["prod"],
+      tags: ["prod", "live"],
     },
     rinkeby: {
       url: node_url("rinkeby"),
       accounts: accounts("rinkeby"),
-      tags: ["test"],
+      tags: ["test", "live"],
     },
   },
   etherscan: {

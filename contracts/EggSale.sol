@@ -91,10 +91,6 @@ contract RoosterEggSale is AccessControl {
     return block.timestamp >= eggsale.openingTime && block.timestamp < eggsale.closingTime;
   }
 
-  function getTime() external view returns (uint32) {
-    return uint32(block.timestamp);
-  }
-
   function buyEggs(
     uint8 amount,
     bytes32 nonce,
