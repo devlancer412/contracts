@@ -11,6 +11,8 @@ interface Egg {
 
   function setBaseURI(string memory baseURI_) external;
 
+  function transferOwnership(address newOwner) external;
+
   function purchasedAmount(address user) external view returns (uint8);
 }
 
@@ -198,5 +200,9 @@ contract RoosterEggSale is AccessControl {
   function withdrawMatic(uint256 amount) external onlyOwner {
     (bool success, ) = payable(vault).call{value: amount}("");
     require(success, "Withdraw failed");
+  }
+
+  function transferEggContractOwnership(address newOwner) external onlyOwner {
+    egg.transferOwnership(newOwner);
   }
 }

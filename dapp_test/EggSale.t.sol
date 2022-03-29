@@ -65,6 +65,17 @@ contract EggSaleTest is EggSaleSetup {
     eggsale.withdrawMatic(1 ether);
   }
 
+  function testTransferEggOwnership() public {
+    eggsale.transferEggContractOwnership(alice);
+    assertEq(egg.owner(), alice);
+  }
+
+  function testCannnotTransferEggOwnershipIfNotOwner() public {
+    vm.prank(alice);
+    vm.expectRevert(bytes("Only owner"));
+    eggsale.transferEggContractOwnership(alice);
+  }
+
   function testSetEggSale() public {
     uint32 time = uint32(block.timestamp) + 10;
     eggsale.setEggSale(time, time + 2 days, 1000, 10, true, 30 * 10e6, 45000000000000000);
