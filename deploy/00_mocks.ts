@@ -7,7 +7,7 @@ const func: DeployFunction = async (hre) => {
   const usdc = await deploy(MockUsdc__factory);
   let nonce = await hre.ethers.provider.getTransactionCount(accounts.deployer.address);
   if (usdc.newlyDeployed) {
-    for (let i = 1; i < 10; i++) {
+    for (let i = 1; i < 5; i++) {
       const tx = await usdc.contract.transfer(users[i].address, toWei(1000, 6), { nonce: nonce++ });
       await tx.wait();
     }

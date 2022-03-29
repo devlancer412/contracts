@@ -19,7 +19,7 @@ const func: DeployFunction = async (hre) => {
     const wallet = accounts.vault.address;
     const egg = await connect(RoosterEgg__factory);
     const signer = accounts.signer.address;
-    const minted = 7172;
+    const minted = 52;
     await deploy(RoosterEggSale__factory, {
       args: [usdc.address, egg.address, wallet, signer, minted],
     });

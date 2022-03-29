@@ -3,7 +3,8 @@ pragma solidity ^0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./AccessControl.sol";
-import "hardhat/console.sol";
+
+// import "hardhat/console.sol";
 
 interface Egg {
   function mintEggs(address to, uint256 amount) external;
