@@ -6,6 +6,7 @@ import {stdCheats} from "../lib/stdlib.sol";
 import {MockContract} from "../lib/MockContract.sol";
 import {DSTest} from "../lib/DSTest.sol";
 import {AddressBook} from "../utils/AddressBook.sol";
+import {console} from "../lib/console.sol";
 
 abstract contract BasicSetup is DSTest, AddressBook {
   Vm vm = Vm(HEVM_ADDRESS);

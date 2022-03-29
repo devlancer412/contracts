@@ -93,4 +93,16 @@ contract AccessControlTest is BasicSetup {
     vm.expectRevert(bytes("No address(0)"));
     ac.grantMinterRole(address(0));
   }
+
+  function testCannotPauseIfNotOwner() public {
+    vm.prank(bob);
+    vm.expectRevert(bytes("Only owner"));
+    ac.pause();
+  }
+
+  function testCannotUnPauseIfNotOwner() public {
+    vm.prank(bob);
+    vm.expectRevert(bytes("Only owner"));
+    ac.unpause();
+  }
 }

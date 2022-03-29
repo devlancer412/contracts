@@ -6,14 +6,7 @@ const func: DeployFunction = async (hre) => {
   const { deploy, connect, accounts } = await Ship.init(hre);
 
   const initialTokenId = 1;
-  if (hre.network.tags.prod) {
-    const usdcAddr = "0x2791bca1f2de4661ed88a30c99a7a9449aa84174";
-    const walletAddr = "0x2708D27F671B837123D17099C8871bE244D50a61";
-    const baseUri = "https://api.roosterwars.io/metadata/egg/";
-    await deploy(RoosterEgg__factory, {
-      args: [usdcAddr, walletAddr, initialTokenId, baseUri],
-    });
-  } else {
+  if (!hre.network.tags.prod) {
     const usdc = await connect(MockUsdc__factory);
     const wallet = accounts.vault.address;
     const baseUri = "https://mds-roosterwars-backend-test.azurewebsites.net/egg/metadata/";

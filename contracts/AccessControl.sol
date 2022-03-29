@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-contract AccessControl {
+import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
+
+contract AccessControl is Pausable {
   //Address of current owner
   address public owner;
   //Address of new owner (Note: new owner must pull to be an owner)
@@ -57,5 +59,13 @@ contract AccessControl {
     require(isMinter[account], "Not granted");
     isMinter[account] = false;
     emit MinterRoleRevoked(account);
+  }
+
+  function pause() external onlyOwner {
+    _pause();
+  }
+
+  function unpause() external onlyOwner {
+    _unpause();
   }
 }
