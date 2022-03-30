@@ -5,6 +5,8 @@ cache/
 coverage/
 package.json
 types/**/*.ts
+.forge/
+forge_test/lib
 
 # directories
 .yarn/

@@ -137,7 +137,7 @@ contract EggSaleTest is EggSaleSetup {
   }
 
   function testBuyEggsFromNonWhitelistSale(uint8 amount) public {
-    if (amount > 10) return;
+    vm.assume(amount <= 10);
 
     setNonWhitelistSale();
     depositMaticForCashback();
@@ -157,7 +157,7 @@ contract EggSaleTest is EggSaleSetup {
   }
 
   function testBuyEggsFromWhitelistSale(uint8 amount) public {
-    if (amount > 10) return;
+    vm.assume(amount <= 10);
 
     setWhitelistSale();
     depositMaticForCashback();
@@ -178,7 +178,7 @@ contract EggSaleTest is EggSaleSetup {
   }
 
   function testBuyEggsWithoutMaticCashback(uint8 amount) public {
-    if (amount > 10 || amount == 0) return;
+    vm.assume(amount <= 10 && amount != 0);
 
     setNonWhitelistSale();
     gotoOpeningTime();
@@ -244,7 +244,7 @@ contract EggSaleTest is EggSaleSetup {
   }
 
   function testCannotBuyIfItExceedsCap(uint8 amount) public {
-    if (amount <= 10) return;
+    vm.assume(amount > 10);
 
     setNonWhitelistSale();
     depositMaticForCashback();
@@ -255,7 +255,7 @@ contract EggSaleTest is EggSaleSetup {
   }
 
   function testCannotBuyIfItExceedsCapIncludingPreviousSale(uint8 amount1, uint8 amount2) public {
-    if (amount1 > 10 || uint256(amount1) + amount2 <= 10) return;
+    vm.assume(amount1 <= 10 && uint256(amount1) + amount2 > 10);
 
     //Modify purchased amount vaule in egg contract
     uint256 purchasedAmountSlot = 11;
