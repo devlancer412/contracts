@@ -1,9 +1,0 @@
-[submodule "forge_test/lib/ds-test"]
-	path = forge_test/lib/ds-test
-	url = https://github.com/dapphub/ds-test
-[submodule "forge_test/lib/mock-contract"]
-	path = forge_test/lib/mock-contract
-	url = https://github.com/gnosis/mock-contract
-[submodule "forge_test/lib/forge-std"]
-	path = forge_test/lib/forge-std
-	url = https://github.com/brockelmore/forge-std
