@@ -1,47 +1,87 @@
-## Usage
+## Version
 
-### Pre Requisites
+**2.0.0-alpha.1**
 
-Before running any command, make sure to install dependencies:
+## Setting up local development
 
-```
-$ yarn 
-```
+### Pre-requisites
 
-Before deploying to a live network or running tests, make sure to fill environment variables: 
+- [Node.js](https://nodejs.org/en/) version 14.0+ and [yarn](https://yarnpkg.com/) for Javascript environment.
+- [Foundry](https://github.com/gakonst/foundry#installation) for running forge tests.
 
-```
-$ cp .env.example .env
-```
+1. Clone this repository
 
-### Compile
-
-Compile the smart contracts with Hardhat:
-
-```
-$ yarn compile
+```bash
+git clone https://github.com/Metadhana-Studio/roosterwars-contracts
 ```
 
-### Deploy contract to a live network + validate to etherscan
+2. Install dependencies
 
-Note: requires mnemonic and Moralis API key
-
-```
-$ npx hardhat run scripts/token-deploy.ts --network kovan
+```bash
+yarn
 ```
 
-### Test contract locally (Kovan mainnet fork)
+3. Set environment variables on the .env file according to .env.example
 
-Note: requires Moralis API key
-
+```bash
+cp .env.example .env
+vim .env
 ```
-$ yarn test
+
+4. Compile Solidity programs
+
+```bash
+yarn compile
 ```
 
-### Recompile contracts and regenerate types
+### Development
 
-Note: May need to give permission
+- To run hardhat tests
 
+```bash
+yarn test:hh
 ```
-$ yarn build
+
+- To run forge(foundry) tests
+
+```bash
+yarn test:forge
 ```
+
+- To start local blockchain
+
+```bash
+yarn localnode
+```
+
+- To run scripts on Rinkeby test
+
+```bash
+yarn script:rinkeby ./scripts/....
+```
+
+- To run deploy contracts on Rinkeby testnet (uses Hardhat deploy)
+
+```bash
+yarn deploy:rinkeby --tags ....
+```
+
+... see more useful commands in package.json file
+
+## Main Dependencies
+
+Contracts are developed using well-known open-source software for utility libraries and developement tools. You can read more about each of them.
+
+[OpenZeppelin](https://github.com/OpenZeppelin/openzeppelin-contracts)
+
+[Solmate](https://github.com/Rari-Capital/solmate)
+
+[Hardhat](https://github.com/nomiclabs/hardhat)
+
+[hardhat-deploy](https://github.com/wighawag/hardhat-deploy)
+
+[foundry](https://github.com/gakonst/foundry)
+
+[ethers.js](https://github.com/ethers-io/ethers.js/)
+
+[TypeChain](https://github.com/dethcrypto/TypeChain)
