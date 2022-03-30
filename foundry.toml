@@ -1,5 +1,5 @@
 [default]
-src = 'forge_test'                                             # the source directory
+src = 'forge_test/src'                                             # the source directory
 out = '.forge'                                                 # the output directory (for artifacts)
 remappings = []                                               # a list of remappings
 libraries = []                                                # a list of deployed libraries to link against

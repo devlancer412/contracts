@@ -17,6 +17,9 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - name: Checkout submodules
+        run: git submodule update --init --recursive
+
       - name: Create env
         run: |
           touch .env

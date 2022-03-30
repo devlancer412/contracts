@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import {Vm} from "../lib/Vm.sol";
-import {DSTest} from "../lib/DSTest.sol";
+import {Vm} from "forge-std/Vm.sol";
+import {DSTest} from "ds-test/test.sol";
 
 abstract contract AddressBook is DSTest {
   Vm private vm = Vm(HEVM_ADDRESS);
