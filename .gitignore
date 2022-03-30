@@ -16,8 +16,7 @@ yarn-error.log
 .yalc
 yalc.lock
 
-
-.dapp
+.forge
 abis
 types
 .idea

@@ -1,6 +1,6 @@
 [default]
-src = 'dapp_test'                                             # the source directory
-out = '.dapp'                                                 # the output directory (for artifacts)
+src = 'forge_test'                                             # the source directory
+out = '.forge'                                                 # the output directory (for artifacts)
 remappings = []                                               # a list of remappings
 libraries = []                                                # a list of deployed libraries to link against
 cache = true                                                  # whether to cache builds or not
