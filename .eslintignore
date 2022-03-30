@@ -1,17 +1,19 @@
 # directories
 .yarn/
-**/.coverage_artifacts
-**/.coverage_cache
-**/.coverage_contracts
-**/artifacts
-**/build
-**/cache
-**/coverage
-**/node_modules
-**/types
-**/deployments
-**/z
-**/scripts
+.coverage_artifacts
+.coverage_cache
+.coverage_contracts
+artifacts
+build
+cache
+coverage
+node_modules
+types
+deployments
+z
+scripts
+.forge
+forge_test/lib
 
 # files
 *.env
