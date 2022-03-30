@@ -16,7 +16,7 @@ export interface Signature {
 }
 
 export interface SignedClaim {
-  nonce: number;
+  nonce: BigNumberish;
   target: string;
   amount: BigNumberish;
   signature: Signature;
@@ -51,8 +51,9 @@ export async function generate_claim(
   issuerWallet: SignerWithAddress,
   target: string,
   amount: BigNumberish,
+  nonce: BigNumberish,
 ): Promise<SignedClaim> {
-  const nonce: number = Date.now();
+  // const nonce: BigNumberish = Date.now();
   amount = BigNumber.from(amount);
   const hash = solidityKeccak256(["uint", "address", "uint"], [nonce, target, amount]);
   const signature = await issuerWallet.signMessage(ethers.utils.arrayify(hash));

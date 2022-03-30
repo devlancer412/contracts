@@ -165,12 +165,14 @@ contract Marketplace is Ownable {
     Listing storage listing = listings[listingId];
 
     if (listing.fungible) {
+      require(stocks[listingId] > 0, "listing has no tokens");
       IERC1155 op = IERC1155(listings[listingId].token);
       op.safeTransferFrom(address(this), msg.sender, listing.tokenId, stocks[listingId], "");
       stocks[listingId] = 0;
     } else {
+      console.log("Transferring to %s", msg.sender);
       IERC721 op = IERC721(listing.token);
-      op.safeTransferFrom(address(this), msg.sender, listing.tokenId);
+      op.transferFrom(address(this), msg.sender, listing.tokenId);
       listings[listingId].inactive = true;
     }
 
