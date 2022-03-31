@@ -9,7 +9,6 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "hardhat/console.sol";
 import "./Claimable.sol";
 
@@ -158,6 +157,7 @@ contract Store is Ownable, Claimable {
     uint256 max
   ) internal view returns (bytes memory payload) {
     if (tokentype == TokenType.ERC1155) {
+      console.log("Mining as ERC1155");
       payload = abi.encodeWithSignature("mint(address,uint256,uint256)", recv, id, amount);
     } else if (tokentype == TokenType.ERC1155EXT) {
       uint256 unique = uint256(keccak256(abi.encodePacked(r, i)));
@@ -192,10 +192,10 @@ contract Store is Ownable, Claimable {
   ) public {
     require(claimData.target == msg.sender, "Store:NOT_AUTHORIZED");
     require(validateClaim(claimData), "Store:INVALID_CLAIM");
+    require(claimData.amount == last_purchase[msg.sender], "Store:OLD_CLAIM");
     _burn_nonce(claimData.nonce);
     last_purchase[msg.sender] = block.number;
 
-    uint256 balance = claimData.amount;
     require(listingIds.length == amounts.length, "Store:PARAMETER_MISMATCH");
 
     for (uint256 i = 0; i < listingIds.length; i++) {
@@ -209,14 +209,13 @@ contract Store is Ownable, Claimable {
 
       stocks[listingId] -= amount;
       uint256 price = listing.price * amount;
-      balance -= price;
       if (feeRate != 0) {
         uint256 fee = (price * feeRate) / 10_000;
         price -= fee;
         // Send the fee to the contract owner
-        operatingToken.transfer(vault, fee);
+        operatingToken.transferFrom(msg.sender, vault, fee);
       }
-      operatingToken.transfer(listing.owner, price);
+      operatingToken.transferFrom(msg.sender, listing.owner, price);
 
       bytes memory payload = _generatePayload(
         to,
@@ -232,11 +231,6 @@ contract Store is Ownable, Claimable {
       require(ok);
 
       emit Sold(listingId, claimData.target, amount);
-    }
-
-    // Return unused tokens to the buyer
-    if (balance > 0) {
-      operatingToken.transfer(msg.sender, balance);
     }
   }
 

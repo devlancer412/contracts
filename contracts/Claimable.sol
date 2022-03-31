@@ -47,9 +47,6 @@ abstract contract Claimable is Ownable {
   }
 
   function validateClaim(Claim calldata claimData) public view returns (bool) {
-    require(claimData.amount > 0, "Claimable:CLAIM_AMT_LT_ZERO");
-    // Validation
-
     bytes32 messageHash = keccak256(
       abi.encodePacked(claimData.nonce, claimData.target, claimData.amount)
     );

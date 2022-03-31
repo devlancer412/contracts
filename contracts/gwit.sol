@@ -1,15 +1,15 @@
+// SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.2;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Capped.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
 import "hardhat/console.sol";
 
 import "./GRP.sol";
 import "./FarmPool.sol";
 
-contract GWITToken is ERC20, Ownable {
+contract GWITToken is ERC20Permit, Ownable {
   address private constant _BURN_ADDRESS = 0x0000000000000000000000000000000000001337;
   address public farm_pool;
   address public grp;
@@ -23,8 +23,8 @@ contract GWITToken is ERC20, Ownable {
   mapping(address => uint256) private tax_table;
   event Taxed(address from, address to, uint256 tax_amount);
 
-  constructor(uint256 _initialSupply) ERC20("GWIT", "GWIT") {
-    initialSupply = SafeMath.mul(_initialSupply, 1e18);
+  constructor(uint256 _initialSupply) ERC20Permit("GWIT") ERC20("GWIT", "GWIT") {
+    initialSupply = _initialSupply * 1e18;
   }
 
   function init(address _grp, address _farm_pool) public onlyOwner {
@@ -34,9 +34,9 @@ contract GWITToken is ERC20, Ownable {
     farm_pool = _farm_pool;
 
     // token distribution
-    _mint(grp, SafeMath.div(SafeMath.mul(initialSupply, 46), 100)); // 46%
-    _mint(farm_pool, SafeMath.div(SafeMath.mul(initialSupply, 10), 100)); // 10%
-    _mint(msg.sender, SafeMath.div(SafeMath.mul(initialSupply, 44), 100)); // 44%
+    _mint(grp, (initialSupply * 46) / 100); // 46%
+    _mint(farm_pool, (initialSupply * 10) / 100); // 10%
+    _mint(msg.sender, (initialSupply * 44) / 100); // 44%
 
     _init = true;
     emit Initialized();
@@ -59,7 +59,7 @@ contract GWITToken is ERC20, Ownable {
     if (taxRate(to) != 0) {
       require(amount != 0, "amount should be > 0");
       uint256 tax = calcTaxRate(to, amount);
-      amount = SafeMath.sub(amount, tax);
+      amount -= tax;
 
       // send the taxed tokens to the tax_address
       ERC20._transfer(from, tax_address, tax);
@@ -89,6 +89,6 @@ contract GWITToken is ERC20, Ownable {
     if (taxRate(to) == 0) {
       return 0;
     }
-    return SafeMath.div(SafeMath.mul(amount, taxRate(to)), 10_000); // tax_rate 525 = 5.25%
+    return (amount * taxRate(to)) / 10_000;
   }
 }
