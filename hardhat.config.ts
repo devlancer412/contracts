@@ -21,7 +21,7 @@ const config: HardhatUserConfig = {
   defaultNetwork: "hardhat",
   networks: {
     hardhat: {
-      chainId: 31337,
+      chainId: 1337,
       forking: {
         enabled: process.env.FORKING_ENABLED === "true",
         blockNumber: Number(process.env.FORKING_BLOCK_NUM) || undefined,
@@ -30,7 +30,7 @@ const config: HardhatUserConfig = {
       accounts: accounts("localhost"),
       mining: {
         auto: process.env.AUTO_MINING_ENABLED === "true",
-        interval: Number(process.env.MINING_INTERVAL),
+        // interval: Number(process.env.MINING_INTERVAL),
       },
     },
     localhost: {

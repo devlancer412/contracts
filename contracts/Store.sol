@@ -42,6 +42,8 @@ contract Store is Ownable, Claimable {
   mapping(uint256 => uint256) public stocks;
   // { account: allowed }
   mapping(address => bool) public allowedLister;
+  // { account: block.number}
+  mapping(address => uint256) public last_purchase;
 
   event Listed(
     uint256 listingId,
@@ -159,6 +161,7 @@ contract Store is Ownable, Claimable {
       payload = abi.encodeWithSignature("mint(address,uint256,uint256)", recv, id, amount);
     } else if (tokentype == TokenType.ERC1155EXT) {
       uint256 unique = uint256(keccak256(abi.encodePacked(r, i)));
+
       if (max > 0) {
         unique = unique % max;
       }
@@ -173,6 +176,7 @@ contract Store is Ownable, Claimable {
       payload = abi.encodeWithSignature("mint(address)", recv);
     } else if (tokentype == TokenType.ERC721EXT) {
       uint256 unique = uint256(keccak256(abi.encodePacked(r, i)));
+
       if (max > 0) {
         unique = unique % max;
       }
@@ -181,6 +185,7 @@ contract Store is Ownable, Claimable {
   }
 
   function purchase(
+    address to,
     uint256[] calldata listingIds,
     uint256[] calldata amounts,
     Claim calldata claimData
@@ -188,6 +193,7 @@ contract Store is Ownable, Claimable {
     require(claimData.target == msg.sender, "Store:NOT_AUTHORIZED");
     require(validateClaim(claimData), "Store:INVALID_CLAIM");
     _burn_nonce(claimData.nonce);
+    last_purchase[msg.sender] = block.number;
 
     uint256 balance = claimData.amount;
     require(listingIds.length == amounts.length, "Store:PARAMETER_MISMATCH");
@@ -213,7 +219,7 @@ contract Store is Ownable, Claimable {
       operatingToken.transfer(listing.owner, price);
 
       bytes memory payload = _generatePayload(
-        claimData.target,
+        to,
         listing.tokentype,
         listing.tokenId,
         amount,

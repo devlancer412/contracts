@@ -56,7 +56,7 @@ const keypress = async () => {
   );
 };
 
-describe("Store test", () => {
+describe.only("Store test", () => {
   before(async () => {
     const scaffold = await setup();
     signer = scaffold.users[0];
@@ -67,6 +67,7 @@ describe("Store test", () => {
     gwit = await scaffold.ship.connect(GWITToken__factory);
     rooster = await scaffold.ship.connect(Rooster__factory);
     console.log("Store Address", store.address);
+    console.log("Signer Address", signer.address);
     // console.log("Press any key to continue");
     // await keypress();
 
@@ -87,7 +88,7 @@ describe("Store test", () => {
       const tokenType = 3; // ERC721EX
       const tokenAddress = rooster.address;
       const tokenId = 0; // Only for ERC1155 use
-      const amount = 500; // Only mint 500 roosters
+      const amount = 1; // Only mint 1 rooster
       const price = 100; // each mint costs 100 of the operating token
       const maxval = 10; // the maximum value to pass to the unique parameter, leave to 0 to send a random uint256 value [0x00_00...00, 0xFF_FF...FF];
       const rx = await (
@@ -116,10 +117,13 @@ describe("Store test", () => {
         const nonce = BigNumber.from(tx.blockHash);
         const claim = await generate_claim(signer, buyer.address, transfer_amount, nonce);
 
-        const purchaseTx = await store.connect(buyer).purchase([listingId], [amount], claim);
+        const purchaseTx = await store.connect(buyer).purchase(buyer.address, [listingId], [amount], claim);
         await expect(purchaseTx).to.emit(store, "Sold").withArgs(listingId, buyer.address, amount);
 
         await expect(await rooster.balanceOf(buyer.address)).to.eq(old_balance.add(1));
+        await expect(await store.stocks(listingId)).to.eq(0);
+        console.log("Last Purchase", await (await store.last_purchase(buyer.address)).toString());
+        console.log("Buyer", buyer.address);
       });
     });
   });

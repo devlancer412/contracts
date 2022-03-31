@@ -25,7 +25,6 @@ contract GWITToken is ERC20, Ownable {
 
   constructor(uint256 _initialSupply) ERC20("GWIT", "GWIT") {
     initialSupply = SafeMath.mul(_initialSupply, 1e18);
-    _init = false;
   }
 
   function init(address _grp, address _farm_pool) public onlyOwner {
@@ -52,6 +51,7 @@ contract GWITToken is ERC20, Ownable {
     address to,
     uint256 amount
   ) public override returns (bool) {
+    // keeps track of the last time the msg
     console.log("TX From", from);
     console.log("TX To", to);
     console.log("TX Caller", _msgSender());

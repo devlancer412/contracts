@@ -1,7 +1,7 @@
 import chai from "chai";
 import { solidity } from "ethereum-waffle";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { Ship } from "../utils";
+import { Ship, toBN } from "../utils";
 import { GRP, GRP__factory, GWITToken, GWITToken__factory, MasterChef, MasterChef__factory } from "../types";
 import { generate_claim, SignedClaim } from "../utils/claims";
 import { BigNumber, Wallet } from "ethers";
@@ -81,7 +81,7 @@ describe("GRP test", () => {
       reserves = await grp.reserves();
       original = await gwit.balanceOf(client.address);
       tx_amt = BigNumber.from(10);
-      claimData = await generate_claim(owner, client.address, tx_amt.toNumber());
+      claimData = await generate_claim(owner, client.address, tx_amt.toNumber(), toBN(Date.now()));
     });
 
     it("Should successfully claim", async () => {
@@ -107,7 +107,7 @@ describe("GRP test", () => {
   });
 
   it("Should fail with invalid signature", async () => {
-    const claimData = await generate_claim(owner, client.address, 10);
+    const claimData = await generate_claim(owner, client.address, 10, toBN(Date.now()));
     claimData.amount = 1000;
     await expect(await grp.validateClaim(claimData)).to.be.false;
   });
@@ -115,7 +115,7 @@ describe("GRP test", () => {
   describe("Should fail with claimed nonce", async () => {
     let claimData: SignedClaim;
     before(async () => {
-      claimData = await generate_claim(owner, client.address, 10);
+      claimData = await generate_claim(owner, client.address, 10, toBN(Date.now()));
     });
 
     it("Should successfully claim first", async () => {
