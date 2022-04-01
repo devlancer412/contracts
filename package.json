@@ -3,7 +3,7 @@
   "version": "2.0.0",
   "description": "After the meteor crashed on Planet Galleos, the radiation spread throughout the planet infusing the meteor's energy within the Mannochs. This in turn caused all of their future offsprings to also have gallonium energy fused with their DNA which caused the eggs to have different unique patterns. These specific Gally Eggs are infused with a higher amount of gallonium that condensed into powerful weapons that these Mannochs are born with. When these Gally Eggs hatch, they will be born already wielding Gaffs and a Gallus Gem.",
   "main": "index.js",
-  "license": "MIT",
+  "license": "AGPL-3.0",
   "scripts": {
     "postinstall": "npm-run-all husky:init",
     "help": "npx hardhat help",
