@@ -1,11 +1,12 @@
 import chai from "chai";
 import { solidity } from "ethereum-waffle";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { Ship } from "../utils";
+import { Ship, toBN } from "../utils";
 import { GWITToken, GWITToken__factory } from "../types";
 import { BigNumber, ContractTransaction } from "ethers";
-import { deployments } from "hardhat";
+import { deployments, network } from "hardhat";
 import { parseSpecial } from "../utils/parseSpecial";
+import { signERC2612Permit } from "eth-permit";
 
 chai.use(solidity);
 const { expect } = chai;
@@ -114,5 +115,12 @@ describe("GWIT Deploy Test", () => {
     const tx = await gwit.connect(shinji).transferFrom(user.address, shinji.address, amount);
     await expect(tx).to.emit(gwit, "Transfer").withArgs(user.address, shinji.address, amount);
     await expect(tx).to.not.emit(gwit, "Taxed");
+  });
+
+  it("Should permit", async () => {
+    const result = await signERC2612Permit(network.provider, gwit.address, user.address, shinji.address, 5);
+    await gwit.permit(user.address, shinji.address, 5, result.deadline, result.v, result.r, result.s);
+
+    await expect(await gwit.allowance(user.address, shinji.address)).to.eql(toBN(5));
   });
 });
