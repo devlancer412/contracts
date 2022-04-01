@@ -6,9 +6,6 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
 import "hardhat/console.sol";
 
-import "./GRP.sol";
-import "./FarmPool.sol";
-
 contract GWITToken is ERC20Permit, Ownable {
   address private constant _BURN_ADDRESS = 0x0000000000000000000000000000000000001337;
   address public farm_pool;
