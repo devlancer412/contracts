@@ -4,7 +4,6 @@ pragma solidity ^0.8.2;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
-import "hardhat/console.sol";
 
 contract GWITToken is ERC20Permit, Ownable {
   address private constant _BURN_ADDRESS = 0x0000000000000000000000000000000000001337;
@@ -49,10 +48,6 @@ contract GWITToken is ERC20Permit, Ownable {
     uint256 amount
   ) public override returns (bool) {
     // keeps track of the last time the msg
-    console.log("TX From", from);
-    console.log("TX To", to);
-    console.log("TX Caller", _msgSender());
-    console.log("Transfer with tax? %s", taxRate(to) != 0);
     if (taxRate(to) != 0) {
       require(amount != 0, "amount should be > 0");
       uint256 tax = calcTaxRate(to, amount);
@@ -64,7 +59,6 @@ contract GWITToken is ERC20Permit, Ownable {
       emit Taxed(from, to, tax);
     }
 
-    console.log("Transferring %s", amount);
     return ERC20.transferFrom(from, to, amount);
   }
 
