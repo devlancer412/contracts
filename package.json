@@ -25,7 +25,7 @@
     "console:rinkeby": "npx hardhat console --network rinkeby",
     "console:polygon": "npx hardhat console --network polygon",
     "test": "npm-run-all test:forge test:hh",
-    "test:forge": "forge test --fork-url $(grep POLYGON_RPC_URL .env | cut -d '=' -f2)",
+    "test:forge": "./forge_test/test.sh",
     "test:hh": "npx hardhat test",
     "test:gas": "cross-env REPORT_GAS=true hardhat test",
     "prettier:check": "prettier --check \"**/*.{ts,js,sol}\"",
