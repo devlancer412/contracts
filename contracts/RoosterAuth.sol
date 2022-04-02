@@ -115,12 +115,12 @@ contract RoosterAuth {
     return _paused == 1 ? true : false;
   }
 
-  function pause() external onlyRole("PAUSER") {
+  function pause() external onlyRole("PAUSER") whenNotPaused {
     _paused = 1;
     emit Paused(msg.sender);
   }
 
-  function unpause() external onlyRole("PAUSER") {
+  function unpause() external onlyRole("PAUSER") whenPaused {
     _paused = 0;
     emit Unpaused(msg.sender);
   }
