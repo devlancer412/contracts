@@ -25,7 +25,7 @@ contract AuthTest is BasicSetup, AuthEvent {
   function testInit() public {
     assertEq(auth.owner(), address(this));
     assertEq(auth.newOwner(), address(0));
-    assertTrue(auth.paused() == false);
+    assertTrue(auth.paused() != false);
   }
 
   function testPushOwner(address user) public {
@@ -75,6 +75,7 @@ contract AuthTest is BasicSetup, AuthEvent {
   }
 
   function testCannotPullIfNotNewOwner(address user1, address user2) public {
+    vm.assume(user1 != address(0) && user2 != address(0));
     vm.assume(user1 != user2);
 
     //Push
