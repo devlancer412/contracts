@@ -81,21 +81,23 @@ contract RoosterAuth {
     emit OwnerPulled(oldOwner, msg.sender);
   }
 
-  function grantRole(string memory role, address account) external onlyOwner {
+  function grantRole(string calldata role, address account) external onlyOwner {
     require(bytes(role).length > 0, "Role not given");
     require(account != address(0), "No address(0)");
     _grantRole(role, account);
   }
 
-  function revokeRole(string memory role, address account) external onlyOwner {
+  function revokeRole(string calldata role, address account) external onlyOwner {
+    require(hasRole(role, account), "Role not granted");
     _revokeRole(role, account);
   }
 
-  function renounceRole(string memory role) external {
+  function renounceRole(string calldata role) external {
+    require(hasRole(role, msg.sender), "Role not granted");
     _revokeRole(role, msg.sender);
   }
 
-  function _grantRole(string memory role, address account) private {
+  function _grantRole(string calldata role, address account) private {
     if (!hasRole(role, account)) {
       bytes32 encodedRole = Strings.toBytes32(role);
       roles[encodedRole][account] = true;
@@ -103,12 +105,10 @@ contract RoosterAuth {
     }
   }
 
-  function _revokeRole(string memory role, address account) private {
-    if (hasRole(role, account)) {
-      bytes32 encodedRole = Strings.toBytes32(role);
-      roles[encodedRole][account] = false;
-      emit RoleRevoked(role, account, msg.sender);
-    }
+  function _revokeRole(string calldata role, address account) private {
+    bytes32 encodedRole = Strings.toBytes32(role);
+    roles[encodedRole][account] = false;
+    emit RoleRevoked(role, account, msg.sender);
   }
 
   function paused() public view returns (bool) {
