@@ -25,7 +25,7 @@ contract AuthTest is BasicSetup, AuthEvent {
   function testInit() public {
     assertEq(auth.owner(), address(this));
     assertEq(auth.newOwner(), address(0));
-    assertTrue(auth.paused() != false);
+    assertTrue(auth.paused() == false);
   }
 
   function testPushOwner(address user) public {
