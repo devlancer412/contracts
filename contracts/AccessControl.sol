@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.9;
 
 import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
@@ -22,7 +22,7 @@ contract AccessControl is Pausable {
 
   constructor() {
     owner = msg.sender;
-    emit OwnerPulled(msg.sender, address(0));
+    emit OwnerPulled(address(0), msg.sender);
   }
 
   modifier onlyOwner() {
@@ -37,6 +37,7 @@ contract AccessControl is Pausable {
 
   function pushOwner(address account) public onlyOwner {
     require(account != address(0), "No address(0)");
+    require(account != owner, "Only new owner");
     newOwner = account;
     emit OwnerPushed(account);
   }
