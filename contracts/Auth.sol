@@ -63,55 +63,55 @@ contract Auth {
     _;
   }
 
-  function hasRole(string memory role, address account) public view returns (bool) {
+  function hasRole(string memory role, address account) public view virtual returns (bool) {
     return _roles[Strings.toBytes32(role)][account];
   }
 
-  function paused() public view returns (bool) {
+  function paused() public view virtual returns (bool) {
     return _paused == 1 ? true : false;
   }
 
-  function pushOwner(address account) public onlyOwner {
+  function pushOwner(address account) public virtual onlyOwner {
     require(account != address(0), "No address(0)");
     require(account != owner, "Only new owner");
     newOwner = account;
     emit OwnerPushed(account);
   }
 
-  function pullOwner() external {
+  function pullOwner() public virtual {
     if (msg.sender != newOwner) revert Unauthorized("NEW_OWNER", msg.sender);
     address oldOwner = owner;
     owner = msg.sender;
     emit OwnerPulled(oldOwner, msg.sender);
   }
 
-  function grantRole(string calldata role, address account) external onlyOwner {
+  function grantRole(string memory role, address account) public virtual onlyOwner {
     require(bytes(role).length > 0, "Role not given");
     require(account != address(0), "No address(0)");
     _grantRole(role, account);
   }
 
-  function revokeRole(string calldata role, address account) external onlyOwner {
+  function revokeRole(string memory role, address account) public virtual onlyOwner {
     require(hasRole(role, account), "Role not granted");
     _revokeRole(role, account);
   }
 
-  function renounceRole(string calldata role) external {
+  function renounceRole(string memory role) public virtual {
     require(hasRole(role, msg.sender), "Role not granted");
     _revokeRole(role, msg.sender);
   }
 
-  function pause() external onlyRole("PAUSER") whenNotPaused {
+  function pause() public virtual onlyRole("PAUSER") whenNotPaused {
     _paused = 1;
     emit Paused(msg.sender);
   }
 
-  function unpause() external onlyRole("PAUSER") whenPaused {
+  function unpause() public virtual onlyRole("PAUSER") whenPaused {
     _paused = 0;
     emit Unpaused(msg.sender);
   }
 
-  function _grantRole(string calldata role, address account) private {
+  function _grantRole(string memory role, address account) internal virtual {
     if (!hasRole(role, account)) {
       bytes32 encodedRole = Strings.toBytes32(role);
       _roles[encodedRole][account] = true;
@@ -119,7 +119,7 @@ contract Auth {
     }
   }
 
-  function _revokeRole(string calldata role, address account) private {
+  function _revokeRole(string memory role, address account) internal virtual {
     bytes32 encodedRole = Strings.toBytes32(role);
     _roles[encodedRole][account] = false;
     emit RoleRevoked(role, account, msg.sender);
