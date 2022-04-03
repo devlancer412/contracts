@@ -64,7 +64,7 @@ contract Auth {
   }
 
   function hasRole(string memory role, address account) public view returns (bool) {
-    return _roles[bytes32(bytes(role))][account];
+    return _roles[Strings.toBytes32(role)][account];
   }
 
   function paused() public view returns (bool) {
