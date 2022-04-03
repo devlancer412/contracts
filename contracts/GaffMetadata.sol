@@ -3,9 +3,9 @@ pragma solidity ^0.8.9;
 
 import {ERC721} from "@rari-capital/solmate/src/tokens/ERC721.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
-import "./AccessControl.sol";
+import {Auth} from "./Auth.sol";
 
-abstract contract GaffMetadata is ERC721, AccessControl {
+abstract contract GaffMetadata is ERC721, Auth {
   using Strings for uint256;
 
   //Gaff metadata base uri
@@ -38,7 +38,7 @@ abstract contract GaffMetadata is ERC721, AccessControl {
     emit GaffTypeSet(gaffId, gaffType);
   }
 
-  function _exists(uint256 tokenId) internal view virtual returns (bool) {
+  function _exists(uint256 tokenId) internal view returns (bool) {
     return ownerOf[tokenId] != address(0);
   }
 }

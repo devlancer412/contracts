@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.9;
 
-import {Rooster} from "contracts/Rooster.sol";
+import {Rooster, Auth} from "contracts/Rooster.sol";
 import "./utils/BasicSetup.sol";
 
 contract RoosterTest is BasicSetup {
@@ -17,7 +17,7 @@ contract RoosterTest is BasicSetup {
   }
 
   function testMint() public {
-    rooster.grantMinterRole(address(this));
+    rooster.grantRole("MINTER", address(this));
     rooster.mint(alice, 3);
 
     uint256 supply = rooster.totalSupply();
@@ -39,7 +39,7 @@ contract RoosterTest is BasicSetup {
     breeds[3] = 4;
     breeds[4] = 0;
 
-    rooster.grantMinterRole(address(this));
+    rooster.grantRole("MINTER", address(this));
     rooster.batchMint(alice, breeds);
 
     uint256 supply = rooster.totalSupply();
@@ -50,7 +50,7 @@ contract RoosterTest is BasicSetup {
   }
 
   function testCannotMintWithoutMinterRole() public {
-    vm.expectRevert(bytes("Only minter"));
+    vm.expectRevert(abi.encodeWithSelector(Auth.Unauthorized.selector, "MINTER", address(this)));
     rooster.mint(alice, 0);
   }
 }

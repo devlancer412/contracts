@@ -21,11 +21,11 @@ const func: DeployFunction = async (hre) => {
   });
 
   if (hatching.newlyDeployed) {
-    const tx1 = await rooster.grantMinterRole(hatching.address);
+    const tx1 = await rooster.grantRole("MINTER", hatching.address);
     await tx1.wait();
-    const tx2 = await gaff.grantMinterRole(hatching.address);
+    const tx2 = await gaff.grantRole("MINTER", hatching.address);
     await tx2.wait();
-    const tx3 = await gem.grantMinterRole(hatching.address);
+    const tx3 = await gem.grantRole("MINTER", hatching.address);
     await tx3.wait();
   }
 };

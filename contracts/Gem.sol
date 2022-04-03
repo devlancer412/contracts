@@ -2,10 +2,10 @@
 pragma solidity ^0.8.9;
 
 import {ERC721} from "@rari-capital/solmate/src/tokens/ERC721.sol";
-import "./GemMetadata.sol";
-import "./AccessControl.sol";
+import {GemMetadata} from "./GemMetadata.sol";
+import {Auth} from "./Auth.sol";
 
-contract Gem is ERC721, AccessControl, GemMetadata {
+contract Gem is ERC721, Auth, GemMetadata {
   //Current gemId count
   uint256 private _gemIdCounter = 0;
 
@@ -30,7 +30,7 @@ contract Gem is ERC721, AccessControl, GemMetadata {
     }
   }
 
-  function mint(address to, uint256 gemType) external onlyMinter {
+  function mint(address to, uint256 gemType) external onlyRole("MINTER") {
     uint256 gemId = _gemIdCounter;
 
     unchecked {
@@ -40,7 +40,7 @@ contract Gem is ERC721, AccessControl, GemMetadata {
     _mint(to, gemId, gemType);
   }
 
-  function batchMint(address to, uint256[] memory gemTypes) external onlyMinter {
+  function batchMint(address to, uint256[] memory gemTypes) external onlyRole("MINTER") {
     uint256 gemId = _gemIdCounter;
 
     for (uint256 i = 0; i < gemTypes.length; ) {

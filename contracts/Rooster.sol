@@ -2,10 +2,10 @@
 pragma solidity ^0.8.9;
 
 import {ERC721} from "@rari-capital/solmate/src/tokens/ERC721.sol";
-import "./RoosterMetadata.sol";
-import "./AccessControl.sol";
+import {RoosterMetadata} from "./RoosterMetadata.sol";
+import {Auth} from "./Auth.sol";
 
-contract Rooster is ERC721, AccessControl, RoosterMetadata {
+contract Rooster is ERC721, Auth, RoosterMetadata {
   //Current roosterId count
   uint256 private _roosterIdCounter = 0;
 
@@ -30,7 +30,7 @@ contract Rooster is ERC721, AccessControl, RoosterMetadata {
     }
   }
 
-  function mint(address to, uint256 breed) external onlyMinter {
+  function mint(address to, uint256 breed) external onlyRole("MINTER") {
     uint256 roosterId = _roosterIdCounter;
 
     unchecked {
@@ -40,7 +40,7 @@ contract Rooster is ERC721, AccessControl, RoosterMetadata {
     _mint(to, roosterId, breed);
   }
 
-  function batchMint(address to, uint256[] memory breeds) external onlyMinter {
+  function batchMint(address to, uint256[] memory breeds) external onlyRole("MINTER") {
     uint256 roosterId = _roosterIdCounter;
 
     for (uint256 i = 0; i < breeds.length; ) {
