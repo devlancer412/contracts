@@ -15,13 +15,14 @@ import {
 } from "../types";
 import { generate_claim, SignedClaim } from "../utils/claims";
 import { BigNumber, BigNumberish, ContractReceipt, Wallet } from "ethers";
-import { deployments } from "hardhat";
+import { deployments, network } from "hardhat";
 import { parseSpecial } from "../utils/parseSpecial";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import exp from "constants";
 import { mkdirSync, writeFile } from "fs";
 import { resolve } from "path";
 import { homedir } from "os";
+import { signERC2612Permit } from "eth-permit";
 
 chai.use(solidity);
 const { expect } = chai;
@@ -72,7 +73,7 @@ describe("Store test", () => {
 
     // Write addresses to some file
     // To be picked up by the backend while testing
-    const base = [homedir(), ".temp", "metadhana", "store", "localhost"];
+    const base = [homedir(), ".temp", "metadhana", "store", network.name];
     const addresses = [
       ["store", store.address],
       ["gwit", gwit.address],
@@ -165,21 +166,26 @@ describe("Store test", () => {
       const transfer_amount = 60;
       const amount = 10;
 
-      it("should transfer tokens", async () => {
-        // Frontend Transfer
-        tx = await (await gwit.connect(buyer).approve(store.address, transfer_amount)).wait();
-        await expect(await gwit.allowance(buyer.address, store.address)).to.eq(transfer_amount);
-      });
-
-      it("should purchase", async () => {
+      it("should purchase permit", async () => {
         const old_balance = await gem.balanceOf(buyer.address, tokenId);
         // Backend Claim Assembly
         const nonce = BigNumber.from(Date.now());
         const last = await store.last_purchase(buyer.address);
         const claim = await generate_claim(signer, buyer.address, last, nonce);
 
+        // Permit request, frontend
+        const permit = await signERC2612Permit(
+          network.provider,
+          gwit.address,
+          buyer.address,
+          store.address,
+          transfer_amount,
+        );
+
         // Purchase
-        const purchaseTx = await store.connect(buyer).purchase(buyer.address, [listingId], [amount], claim);
+        const purchaseTx = await store
+          .connect(buyer)
+          .purchasePermit(buyer.address, [listingId], [amount], claim, permit);
         await expect(purchaseTx).to.emit(store, "Sold").withArgs(listingId, buyer.address, amount);
 
         await expect(await gem.balanceOf(buyer.address, tokenId)).to.eq(old_balance.add(amount));

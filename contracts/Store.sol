@@ -1,13 +1,14 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.0;
 
 /**
   Marketplace spec: https://www.notion.so/RoosterWars-Marketplace-6350187ee37f4e239aa8441b7e634e00
  */
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/draft-IERC20Permit.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "hardhat/console.sol";
 import "./Claimable.sol";
@@ -31,6 +32,16 @@ contract Store is Ownable, Claimable {
     uint256 price;
     TokenType tokentype;
     uint256 maxval;
+  }
+
+  struct Permit {
+    address owner;
+    address spender;
+    uint256 value;
+    uint256 deadline;
+    uint8 v;
+    bytes32 r;
+    bytes32 s;
   }
 
   uint256 public nextId;
@@ -234,10 +245,23 @@ contract Store is Ownable, Claimable {
     }
   }
 
-  // function purchaseBulk(uint256[] calldata listingIds, uint256[] calldata amounts) public {
-  //     require(listingIds.length == amounts.length, "array count mismatch");
-  //     for (uint256 i = 0; i < listingIds.length; i++) {
-  //         _purchase(listingIds[i], amounts[i]);
-  //     }
-  // }
+  function purchasePermit(
+    address to,
+    uint256[] calldata listingIds,
+    uint256[] calldata amounts,
+    Claim calldata claimData,
+    Permit calldata _permit
+  ) public {
+    IERC20Permit permit = IERC20Permit(address(operatingToken));
+    permit.permit(
+      _permit.owner,
+      _permit.spender,
+      _permit.value,
+      _permit.deadline,
+      _permit.v,
+      _permit.r,
+      _permit.s
+    );
+    purchase(to, listingIds, amounts, claimData);
+  }
 }
