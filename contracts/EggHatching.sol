@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.9;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
+import {Auth} from "./Auth.sol";
 
 interface IEgg {
   function burnBatch(uint24[] memory eggIds) external;
@@ -14,7 +13,7 @@ interface INft {
   function batchMint(address to, uint256[] memory types) external;
 }
 
-contract RoosterEggHatching is Ownable, Pausable {
+contract RoosterEggHatching is Auth {
   //Address of RoosterEgg contract
   address public immutable egg;
   //Address of Rooster contract
@@ -23,13 +22,9 @@ contract RoosterEggHatching is Ownable, Pausable {
   address public immutable gaff;
   //Address of Gem contract
   address public immutable gem;
-  //Address of signer
-  address public signer;
 
   //Fires when eggs are hatched
   event EggsHatched(address indexed user, uint24[] eggIds);
-  //Fires when signer address is updated
-  event UpdateSigner(address indexed previousSigner, address indexed newSigner);
 
   struct Sig {
     bytes32 r;
@@ -48,7 +43,7 @@ contract RoosterEggHatching is Ownable, Pausable {
     rooster = rooster_;
     gaff = gaff_;
     gem = gem_;
-    setSigner(signer_);
+    _grantRole("SIGNER", signer_);
   }
 
   /**
@@ -93,7 +88,7 @@ contract RoosterEggHatching is Ownable, Pausable {
       abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash)
     );
 
-    return ecrecover(ethSignedMessageHash, sig.v, sig.r, sig.s) == signer;
+    return hasRole("SIGNER", ecrecover(ethSignedMessageHash, sig.v, sig.r, sig.s));
   }
 
   function _isOwnerCorrect(uint24[] calldata eggIds) private view returns (bool) {
@@ -105,20 +100,5 @@ contract RoosterEggHatching is Ownable, Pausable {
       }
     }
     return true;
-  }
-
-  function setSigner(address newSigner) public onlyOwner {
-    require(newSigner != address(0), "No address(0)");
-    address oldSigner = signer;
-    signer = newSigner;
-    emit UpdateSigner(oldSigner, newSigner);
-  }
-
-  function pause() external onlyOwner {
-    _pause();
-  }
-
-  function unpause() external onlyOwner {
-    _unpause();
   }
 }

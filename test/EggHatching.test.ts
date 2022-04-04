@@ -21,6 +21,8 @@ const setup = deployments.createFixture(async (hre) => {
   const gem = await connect(Gem__factory);
   const hatching = await connect(RoosterEggHatching__factory);
 
+  await hatching.grantRole("PAUSER", accounts.deployer.address);
+
   return {
     egg,
     rooster,
@@ -170,18 +172,6 @@ describe("Egg hatching test", () => {
     expect(await hatching.paused()).to.eq(true);
 
     const promi = hatching.connect(alice).hatch(alice.address, [], [], [], [], emptySig);
-    await expect(promi).to.be.revertedWith("Pausable: paused");
-  });
-
-  it("Only owner can change signer", async () => {
-    const {
-      hatching,
-      accounts: { alice, bob, deployer, signer },
-    } = await setup();
-    const promi1 = hatching.connect(alice).setSigner(bob.address);
-    const promi2 = hatching.connect(deployer).setSigner(bob.address);
-
-    await expect(promi1).to.be.revertedWith("Ownable: caller is not the owner");
-    await expect(promi2).to.emit(hatching, "UpdateSigner").withArgs(signer.address, bob.address);
+    await expect(promi).to.be.revertedWith("IsPaused");
   });
 });

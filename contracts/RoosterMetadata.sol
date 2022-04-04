@@ -3,9 +3,9 @@ pragma solidity ^0.8.9;
 
 import {ERC721} from "@rari-capital/solmate/src/tokens/ERC721.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
-import "./AccessControl.sol";
+import {Auth} from "./Auth.sol";
 
-abstract contract RoosterMetadata is ERC721, AccessControl {
+abstract contract RoosterMetadata is ERC721, Auth {
   using Strings for uint256;
 
   //Rooster metadata base uri

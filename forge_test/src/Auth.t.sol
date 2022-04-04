@@ -87,7 +87,7 @@ contract AuthTest is BasicSetup, AuthEvent {
     auth.pullOwner();
   }
 
-  function testGrantRole(string calldata role, address user) public {
+  function testGrantRole(string memory role, address user) public {
     vm.assume(bytes(role).length <= 32 && bytes(role).length > 0 && user != address(0));
 
     vm.expectEmit(true, true, true, false);
@@ -114,7 +114,7 @@ contract AuthTest is BasicSetup, AuthEvent {
     auth.grantRole("KING", address(0));
   }
 
-  function testRevokeRole(string calldata role, address user) public {
+  function testRevokeRole(string memory role, address user) public {
     vm.assume(bytes(role).length <= 32 && bytes(role).length > 0 && user != address(0));
 
     //Grant
@@ -148,7 +148,7 @@ contract AuthTest is BasicSetup, AuthEvent {
     auth.revokeRole(role2, alice);
   }
 
-  function testRenounceRole(string calldata role, address user) public {
+  function testRenounceRole(string memory role, address user) public {
     vm.assume(bytes(role).length <= 32 && bytes(role).length > 0 && user != address(0));
 
     //Grant

@@ -2,10 +2,10 @@
 pragma solidity ^0.8.9;
 
 import {ERC721} from "@rari-capital/solmate/src/tokens/ERC721.sol";
-import "./GaffMetadata.sol";
-import "./AccessControl.sol";
+import {GaffMetadata} from "./GaffMetadata.sol";
+import {Auth} from "./Auth.sol";
 
-contract Gaff is ERC721, AccessControl, GaffMetadata {
+contract Gaff is ERC721, Auth, GaffMetadata {
   //Current gaffId count
   uint256 private _gaffIdCounter = 0;
 
@@ -30,7 +30,7 @@ contract Gaff is ERC721, AccessControl, GaffMetadata {
     }
   }
 
-  function mint(address to, uint256 gaffType) external onlyMinter {
+  function mint(address to, uint256 gaffType) external onlyRole("MINTER") {
     uint256 gaffId = _gaffIdCounter;
 
     unchecked {
@@ -40,7 +40,7 @@ contract Gaff is ERC721, AccessControl, GaffMetadata {
     _mint(to, gaffId, gaffType);
   }
 
-  function batchMint(address to, uint256[] memory gaffTypes) external onlyMinter {
+  function batchMint(address to, uint256[] memory gaffTypes) external onlyRole("MINTER") {
     uint256 gaffId = _gaffIdCounter;
 
     for (uint256 i = 0; i < gaffTypes.length; ) {
