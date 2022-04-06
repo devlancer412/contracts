@@ -2,6 +2,7 @@
     Game Rewards Pool or (GRP) handles the claiming of rewards from the game to the chain
     It facilitates $GALL to $GWIT conversion
  */
+// SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.9;
 
 import "@openzeppelin/contracts/access/Ownable.sol";

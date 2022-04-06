@@ -88,7 +88,7 @@ contract MasterChef is Ownable {
     uint256 _gwitPerBlock,
     uint256 _startBlock,
     uint256 _bonusEndBlock
-  ) public {
+  ) {
     gwit = _gwit;
     devaddr = _devaddr;
     gwitPerBlock = _gwitPerBlock;
