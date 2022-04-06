@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.9;
 
-import {AccessControl} from "contracts/AccessControl.sol";
+import {AccessControl} from "contracts/utils/AccessControl.sol";
 import "./utils/BasicSetup.sol";
 
 contract AccessControlTest is BasicSetup {

@@ -3,7 +3,7 @@ pragma solidity ^0.8.9;
 
 import {ERC721} from "@rari-capital/solmate/src/tokens/ERC721.sol";
 import {GemMetadata} from "./GemMetadata.sol";
-import {Auth} from "./Auth.sol";
+import {Auth} from "../utils/Auth.sol";
 
 contract Gem is ERC721, Auth, GemMetadata {
   //Current gemId count

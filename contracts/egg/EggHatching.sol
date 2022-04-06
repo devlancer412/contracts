@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.9;
 
-import {Auth} from "./Auth.sol";
+import {Auth} from "../utils/Auth.sol";
 
 interface IEgg {
   function burnBatch(uint24[] memory eggIds) external;
