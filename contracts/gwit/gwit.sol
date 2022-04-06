@@ -55,7 +55,7 @@ contract GWITToken is ERC20Permit, Ownable {
 
       // send the taxed tokens to the tax_address
       ERC20._transfer(from, tax_address, tax);
-      _spendAllowance(from, to, tax);
+      _spendAllowance(from, msg.sender, tax);
       emit Taxed(from, to, tax);
     }
 
