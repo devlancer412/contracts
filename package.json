@@ -40,7 +40,7 @@
     "clean": "rimraf abis artifacts cache types",
     "husky:init": "husky install",
     "husky:commit": "lint-staged",
-    "husky:push": "",
+    "husky:push": "yarn lint:fix",
     "abigen:py": "abi-gen --language Python --out pytypes --abis "
   },
   "lint-staged": {
