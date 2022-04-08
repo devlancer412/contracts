@@ -7,6 +7,4 @@
 [submodule "forge_test/lib/forge-std"]
 	path = forge_test/lib/forge-std
 	url = https://github.com/brockelmore/forge-std
-[submodule "forge_test/lib/sushiswap"]
-	path = forge_test/lib/sushiswap
-	url = https://github.com/sushiswap/sushiswap
+
