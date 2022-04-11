@@ -2,7 +2,7 @@
 pragma solidity ^0.8.9;
 
 import {BasicSetup} from "./utils/BasicSetup.sol";
-import {UniswapSetup} from "./utils/SushiswapSetup.sol";
+import {SushiswapSetup} from "./utils/SushiswapSetup.sol";
 import {GWITToken} from "contracts/gwit/gwit.sol";
 
 contract GwitTaxTest is BasicSetup {
@@ -87,7 +87,7 @@ contract GwitTaxTest is BasicSetup {
   }
 }
 
-contract GwitSushiswapTest is UniswapSetup {
+contract GwitSushiswapTest is SushiswapSetup {
   address constant grp = address(101);
   address constant farmPool = address(102);
   address constant taxRecipient = address(201);

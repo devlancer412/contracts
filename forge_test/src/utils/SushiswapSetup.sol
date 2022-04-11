@@ -8,7 +8,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {GWITToken} from "contracts/gwit/gwit.sol";
 import {BasicSetup} from "./BasicSetup.sol";
 
-contract UniswapSetup is BasicSetup {
+contract SushiswapSetup is BasicSetup {
   IUniswapV2Factory factory;
   IUniswapV2Router02 router;
   IUniswapV2Pair pair;
