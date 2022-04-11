@@ -49,7 +49,7 @@ contract RoosterEggHatching is Auth {
   }
 
   function hasStarted() public view returns (bool) {
-    return block.timestamp >= startingTime ? true : false;
+    return block.timestamp >= startingTime && startingTime > 0 ? true : false;
   }
 
   /**
