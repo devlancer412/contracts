@@ -24,6 +24,8 @@
     "console:localhost": "npx hardhat console --network localhost",
     "console:rinkeby": "npx hardhat console --network rinkeby",
     "console:polygon": "npx hardhat console --network polygon",
+    "verify:rinkeby": "npx hardhat upload:batch --network rinkeby --contracts",
+    "verify:polygon": "npx hardhat upload:batch --network polygon --contracts",
     "test": "npm-run-all test:forge test:hh",
     "test:forge": "./forge_test/test.sh",
     "test:hh": "npx hardhat test",
