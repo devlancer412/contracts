@@ -66,6 +66,12 @@ yarn script:rinkeby ./scripts/....
 yarn deploy:rinkeby --tags ....
 ```
 
+- To verify contracts on etherscan
+
+```bash
+yarn verify:rinkeby MyTokenContract,MyNFTContract
+```
+
 ... see more useful commands in package.json file
 
 ## Main Dependencies
