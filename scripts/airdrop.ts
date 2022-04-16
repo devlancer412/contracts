@@ -10,12 +10,14 @@ interface List {
 }
 
 const main = async () => {
-  const data = fs.readFileSync("./z/list6.csv").toString();
+  const data = fs.readFileSync("./z/list7.csv").toString();
   const description = {
     amount: { type: "number", group: 1 },
     address: { type: "string", group: 2 },
   };
   let lists = csvToObj(data, ",", description) as List[];
+  const continueFrom = "0x6c3cb6ea7228d8abd2a2b10a640b2a7c2a94baa2";
+  lists = lists.slice(lists.findIndex((i) => i.address === continueFrom));
 
   const signers = await ethers.getSigners();
   let nonce = await ethers.provider.getTransactionCount(await signers[0].getAddress());
@@ -23,7 +25,8 @@ const main = async () => {
   const addr = "0x412D45fB3f93e28cB90DB8096Ce8ed495f119FB3";
   const egg = RoosterEggSale__factory.connect(addr, signers[0]);
 
-  for (const { amount, address } of lists) {
+  for (let { amount, address } of lists) {
+    address = address.replace(/\s+/g, "");
     const q = Math.floor(amount / 50);
     const m = amount % 50;
 
