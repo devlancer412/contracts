@@ -11,7 +11,10 @@ import { Ship } from "../utils";
 const func: DeployFunction = async (hre) => {
   const { deploy, connect, accounts } = await Ship.init(hre);
 
-  const egg = await connect(RoosterEgg__factory);
+  const egg = await connect(
+    RoosterEgg__factory,
+    hre.network.tags.prod ? "0xbDD4AE46B65977a1d06b365c09B4e0F429c70Aef" : undefined,
+  );
   const rooster = await connect(Rooster__factory);
   const gaff = await connect(Gaff__factory);
   const gem = await connect(Gem__factory);
