@@ -32,6 +32,13 @@ export async function setTime(time: number): Promise<void> {
   await advanceBlock();
 }
 
+export async function getTime(): Promise<number> {
+  const blockNumber = await ethers.provider.getBlockNumber();
+  const block = await ethers.provider.getBlock(blockNumber);
+  const time = block.timestamp;
+  return time;
+}
+
 class Time {
   t: number;
   constructor(ms: number) {

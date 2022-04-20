@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.9;
 
-import {Rooster, Auth} from "contracts/Rooster.sol";
+import {Rooster} from "contracts/rooster/Rooster.sol";
+import {Auth} from "contracts/utils/Auth.sol";
 import "./utils/BasicSetup.sol";
 
 contract RoosterTest is BasicSetup {

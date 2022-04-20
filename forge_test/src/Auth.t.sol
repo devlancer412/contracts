@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.9;
 
-import {Auth} from "contracts/Auth.sol";
+import {Auth} from "contracts/utils/Auth.sol";
 import "./utils/BasicSetup.sol";
 
 interface AuthEvent {
@@ -128,6 +128,7 @@ contract AuthTest is BasicSetup, AuthEvent {
   }
 
   function testCannotRevokeRoleIfNotOwner(address user) public {
+    vm.assume(user != address(this));
     auth.grantRole("KING", alice);
 
     vm.prank(user);
