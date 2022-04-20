@@ -6,7 +6,7 @@ import {
   RoosterEgg__factory,
   Rooster__factory,
 } from "../types";
-import { Ship } from "../utils";
+import { Ship, Time } from "../utils";
 
 const func: DeployFunction = async (hre) => {
   const { deploy, connect, accounts } = await Ship.init(hre);
@@ -22,6 +22,8 @@ const func: DeployFunction = async (hre) => {
   const hatching = await deploy(RoosterEggHatching__factory, {
     args: [accounts.signer.address, egg.address, rooster.address, gaff.address, gem.address],
   });
+
+  await Time.delay(3000);
 
   if (hatching.newlyDeployed) {
     const tx1 = await rooster.grantRole("MINTER", hatching.address);
