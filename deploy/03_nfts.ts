@@ -10,9 +10,9 @@ const func: DeployFunction = async (hre) => {
   let gemUri: string;
 
   if (hre.network.tags.prod) {
-    roosterBaseUri = "";
-    gaffUri = "";
-    gemUri = "";
+    roosterBaseUri = "https://api.roosterwars.io/rooster/metadata/";
+    gaffUri = "https://api.roosterwars.io/gaff/metadata/";
+    gemUri = "https://api.roosterwars.io/gem/metadata/";
   } else {
     roosterBaseUri = "";
     gaffUri = "";

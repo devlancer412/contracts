@@ -7,7 +7,7 @@ import {
   RoosterEgg__factory,
   Rooster__factory,
 } from "../types";
-import { Ship, toBNArray } from "../utils";
+import { getTime, setTime, Ship, toBNArray } from "../utils";
 import { arrayify, solidityKeccak256, splitSignature } from "ethers/lib/utils";
 import { constants } from "ethers";
 
@@ -61,9 +61,28 @@ describe("Egg hatching test", () => {
     await setup();
   });
 
+  it("Sets starting time", async () => {
+    const {
+      hatching,
+      accounts: { alice, deployer },
+    } = await setup();
+    const currentTime = await getTime();
+
+    const promi = hatching.connect(alice).setStartingTime(currentTime + 10);
+    await expect(promi).to.be.revertedWith(`Unauthorized("OWNER", "${alice.address}")`);
+
+    await hatching.connect(deployer).setStartingTime(currentTime + 10);
+    expect(await hatching.startingTime()).to.eq(currentTime + 10);
+    expect(await hatching.hasStarted()).to.be.false;
+  });
+
   it("Hatches", async () => {
     const { egg, rooster, gaff, gem, hatching, accounts } = await setup();
     const { alice } = accounts;
+
+    const currentTime = await getTime();
+    await hatching.setStartingTime(currentTime + 10);
+    await setTime(currentTime + 10);
 
     //Mint 1 egg
     await egg.mintEggs(alice.address, 1);
@@ -98,6 +117,10 @@ describe("Egg hatching test", () => {
     const { egg, rooster, gaff, gem, hatching, accounts } = await setup();
     const { alice } = accounts;
 
+    const currentTime = await getTime();
+    await hatching.setStartingTime(currentTime + 10);
+    await setTime(currentTime + 10);
+
     await egg.mintEggs(alice.address, 10);
     expect(await egg.balanceOf(alice.address)).to.eq(10);
 
@@ -122,6 +145,10 @@ describe("Egg hatching test", () => {
     const { egg, hatching, accounts } = await setup();
     const { alice, bob } = accounts;
 
+    const currentTime = await getTime();
+    await hatching.setStartingTime(currentTime + 10);
+    await setTime(currentTime + 10);
+
     await egg.mintEggs(alice.address, 1);
     expect(await egg.balanceOf(alice.address)).to.eq(1);
 
@@ -145,6 +172,10 @@ describe("Egg hatching test", () => {
     await egg.mintEggs(alice.address, 3);
     await egg.connect(alice).setApprovalForAll(hatching.address, true);
 
+    const currentTime = await getTime();
+    await hatching.setStartingTime(currentTime + 10);
+    await setTime(currentTime + 10);
+
     const eggs = [1, 2, 3];
     const breeds = [0, 1, 2];
     const gaffTypes = [1, 1, 1];
@@ -163,7 +194,7 @@ describe("Egg hatching test", () => {
     await expect(promi3).to.be.revertedWith("Invalid parameter");
   });
 
-  it("Cannot hatch when it's paused", async () => {
+  it("Reverts when hatching is paused", async () => {
     const {
       hatching,
       accounts: { alice, deployer },
@@ -173,5 +204,18 @@ describe("Egg hatching test", () => {
 
     const promi = hatching.connect(alice).hatch(alice.address, [], [], [], [], emptySig);
     await expect(promi).to.be.revertedWith("IsPaused");
+  });
+
+  it("Reverts when hatching has not started", async () => {
+    const {
+      hatching,
+      accounts: { alice },
+    } = await setup();
+
+    const currentTime = await getTime();
+    await hatching.setStartingTime(currentTime + 10);
+
+    const promi = hatching.connect(alice).hatch(alice.address, [], [], [], [], emptySig);
+    await expect(promi).to.be.revertedWith("Not started");
   });
 });

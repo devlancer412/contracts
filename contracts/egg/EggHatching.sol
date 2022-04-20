@@ -22,6 +22,8 @@ contract RoosterEggHatching is Auth {
   address public immutable gaff;
   //Address of Gem contract
   address public immutable gem;
+  //Egg hatch starting time
+  uint256 public startingTime;
 
   //Fires when eggs are hatched
   event EggsHatched(address indexed user, uint24[] eggIds);
@@ -46,6 +48,10 @@ contract RoosterEggHatching is Auth {
     _grantRole("SIGNER", signer_);
   }
 
+  function hasStarted() public view returns (bool) {
+    return block.timestamp >= startingTime && startingTime > 0 ? true : false;
+  }
+
   /**
    * @param eggIds Array of rooster egg ids to burn
    * @param breeds Array of rooster breeds to mint
@@ -60,6 +66,8 @@ contract RoosterEggHatching is Auth {
     uint256[] calldata gemTypes,
     Sig calldata sig
   ) external whenNotPaused {
+    //Check if hatch event is started
+    require(hasStarted(), "Not started");
     //Check if parameters are valid
     require(_isParamValid(breeds, gaffTypes, gemTypes, sig), "Invalid parameter");
     //Check if egg owner
@@ -100,5 +108,10 @@ contract RoosterEggHatching is Auth {
       }
     }
     return true;
+  }
+
+  function setStartingTime(uint256 startingTime_) external onlyOwner {
+    require(startingTime_ > block.timestamp, "Invalid starting time");
+    startingTime = startingTime_;
   }
 }
