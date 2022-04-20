@@ -128,6 +128,7 @@ contract AuthTest is BasicSetup, AuthEvent {
   }
 
   function testCannotRevokeRoleIfNotOwner(address user) public {
+    vm.assume(user != address(this));
     auth.grantRole("KING", alice);
 
     vm.prank(user);
