@@ -67,9 +67,8 @@ contract GwitTaxTest is BasicSetup {
   }
 
   function testTaxNotFromTaxer(address user, uint256 amount) public {
-    vm.assume(user != address(0));
+    vm.assume(user != address(0) && user != address(500));
     vm.assume(amount > 0 && amount <= gwit.totalSupply());
-
     address target = address(500);
 
     //Mint

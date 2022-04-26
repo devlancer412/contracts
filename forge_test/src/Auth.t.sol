@@ -76,6 +76,7 @@ contract AuthTest is BasicSetup, AuthEvent {
 
   function testCannotPullIfNotNewOwner(address user1, address user2) public {
     vm.assume(user1 != address(0) && user2 != address(0));
+    vm.assume(user1 != address(this) && user2 != address(this));
     vm.assume(user1 != user2);
 
     //Push
