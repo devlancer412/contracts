@@ -2,6 +2,7 @@
 pragma solidity ^0.8.9;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/draft-IERC20Permit.sol";
 import {Auth} from "../utils/Auth.sol";
 
 interface IpGwit {
@@ -24,6 +25,22 @@ contract pGwitSale is Auth {
   //User purchased amount (user => amount)
   mapping(address => uint256) public purchasedAmount;
 
+  struct Presale {
+    uint32 openingTime;
+    uint32 closingTime;
+    uint256 supply;
+    uint256 cap;
+    uint256 sold;
+    uint256 price;
+  }
+
+  struct Sig {
+    bytes32 r;
+    bytes32 s;
+    uint8 v;
+  }
+
+  //Fires when sale is set
   event PresaleSet(
     uint256 openingTime,
     uint256 closingTime,
@@ -31,6 +48,8 @@ contract pGwitSale is Auth {
     uint256 cap,
     uint256 price
   );
+
+  //Fires when pGwit purchase has been made
   event Purchase(
     address indexed purchaser,
     address recipient,
@@ -44,15 +63,6 @@ contract pGwitSale is Auth {
   error InvalidOpeningTime();
   error ExceedsSupply();
   error ExceedsCap();
-
-  struct Presale {
-    uint32 openingTime;
-    uint32 closingTime;
-    uint256 supply;
-    uint256 cap;
-    uint256 sold;
-    uint256 price;
-  }
 
   constructor(
     address usdc_,
@@ -71,6 +81,8 @@ contract pGwitSale is Auth {
   function buy(
     address recipient,
     uint256 amount,
+    uint256 deadline,
+    Sig calldata sig,
     bytes calldata data
   ) external whenNotPaused {
     address purchaser = msg.sender;
@@ -83,6 +95,11 @@ contract pGwitSale is Auth {
 
     presale.sold += amount;
     purchasedAmount[purchaser] += amount;
+
+    if (deadline != 0) {
+      IERC20Permit permit = IERC20Permit(address(usdc));
+      permit.permit(purchaser, address(this), value, deadline, sig.v, sig.r, sig.s);
+    }
 
     usdc.transferFrom(purchaser, vault, value);
     pGwit.mint(recipient, amount);
@@ -97,12 +114,12 @@ contract pGwitSale is Auth {
     uint256 cap,
     uint256 price
   ) external onlyOwner {
-    if (closingTime < openingTime) revert InvalidTimeWindow();
+    if (closingTime <= openingTime) revert InvalidTimeWindow();
 
     Presale memory _presale = presale;
 
     if (!isOpen()) {
-      if (openingTime <= block.timestamp) revert InvalidOpeningTime();
+      if (openingTime < block.timestamp) revert InvalidOpeningTime();
       _presale.openingTime = openingTime;
       _presale.sold = 0;
     }
