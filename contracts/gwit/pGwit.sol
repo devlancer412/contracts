@@ -1,30 +1,37 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import {ERC20} from "@rari-capital/solmate/src/tokens/ERC20.sol";
 import {Auth} from "../utils/Auth.sol";
 
-contract pGwit is ERC20, Auth {
-  constructor() ERC20("pGwit", "pGWIT", 18) {}
+contract pGwit is Auth {
+  event Transfer(address indexed from, address indexed to, uint256 amount);
+
+  string public constant name = "pGwit";
+  string public constant symbol = "pGWIT";
+  uint8 public immutable decimals = 18;
+
+  uint256 public totalSupply;
+
+  mapping(address => uint256) public balanceOf;
 
   function mint(address to, uint256 amount) external onlyRole("MINTER") {
-    _mint(to, amount);
+    totalSupply += amount;
+
+    unchecked {
+      balanceOf[to] += amount;
+    }
+
+    emit Transfer(address(0), to, amount);
   }
 
-  function transfer(address to, uint256 amount)
-    public
-    override
-    onlyRole("TRANSFERER")
-    returns (bool)
-  {
-    return super.transfer(to, amount);
-  }
+  function burn(uint256 amount) external whenNotPaused {
+    address from = msg.sender;
+    balanceOf[from] -= amount;
 
-  function transferFrom(
-    address from,
-    address to,
-    uint256 amount
-  ) public override onlyRole("TRANSFERER") returns (bool) {
-    return super.transferFrom(from, to, amount);
+    unchecked {
+      totalSupply -= amount;
+    }
+
+    emit Transfer(from, address(0), amount);
   }
 }
