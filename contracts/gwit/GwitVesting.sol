@@ -11,7 +11,10 @@ contract GwitVesting is Auth {
   IERC20 public immutable pGwit;
   //GWIT address
   IERC20 public immutable gwit;
-  //User redeemed amount
+  //released amount
+  uint256 public released;
+
+  //user redeemed amount
   mapping(address => uint256) public redeemed;
 
   struct Info {
@@ -23,17 +26,17 @@ contract GwitVesting is Auth {
     uint32 duration;
     //initial release at start time in hundreds ( 500 = 5% )
     uint32 initialRate;
-    //total supply of tokens to be released
-    uint256 supply;
-    //amount of tokens released
-    uint256 released;
   }
 
   event Redeem(address indexed user, address indexed recipient, uint256 amount);
-  event Set(uint256 start, uint256 duration, uint256 supply);
+  event Set(uint32 start, uint32 cliff, uint32 duration, uint32 initialRate);
+  event Deposit(uint256 amount, uint256 balance);
+  event Withdraw(uint256 amount, uint256 balance);
 
   error ExceedsLimit(uint256 limit);
   error ExceedsSupply();
+  error InvalidStartingTime();
+  error CannotWithdrawDuringVestingPeriod();
 
   constructor(address pGwit_, address gwit_) {
     pGwit = IERC20(pGwit_);
@@ -72,10 +75,10 @@ contract GwitVesting is Auth {
     } else {
       amount = maxAmount;
     }
-    if (amount > info.supply - info.released) revert ExceedsSupply();
+    if (amount > gwit.balanceOf(address(this))) revert ExceedsSupply();
 
     unchecked {
-      info.released += amount;
+      released += amount;
       redeemed[user] += amount;
     }
 
@@ -88,18 +91,19 @@ contract GwitVesting is Auth {
     uint32 start,
     uint32 cliff,
     uint32 duration,
-    uint32 initialRate,
-    uint256 supply
+    uint32 initialRate
   ) external onlyOwner {
+    if (start < block.timestamp) revert InvalidStartingTime();
+    info = Info(start, cliff, duration, initialRate);
+    emit Set(start, cliff, duration, initialRate);
+  }
+
+  function withdraw(uint256 amount) external onlyOwner {
     Info memory _info = info;
-
-    _info.start = start;
-    _info.cliff = cliff;
-    _info.duration = duration;
-    _info.supply = supply;
-    _info.initialRate = initialRate;
-    info = _info;
-
-    emit Set(start, duration, supply);
+    if (block.timestamp >= _info.start && block.timestamp <= _info.start + _info.duration) {
+      revert CannotWithdrawDuringVestingPeriod();
+    }
+    gwit.transfer(msg.sender, amount);
+    emit Withdraw(amount, gwit.balanceOf(address(this)));
   }
 }
