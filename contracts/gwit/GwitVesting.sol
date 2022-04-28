@@ -46,7 +46,7 @@ contract GwitVesting is Auth {
 
   function vestedAmount(address user) public view returns (uint256) {
     uint256 total = pGwit.balanceOf(user);
-    uint256 currentTime = block.timestamp;
+    uint32 currentTime = uint32(block.timestamp);
     Info memory _info = info;
 
     if (currentTime < _info.start) {
