@@ -10,4 +10,21 @@ contract pGwit is ERC20, Auth {
   function mint(address to, uint256 amount) external onlyRole("MINTER") {
     _mint(to, amount);
   }
+
+  function transfer(address to, uint256 amount)
+    public
+    override
+    onlyRole("TRANSFERER")
+    returns (bool)
+  {
+    return super.transfer(to, amount);
+  }
+
+  function transferFrom(
+    address from,
+    address to,
+    uint256 amount
+  ) public override onlyRole("TRANSFERER") returns (bool) {
+    return super.transferFrom(from, to, amount);
+  }
 }
