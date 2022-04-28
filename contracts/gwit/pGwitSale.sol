@@ -46,10 +46,10 @@ contract pGwitSale is Auth {
   //Fires when pGwit purchase has been made
   event Buy(
     address indexed purchaser,
-    address indexed recipient,
+    address recipient,
     uint256 amount,
     uint256 value,
-    bytes data
+    bytes32 data
   );
 
   error NotOpen();
@@ -77,7 +77,7 @@ contract pGwitSale is Auth {
     uint256 amount,
     uint256 deadline,
     Sig calldata sig,
-    bytes calldata data
+    bytes32 data
   ) external whenNotPaused {
     Info memory _info = info;
     address purchaser = msg.sender;
