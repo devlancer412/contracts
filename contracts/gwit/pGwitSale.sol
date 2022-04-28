@@ -10,8 +10,8 @@ interface IpGwit {
 }
 
 contract pGwitSale is Auth {
-  //GwitSale struct
-  Presale public presale;
+  //pGwitSale info
+  Info public info;
 
   //USDC address
   IERC20 public immutable usdc;
@@ -23,9 +23,9 @@ contract pGwitSale is Auth {
   address public immutable vault;
 
   //User purchased amount (user => amount)
-  mapping(address => uint256) public purchasedAmount;
+  mapping(address => uint256) public amounts;
 
-  struct Presale {
+  struct Info {
     uint32 openingTime;
     uint32 closingTime;
     uint256 supply;
@@ -41,28 +41,22 @@ contract pGwitSale is Auth {
   }
 
   //Fires when sale is set
-  event PresaleSet(
-    uint256 openingTime,
-    uint256 closingTime,
-    uint256 supply,
-    uint256 cap,
-    uint256 price
-  );
+  event Set(uint256 openingTime, uint256 closingTime, uint256 supply, uint256 cap, uint256 price);
 
   //Fires when pGwit purchase has been made
-  event Purchase(
+  event Buy(
     address indexed purchaser,
-    address recipient,
+    address indexed recipient,
     uint256 amount,
     uint256 value,
     bytes data
   );
 
   error NotOpen();
-  error InvalidTimeWindow();
-  error InvalidOpeningTime();
   error ExceedsSupply();
   error ExceedsCap();
+  error InvalidTimeWindow();
+  error InvalidOpeningTime();
 
   constructor(
     address usdc_,
@@ -75,7 +69,7 @@ contract pGwitSale is Auth {
   }
 
   function isOpen() public view returns (bool) {
-    return block.timestamp >= presale.openingTime && block.timestamp < presale.closingTime;
+    return block.timestamp >= info.openingTime && block.timestamp < info.closingTime;
   }
 
   function buy(
@@ -85,16 +79,16 @@ contract pGwitSale is Auth {
     Sig calldata sig,
     bytes calldata data
   ) external whenNotPaused {
+    Info memory _info = info;
     address purchaser = msg.sender;
-    uint256 value = presale.price * amount;
-    Presale memory _presale = presale;
+    uint256 value = _info.price * amount;
 
     if (!isOpen()) revert NotOpen();
-    if (_presale.sold + amount > _presale.supply) revert ExceedsSupply();
-    if (purchasedAmount[purchaser] + amount > _presale.cap) revert ExceedsCap();
+    if (_info.sold + amount > _info.supply) revert ExceedsSupply();
+    if (amounts[purchaser] + amount > _info.cap) revert ExceedsCap();
 
-    presale.sold += amount;
-    purchasedAmount[purchaser] += amount;
+    info.sold += amount;
+    amounts[purchaser] += amount;
 
     if (deadline != 0) {
       IERC20Permit permit = IERC20Permit(address(usdc));
@@ -104,7 +98,7 @@ contract pGwitSale is Auth {
     usdc.transferFrom(purchaser, vault, value);
     pGwit.mint(recipient, amount);
 
-    emit Purchase(purchaser, recipient, amount, value, data);
+    emit Buy(purchaser, recipient, amount, value, data);
   }
 
   function set(
@@ -116,21 +110,21 @@ contract pGwitSale is Auth {
   ) external onlyOwner {
     if (closingTime <= openingTime) revert InvalidTimeWindow();
 
-    Presale memory _presale = presale;
+    Info memory _info = info;
 
     if (!isOpen()) {
       if (openingTime < block.timestamp) revert InvalidOpeningTime();
-      _presale.openingTime = openingTime;
-      _presale.sold = 0;
+      _info.openingTime = openingTime;
+      _info.sold = 0;
     }
 
-    _presale.closingTime = closingTime;
-    _presale.supply = supply;
-    _presale.cap = cap;
-    _presale.price = price;
+    _info.closingTime = closingTime;
+    _info.supply = supply;
+    _info.cap = cap;
+    _info.price = price;
 
-    presale = _presale;
+    info = _info;
 
-    emit PresaleSet(openingTime, closingTime, supply, cap, price);
+    emit Set(openingTime, closingTime, supply, cap, price);
   }
 }
