@@ -30,7 +30,6 @@ contract GwitVesting is Auth {
 
   event Redeem(address indexed user, address indexed recipient, uint256 amount);
   event Set(uint32 start, uint32 cliff, uint32 duration, uint32 initialRate);
-  event Deposit(uint256 amount, uint256 balance);
   event Withdraw(uint256 amount, uint256 balance);
 
   error ExceedsLimit(uint256 limit);
@@ -98,7 +97,7 @@ contract GwitVesting is Auth {
     emit Set(start, cliff, duration, initialRate);
   }
 
-  function withdraw(uint256 amount) external onlyOwner {
+  function withdraw(uint256 amount) external onlyRole("VAULT") {
     Info memory _info = info;
     if (block.timestamp >= _info.start && block.timestamp <= _info.start + _info.duration) {
       revert CannotWithdrawDuringVestingPeriod();
