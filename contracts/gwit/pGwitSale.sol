@@ -9,7 +9,7 @@ interface IpGwit {
   function mint(address to, uint256 amount) external;
 }
 
-contract pGwitSale is Auth {
+contract PreGwitSale is Auth {
   //pGwitSale info
   Info public info;
 
@@ -81,7 +81,7 @@ contract pGwitSale is Auth {
   ) external whenNotPaused {
     Info memory _info = info;
     address purchaser = msg.sender;
-    uint256 value = _info.price * amount;
+    uint256 value = (_info.price * amount) / 1e18;
 
     if (!isOpen()) revert NotOpen();
     if (_info.sold + amount > _info.supply) revert ExceedsSupply();
