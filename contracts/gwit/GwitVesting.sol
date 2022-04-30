@@ -8,7 +8,7 @@ contract GwitVesting is Auth {
   //Gwit vesting info
   Info public info;
   //pGWIT address
-  IERC20 public immutable pGwit;
+  IERC20 public immutable aGwit;
   //GWIT address
   IERC20 public immutable gwit;
   //released amount
@@ -37,8 +37,8 @@ contract GwitVesting is Auth {
   error InvalidStartingTime();
   error CannotWithdrawDuringVestingPeriod();
 
-  constructor(address pGwit_, address gwit_) {
-    pGwit = IERC20(pGwit_);
+  constructor(address aGwit_, address gwit_) {
+    aGwit = IERC20(aGwit_);
     gwit = IERC20(gwit_);
   }
 
@@ -47,7 +47,7 @@ contract GwitVesting is Auth {
   }
 
   function vestedAmount(address user) public view returns (uint256) {
-    uint256 total = pGwit.balanceOf(user);
+    uint256 total = aGwit.balanceOf(user);
     uint32 currentTime = uint32(block.timestamp);
     Info memory _info = info;
 

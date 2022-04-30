@@ -2,30 +2,30 @@
 pragma solidity ^0.8.9;
 
 import {BasicSetup} from "./BasicSetup.sol";
-import {PreGwitSale} from "contracts/gwit/pGwitSale.sol";
-import {PreGwit} from "contracts/gwit/pGwit.sol";
+import {AlphaGwitSale} from "contracts/gwit/AlphaGwitSale.sol";
+import {AlphaGwit} from "contracts/gwit/AlphaGwit.sol";
 import {Auth} from "contracts/utils/Auth.sol";
 import {MockUsdc} from "contracts/mocks/Usdc.sol";
 
-contract PreGwitSaleSetup is BasicSetup {
-  PreGwitSale pGwitSale;
+contract AlphaGwitSaleSetup is BasicSetup {
+  AlphaGwitSale aGwitSale;
   MockUsdc usdc;
-  PreGwit pGwit;
+  AlphaGwit aGwit;
 
-  PreGwitSale.Sig zeroSig;
+  AlphaGwitSale.Sig zeroSig;
   bytes32 private constant PERMIT_TYPEHASH =
     keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
 
   function setUp() public virtual {
-    pGwit = new PreGwit();
+    aGwit = new AlphaGwit();
     usdc = new MockUsdc();
-    pGwitSale = new PreGwitSale(address(usdc), address(pGwit), vault);
+    aGwitSale = new AlphaGwitSale(address(usdc), address(aGwit), vault);
 
-    pGwit.grantRole("MINTER", address(pGwitSale));
+    aGwit.grantRole("MINTER", address(aGwitSale));
 
-    vm.label(address(pGwit), "pGwit");
-    vm.label(address(usdc), "usdc");
-    vm.label(address(pGwitSale), "pGwitSale");
+    vm.label(address(aGwit), "aGWIT");
+    vm.label(address(usdc), "USDC");
+    vm.label(address(aGwitSale), "AlphaGwitSale");
   }
 
   function set() public virtual {
@@ -33,26 +33,26 @@ contract PreGwitSaleSetup is BasicSetup {
     uint256 supply = 50_000_000e18;
     uint256 cap = 100_000e18;
     uint256 price = 50_000; //$0.05
-    pGwitSale.set(time + 1 days, time + 2 days, supply, cap, price);
+    aGwitSale.set(time + 1 days, time + 2 days, supply, cap, price);
   }
 
   function gotoOpeningTime() public virtual {
-    (uint32 openingTime, , , , , ) = pGwitSale.info();
+    (uint32 openingTime, , , , , ) = aGwitSale.info();
     vm.warp(openingTime);
   }
 
   function gotoClosingTime() public virtual {
-    (, uint32 closingTime, , , , ) = pGwitSale.info();
+    (, uint32 closingTime, , , , ) = aGwitSale.info();
     vm.warp(closingTime);
   }
 
   function mintAndApproveUsdc(address to, uint256 pGwitAmount) public virtual {
-    (, , , , , uint256 price) = pGwitSale.info();
+    (, , , , , uint256 price) = aGwitSale.info();
     uint256 amount = (price * pGwitAmount) / 1e18;
     usdc.mint(to, amount);
 
     vm.prank(to);
-    usdc.approve(address(pGwitSale), amount);
+    usdc.approve(address(aGwitSale), amount);
   }
 
   function mintAndPermitUsdc(uint256 pk, uint256 pGwitAmount)
@@ -66,7 +66,7 @@ contract PreGwitSaleSetup is BasicSetup {
     )
   {
     address addr = vm.addr(pk);
-    (, , , , , uint256 price) = pGwitSale.info();
+    (, , , , , uint256 price) = aGwitSale.info();
     uint256 amount = (price * pGwitAmount) / 1e18;
     usdc.mint(addr, amount);
 
@@ -78,7 +78,7 @@ contract PreGwitSaleSetup is BasicSetup {
         abi.encodePacked(
           "\x19\x01",
           usdc.DOMAIN_SEPARATOR(),
-          keccak256(abi.encode(PERMIT_TYPEHASH, addr, address(pGwitSale), amount, nonce, deadline))
+          keccak256(abi.encode(PERMIT_TYPEHASH, addr, address(aGwitSale), amount, nonce, deadline))
         )
       )
     );
@@ -87,9 +87,9 @@ contract PreGwitSaleSetup is BasicSetup {
   }
 
   function buy(address user, uint256 amount) public virtual {
-    PreGwitSale.Sig memory sig = zeroSig;
+    AlphaGwitSale.Sig memory sig = zeroSig;
     vm.prank(user);
-    pGwitSale.buy(user, amount, 0, sig, bytes32(0));
+    aGwitSale.buy(user, amount, 0, sig, bytes32(0));
   }
 
   function buyPermit(
@@ -100,8 +100,8 @@ contract PreGwitSaleSetup is BasicSetup {
     bytes32 s,
     uint8 v
   ) public virtual {
-    PreGwitSale.Sig memory sig = PreGwitSale.Sig(r, s, v);
+    AlphaGwitSale.Sig memory sig = AlphaGwitSale.Sig(r, s, v);
     vm.prank(user);
-    pGwitSale.buy(user, amount, deadline, sig, bytes32(0));
+    aGwitSale.buy(user, amount, deadline, sig, bytes32(0));
   }
 }

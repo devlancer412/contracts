@@ -5,19 +5,19 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/draft-IERC20Permit.sol";
 import {Auth} from "../utils/Auth.sol";
 
-interface IpGwit {
+interface AlphaGwit {
   function mint(address to, uint256 amount) external;
 }
 
-contract PreGwitSale is Auth {
-  //pGwitSale info
+contract AlphaGwitSale is Auth {
+  //AlphaGwitSale info
   Info public info;
 
   //USDC address
   IERC20 public immutable usdc;
 
-  //pGWIT address
-  IpGwit public immutable pGwit;
+  //aGWIT address
+  AlphaGwit public immutable aGwit;
 
   //Vault address
   address public immutable vault;
@@ -43,7 +43,7 @@ contract PreGwitSale is Auth {
   //Fires when sale is set
   event Set(uint256 openingTime, uint256 closingTime, uint256 supply, uint256 cap, uint256 price);
 
-  //Fires when pGwit purchase has been made
+  //Fires when aGwit purchase has been made
   event Buy(
     address indexed purchaser,
     address recipient,
@@ -60,10 +60,10 @@ contract PreGwitSale is Auth {
 
   constructor(
     address usdc_,
-    address pGwit_,
+    address aGwit_,
     address vault_
   ) {
-    pGwit = IpGwit(pGwit_);
+    aGwit = AlphaGwit(aGwit_);
     usdc = IERC20(usdc_);
     vault = vault_;
   }
@@ -96,7 +96,7 @@ contract PreGwitSale is Auth {
     }
 
     usdc.transferFrom(purchaser, vault, value);
-    pGwit.mint(recipient, amount);
+    aGwit.mint(recipient, amount);
 
     emit Buy(purchaser, recipient, amount, value, data);
   }

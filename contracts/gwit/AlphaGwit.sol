@@ -3,11 +3,11 @@ pragma solidity ^0.8.9;
 
 import {Auth} from "../utils/Auth.sol";
 
-contract PreGwit is Auth {
+contract AlphaGwit is Auth {
   event Transfer(address indexed from, address indexed to, uint256 amount);
 
-  string public constant name = "PreGwit";
-  string public constant symbol = "pGWIT";
+  string public constant name = "AlphaGwit";
+  string public constant symbol = "aGWIT";
   uint8 public immutable decimals = 18;
 
   uint256 public totalSupply;
