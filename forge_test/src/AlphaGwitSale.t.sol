@@ -3,7 +3,7 @@ pragma solidity ^0.8.9;
 
 import "./utils/AlphaGwitSaleSetup.sol";
 
-contract PreGwitSaleTest is AlphaGwitSaleSetup {
+contract AlphaGwitSaleTest is AlphaGwitSaleSetup {
   function setUp() public override {
     super.setUp();
   }
@@ -47,6 +47,27 @@ contract PreGwitSaleTest is AlphaGwitSaleSetup {
     assertEq(aGwit.totalSupply(), amount);
     assertEq(aGwitSale.amounts(user), amount);
     assertEq(sold, amount);
+  }
+
+  function testBuyMulti(uint8 num, uint88 amount) public {
+    vm.assume(num > 0 && num <= 100);
+    vm.assume(amount >= 1e16 && amount <= 100_000e18);
+
+    set();
+    gotoOpeningTime();
+
+    address initUser = address(99999);
+    for (uint256 i = 0; i < num; i++) {
+      address user = address(uint160(initUser) + uint160(i));
+      mintAndApproveUsdc(user, amount);
+      buy(user, amount);
+      assertEq(aGwit.balanceOf(user), amount);
+      assertEq(aGwitSale.amounts(user), amount);
+    }
+
+    (, , , , uint256 sold, ) = aGwitSale.info();
+    assertEq(aGwit.totalSupply(), amount * num);
+    assertEq(sold, amount * num);
   }
 
   function testCannotBuyIfPaused() public {
@@ -115,5 +136,13 @@ contract PreGwitSaleTest is AlphaGwitSaleSetup {
 
     vm.expectRevert(abi.encodeWithSelector(AlphaGwitSale.ExceedsCap.selector));
     buy(alice, amount2);
+  }
+
+  function testCannotSetIfNotOwner(address user) public {
+    vm.assume(user != address(this));
+
+    vm.prank(user);
+    vm.expectRevert(abi.encodeWithSelector(Auth.Unauthorized.selector, "OWNER", user));
+    aGwitSale.set(10, 20, 10e18, 1e18, 50_000);
   }
 }
