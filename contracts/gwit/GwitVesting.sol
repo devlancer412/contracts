@@ -3,6 +3,7 @@ pragma solidity ^0.8.9;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Auth} from "../utils/Auth.sol";
+import "hardhat/console.sol";
 
 contract GwitVesting is Auth {
   //Gwit vesting info
@@ -30,7 +31,7 @@ contract GwitVesting is Auth {
 
   event Redeem(address indexed user, address indexed recipient, uint256 amount);
   event Set(uint32 start, uint32 cliff, uint32 duration, uint32 initialRate);
-  event Withdraw(uint256 amount, uint256 balance);
+  event Withdraw(address indexed user, uint256 amount, uint256 balance);
 
   error ExceedsLimit(uint256 limit);
   error ExceedsSupply();
@@ -103,6 +104,6 @@ contract GwitVesting is Auth {
       revert CannotWithdrawDuringVestingPeriod();
     }
     gwit.transfer(msg.sender, amount);
-    emit Withdraw(amount, gwit.balanceOf(address(this)));
+    emit Withdraw(msg.sender, amount, gwit.balanceOf(address(this)));
   }
 }
