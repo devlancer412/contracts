@@ -9,7 +9,7 @@ contract GwitVestingTest is GwitVestingSetup {
   }
 
   function testVestedAmountBeforeTGE(uint88 aGwitAmount) public {
-    vm.assume(aGwitAmount >= 1e16 && aGwitAmount <= 100_000e18);
+    vm.assume(aGwitAmount <= 100_000e18);
     aGwit.mint(alice, aGwitAmount);
 
     set();
@@ -17,7 +17,7 @@ contract GwitVestingTest is GwitVestingSetup {
   }
 
   function testVestedAmountAfterTGE(uint88 aGwitAmount, uint32 delta) public {
-    vm.assume(aGwitAmount >= 1e16 && aGwitAmount <= 100_000e18);
+    vm.assume(aGwitAmount <= 100_000e18);
     aGwit.mint(alice, aGwitAmount);
 
     set();
@@ -29,12 +29,12 @@ contract GwitVestingTest is GwitVestingSetup {
   }
 
   function testVestedAmountAfterCliffPeriod(uint88 aGwitAmount, uint32 delta) public {
-    vm.assume(aGwitAmount >= 1e16 && aGwitAmount <= 100_000e18);
+    vm.assume(aGwitAmount <= 100_000e18);
     vm.assume(delta <= 15780000);
     aGwit.mint(alice, aGwitAmount);
 
     set();
-    gotoAfterCliff(10000);
+    gotoAfterCliff(delta);
 
     (uint32 startTime, , uint32 duration, uint32 initialRate) = vesting.info();
     uint256 initialAmount = (aGwitAmount * initialRate) / 10_000;
@@ -50,7 +50,7 @@ contract GwitVestingTest is GwitVestingSetup {
   }
 
   function testVestAmountAfterFullyVested(uint88 aGwitAmount, uint32 delta) public {
-    vm.assume(aGwitAmount >= 1e16 && aGwitAmount <= 100_000e18);
+    vm.assume(aGwitAmount <= 100_000e18);
     aGwit.mint(alice, aGwitAmount);
 
     set();
@@ -61,7 +61,7 @@ contract GwitVestingTest is GwitVestingSetup {
   }
 
   function testRedeemOnTGE(uint88 aGwitAmount, uint32 delta) public {
-    vm.assume(aGwitAmount >= 1e16 && aGwitAmount <= 100_000e18);
+    vm.assume(aGwitAmount <= 100_000e18);
     aGwit.mint(alice, aGwitAmount);
 
     set();
@@ -80,7 +80,7 @@ contract GwitVestingTest is GwitVestingSetup {
   }
 
   function testRedeemOnTGEAndAfterCliff(uint88 aGwitAmount, uint32 delta) public {
-    vm.assume(aGwitAmount >= 1e16 && aGwitAmount <= 100_000e18);
+    vm.assume(aGwitAmount <= 100_000e18);
     aGwit.mint(alice, aGwitAmount);
 
     set();
@@ -107,7 +107,7 @@ contract GwitVestingTest is GwitVestingSetup {
   }
 
   function testRedeemOnTGEAndAfterFullyVested(uint88 aGwitAmount, uint32 delta) public {
-    vm.assume(aGwitAmount >= 1e16 && aGwitAmount <= 100_000e18);
+    vm.assume(aGwitAmount <= 100_000e18);
     aGwit.mint(alice, aGwitAmount);
 
     set();
@@ -138,6 +138,43 @@ contract GwitVestingTest is GwitVestingSetup {
     vesting.pause();
     vm.expectRevert(abi.encodeWithSelector(Auth.IsPaused.selector));
     vesting.redeem(alice, 1e18);
+  }
+
+  function testCannotRedeemIfItExceedsLimit(uint88 aGwitAmount) public {
+    vm.assume(aGwitAmount <= 100_000e18);
+    aGwit.mint(alice, aGwitAmount);
+
+    set();
+    (, , , uint32 initialRate) = vesting.info();
+    gotoTGE(0);
+
+    vm.prank(alice);
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        GwitVesting.ExceedsLimit.selector,
+        (aGwitAmount * initialRate) / 10_000
+      )
+    );
+    vesting.redeem(alice, aGwitAmount * initialRate + 1);
+  }
+
+  function testCannotRedeemIfItExceedsSupply(uint88 aGwitAmount) public {
+    vm.assume(aGwitAmount > 1e16 && aGwitAmount <= 100_000e18);
+    aGwit.mint(alice, aGwitAmount);
+
+    set();
+    (, , , uint32 initialRate) = vesting.info();
+
+    gotoTGE(0);
+    uint256 balancesSlot = 0;
+    bytes32 userKey = bytes32(uint256(uint160(address(vesting))));
+    bytes32 userBalanceSlot = bytes32(keccak256(abi.encodePacked(userKey, balancesSlot)));
+    bytes32 value = bytes32(uint256((aGwitAmount * initialRate) / 10_000 - 1));
+    vm.store(address(gwit), userBalanceSlot, value);
+
+    vm.prank(alice);
+    vm.expectRevert(abi.encodeWithSelector(GwitVesting.ExceedsSupply.selector));
+    vesting.redeem(alice, (aGwitAmount * initialRate) / 10_000);
   }
 
   function testWithdraw(uint128 amount) public {
