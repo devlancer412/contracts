@@ -44,7 +44,7 @@ contract EggSaleSetup is BasicSetup {
     uint256 amount = price * eggAmount;
     usdc.mint(to, amount);
 
-    vm.prank(alice);
+    vm.prank(to);
     usdc.approve(address(eggsale), type(uint256).max);
   }
 
