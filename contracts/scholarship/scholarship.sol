@@ -17,8 +17,8 @@ contract Scholarship is Ownable {
   event Transfer(uint256 nft_id, address scholar);
   event Revoke(uint256 nft_id);
 
-  constructor(IERC721 _nft_contract) {
-    nft_contract = _nft_contract;
+  constructor(address _nft_contract_address) {
+    nft_contract = IERC721(_nft_contract_address);
   }
 
   function onERC721Received(
@@ -40,13 +40,27 @@ contract Scholarship is Ownable {
     _;
   }
 
+  modifier lended(uint256 nft_id) {
+    require(nft_owner[nft_id] != address(0), "Scholarship:NOT_LENDED");
+    _;
+  }
+
   function disable() public onlyOwner {
     disabled = true;
   }
 
-  function info(uint256 nft_id) public view returns (address owner, address scholar) {
+  function enable() public onlyOwner {
+    disabled = false;
+  }
+
+  function info(uint256 nft_id)
+    public
+    view
+    lended(nft_id)
+    returns (address owner, address scholar)
+  {
     owner = nft_owner[nft_id];
-    scholar = nft_owner[nft_id];
+    scholar = nft_scholar[nft_id];
   }
 
   function lendNFT(uint256 nft_id, address scholar) public notDisabled {
