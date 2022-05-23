@@ -5,7 +5,8 @@ import { Ship } from "../utils";
 
 const func: DeployFunction = async (hre) => {
   const { deploy, accounts } = await Ship.init(hre);
-  const supply_size = BigNumber.from("1_000_000_000".replaceAll("_", ""));
+  // const supply_size = BigNumber.from("1_000_000_000".replaceAll("_", ""));
+  const supply_size = BigNumber.from("1000000000");
 
   if (hre.network.tags.prod) {
     await deploy(GWITToken__factory, {
