@@ -41,7 +41,8 @@ contract ScholarshipTest is BasicSetup {
   }
 
   function testBulkLend() public {
-    uint256 memory nftIds = [0, 1, 2, 3];
+    uint256[] memory nftIds = new uint256[](4);
+    nftIds = [0, 1, 2, 3];
     address[] memory addresses = new address[](4);
     addresses[0] = alice;
     addresses[1] = alice;
