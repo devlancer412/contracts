@@ -6,8 +6,8 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 contract Scholarship is Ownable {
-  IERC721 nft_contract;
-  bool disabled;
+  IERC721 public nft_contract;
+  bool public disabled;
 
   mapping(uint256 => address) public nft_scholar;
   mapping(uint256 => address) public nft_owner;

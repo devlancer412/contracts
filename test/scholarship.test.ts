@@ -42,63 +42,98 @@ describe("Scholarship test", () => {
 
     await rooster.grantRole("MINTER", alice.address);
     await rooster.grantRole("MINTER", scholarship.address);
-    await scholarship.enable();
     await rooster.connect(alice).mint(alice.address, 0);
     await rooster.connect(alice).mint(alice.address, 0);
     await rooster.connect(alice).mint(alice.address, 0);
     await rooster.connect(alice).mint(alice.address, 0);
   });
 
-  it("Lending a NFT test", async () => {
-    // Alice has a rooster.
-    expect(await rooster.balanceOf(alice.address)).to.eq(4);
-    expect(await rooster.totalSupply()).to.eq(4);
-
+  describe("Lending a NFT test", async () => {
     const nftId = 0;
-    expect(await rooster.ownerOf(nftId)).to.eq(alice.address);
-    // Give opertor approval
-    await rooster.connect(alice).setApprovalForAll(scholarship.address, true);
+    before(async () => {
+      // Alice has a rooster.
+      expect(await rooster.balanceOf(alice.address)).to.eq(4);
+      expect(await rooster.totalSupply()).to.eq(4);
 
-    // Alice lends nft to bob.
-    await scholarship.connect(alice).lendNFT(nftId, bob.address);
-    const { owner, scholar } = await scholarship.info(nftId);
-    expect(owner).to.eq(alice.address);
-    expect(scholar).to.eq(bob.address);
+      expect(await rooster.ownerOf(nftId)).to.eq(alice.address);
+      // Give opertor approval
+      await rooster.connect(alice).setApprovalForAll(scholarship.address, true);
+    });
 
-    // Transfer scholarship to vault.
-    await scholarship.connect(alice).transferScholar(nftId, vault.address);
-    const scholar1 = (await scholarship.info(nftId)).scholar;
-    expect(scholar1).to.eq(vault.address);
+    it("Lend request will revote when scholarship disabled.", async () => {
+      await scholarship.disable();
+      await expect(scholarship.connect(alice).lendNFT(nftId, bob.address)).to.be.revertedWith(
+        "Scholarship:CONTRACT_DISABLED",
+      );
+    });
 
-    // Revoke NFT from sholar.
-    await scholarship.connect(alice).revoke(nftId);
-    await expect(scholarship.info(nftId)).to.be.revertedWith("Scholarship:NOT_LENDED");
+    it("Alice lends nft to bob.", async () => {
+      await scholarship.enable();
+      await scholarship.connect(alice).lendNFT(nftId, bob.address);
+      const { owner, scholar } = await scholarship.info(nftId);
+      expect(owner).to.eq(alice.address);
+      expect(scholar).to.eq(bob.address);
+    });
+
+    describe("After lending", () => {
+      it("Transfer scholarship", async () => {
+        // Transfer scholarship to vault.
+        await scholarship.connect(alice).transferScholar(nftId, vault.address);
+        const scholar1 = (await scholarship.info(nftId)).scholar;
+        expect(scholar1).to.eq(vault.address);
+
+        // Can't access if he isn't owner of NFT.
+        await expect(scholarship.connect(bob).transferScholar(nftId, vault.address)).to.be.revertedWith(
+          "Scholarship:NOT_OWNER",
+        );
+      });
+
+      it("Revoke test", async () => {
+        // Revoke NFT from sholar.
+        await scholarship.connect(alice).revoke(nftId);
+        await expect(scholarship.info(nftId)).to.be.revertedWith("Scholarship:NOT_LENDED");
+      });
+    });
   });
 
-  it("Bulk lending NFTs test", async () => {
-    // Alice has a rooster.
-    expect(await rooster.balanceOf(alice.address)).to.eq(4);
-    expect(await rooster.totalSupply()).to.eq(4);
-
+  describe("Bulk lending NFTs test", () => {
     const nftIds = [0, 1, 2, 3];
-    const addresses = Array(4).fill(bob.address);
-    // Give opertor approval
-    await rooster.connect(alice).setApprovalForAll(scholarship.address, true);
 
-    // Alice lends nft to bob.
-    await scholarship.connect(alice).bulkLendNFT(nftIds, addresses);
-    const { owner, scholar } = await scholarship.info(nftIds[0]);
-    expect(owner).to.eq(alice.address);
-    expect(scholar).to.eq(bob.address);
+    before(async () => {
+      // Alice has a rooster.
+      expect(await rooster.balanceOf(alice.address)).to.eq(4);
+      expect(await rooster.totalSupply()).to.eq(4);
 
-    // Transfer scholarship to vault.
-    const newAddresses = addresses.map((address, index) => (index ? address : vault.address));
-    await scholarship.connect(alice).bulkTransferScholar(nftIds, newAddresses);
-    const scholar1 = (await scholarship.info(nftIds[0])).scholar;
-    expect(scholar1).to.eq(vault.address);
+      // Give opertor approval
+      await rooster.connect(alice).setApprovalForAll(scholarship.address, true);
+    });
 
-    // Revoke NFT from sholar.
-    await scholarship.connect(alice).bulkRevoke(nftIds);
-    await expect(scholarship.info(nftIds[0])).to.be.revertedWith("Scholarship:NOT_LENDED");
+    it("It will revert if parameter missmatched.", async () => {
+      const misMatchAddresses = Array(5).fill(bob.address);
+      await expect(scholarship.connect(alice).bulkLendNFT(nftIds, misMatchAddresses)).to.be.revertedWith(
+        "Scholarship:PARAM_MISMATCH",
+      );
+    });
+
+    it("Alice bulk lends nfts to bob.", async () => {
+      const addresses = Array(4).fill(bob.address);
+      await scholarship.connect(alice).bulkLendNFT(nftIds, addresses);
+      const { owner, scholar } = await scholarship.info(nftIds[0]);
+      expect(owner).to.eq(alice.address);
+      expect(scholar).to.eq(bob.address);
+    });
+
+    it("Bulk transfer scholarship to vault.", async () => {
+      const addresses = Array(4).fill(bob.address);
+      const newAddresses = addresses.map((address, index) => (index ? address : vault.address));
+      await scholarship.connect(alice).bulkTransferScholar(nftIds, newAddresses);
+      const scholar1 = (await scholarship.info(nftIds[0])).scholar;
+      expect(scholar1).to.eq(vault.address);
+    });
+
+    it("Bulk revoke NFT from sholar.", async () => {
+      await scholarship.connect(alice).bulkRevoke(nftIds);
+      await expect(scholarship.info(nftIds[0])).to.be.revertedWith("Scholarship:NOT_LENDED");
+    });
   });
 });

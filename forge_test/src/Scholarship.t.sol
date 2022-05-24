@@ -9,8 +9,24 @@ import "./utils/BasicSetup.sol";
 contract ScholarshipTest is BasicSetup {
   Rooster rooster;
   Scholarship scholarship;
+  uint256 nftId;
+  uint256[] nftIds;
+  address[] addresses;
 
   function setUp() public {
+    nftId = 0;
+    nftIds = new uint256[](4);
+    nftIds[0] = 0;
+    nftIds[1] = 1;
+    nftIds[2] = 2;
+    nftIds[3] = 3;
+
+    addresses = new address[](4);
+    addresses[0] = bob;
+    addresses[1] = bob;
+    addresses[2] = bob;
+    addresses[3] = bob;
+
     rooster = new Rooster("");
     scholarship = new Scholarship(address(rooster));
 
@@ -25,7 +41,6 @@ contract ScholarshipTest is BasicSetup {
   }
 
   function testSingleLend() public {
-    uint256 nftId = 0;
     vm.prank(alice);
     scholarship.lendNFT(nftId, bob);
 
@@ -33,11 +48,21 @@ contract ScholarshipTest is BasicSetup {
     address scholar = scholarship.getScholar(nftId);
     assertEq(owner, alice);
     assertEq(scholar, bob);
+  }
+
+  function testSingleTransfer() public {
+    vm.prank(alice);
+    scholarship.lendNFT(nftId, bob);
 
     vm.prank(alice);
     scholarship.transferScholar(nftId, alice);
-    scholar = scholarship.getScholar(nftId);
+    address scholar = scholarship.getScholar(nftId);
     assertEq(scholar, alice);
+  }
+
+  function testSingleRevoke() public {
+    vm.prank(alice);
+    scholarship.lendNFT(nftId, bob);
 
     vm.prank(alice);
     scholarship.revoke(nftId);
@@ -46,29 +71,28 @@ contract ScholarshipTest is BasicSetup {
   }
 
   function testBulkLend() public {
-    uint256[] memory nftIds = new uint256[](4);
-    nftIds[0] = 0;
-    nftIds[1] = 1;
-    nftIds[2] = 2;
-    nftIds[3] = 3;
-    address[] memory addresses = new address[](4);
-    addresses[0] = bob;
-    addresses[1] = bob;
-    addresses[2] = bob;
-    addresses[3] = bob;
-
     vm.prank(alice);
     scholarship.bulkLendNFT(nftIds, addresses);
     address owner = scholarship.getOwner(nftIds[0]);
     address scholar = scholarship.getScholar(nftIds[0]);
     assertEq(owner, alice);
     assertEq(scholar, bob);
+  }
+
+  function testBulkTransfer() public {
+    vm.prank(alice);
+    scholarship.bulkLendNFT(nftIds, addresses);
 
     addresses[0] = alice;
     vm.prank(alice);
     scholarship.bulkTransferScholar(nftIds, addresses);
-    scholar = scholarship.getScholar(nftIds[0]);
+    address scholar = scholarship.getScholar(nftIds[0]);
     assertEq(scholar, alice);
+  }
+
+  function testBulkRevoke() public {
+    vm.prank(alice);
+    scholarship.bulkLendNFT(nftIds, addresses);
 
     vm.prank(alice);
     scholarship.bulkRevoke(nftIds);
