@@ -37,7 +37,7 @@
     "solhint:check": "npx solhint 'contracts/**/*.sol'",
     "solhint:fix": "npx solhint 'contracts/**/*.sol' --fix",
     "lint:check": "yarn prettier:check && yarn solhint:check && npx eslint '**/*.{js,ts}'",
-    "lint:fix": "yarn prettier:fix && yarn solhint:fix && npx eslint '**/*.{js,ts}' --fix",
+    "lint:fix": "yarn prettier:fix && yarn solhint:fix && npx eslint --no-error-on-unmatched-pattern '**/*.{js,ts}' --fix",
     "coverage": "cross-env HARDHAT_DEPLOY_FIXTURE=true hardhat coverage",
     "clean": "rimraf abis artifacts cache types",
     "husky:init": "husky install",
