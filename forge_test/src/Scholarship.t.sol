@@ -15,26 +15,31 @@ contract ScholarshipTest is BasicSetup {
     scholarship = new Scholarship(address(rooster));
 
     rooster.grantRole("MINTER", address(this));
-    rooster.mint(address(this), 0);
-    rooster.mint(address(this), 1);
-    rooster.mint(address(this), 2);
-    rooster.mint(address(this), 3);
+    rooster.mint(alice, 0);
+    rooster.mint(alice, 1);
+    rooster.mint(alice, 2);
+    rooster.mint(alice, 3);
+
+    vm.prank(alice);
+    rooster.setApprovalForAll(address(scholarship), true);
   }
 
   function testSingleLend() public {
     uint256 nftId = 0;
-    scholarship.lendNFT(nftId, alice);
+    vm.prank(alice);
+    scholarship.lendNFT(nftId, bob);
+
     address owner = scholarship.getOwner(nftId);
     address scholar = scholarship.getScholar(nftId);
-
-    assertEq(owner, address(this));
-    assertEq(scholar, alice);
-
-    scholarship.transferScholar(nftId, bob);
-    scholar = scholarship.getScholar(nftId);
-
+    assertEq(owner, alice);
     assertEq(scholar, bob);
 
+    vm.prank(alice);
+    scholarship.transferScholar(nftId, alice);
+    scholar = scholarship.getScholar(nftId);
+    assertEq(scholar, alice);
+
+    vm.prank(alice);
     scholarship.revoke(nftId);
     vm.expectRevert(bytes("Scholarship:NOT_LENDED"));
     scholarship.info(nftId);
@@ -42,26 +47,30 @@ contract ScholarshipTest is BasicSetup {
 
   function testBulkLend() public {
     uint256[] memory nftIds = new uint256[](4);
-    nftIds = [0, 1, 2, 3];
+    nftIds[0] = 0;
+    nftIds[1] = 1;
+    nftIds[2] = 2;
+    nftIds[3] = 3;
     address[] memory addresses = new address[](4);
-    addresses[0] = alice;
-    addresses[1] = alice;
-    addresses[2] = alice;
-    addresses[3] = alice;
+    addresses[0] = bob;
+    addresses[1] = bob;
+    addresses[2] = bob;
+    addresses[3] = bob;
 
+    vm.prank(alice);
     scholarship.bulkLendNFT(nftIds, addresses);
     address owner = scholarship.getOwner(nftIds[0]);
     address scholar = scholarship.getScholar(nftIds[0]);
-
-    assertEq(owner, address(this));
-    assertEq(scholar, alice);
-
-    addresses[0] = bob;
-    scholarship.bulkTransferScholar(nftIds, addresses);
-    scholar = scholarship.getScholar(nftIds[0]);
-
+    assertEq(owner, alice);
     assertEq(scholar, bob);
 
+    addresses[0] = alice;
+    vm.prank(alice);
+    scholarship.bulkTransferScholar(nftIds, addresses);
+    scholar = scholarship.getScholar(nftIds[0]);
+    assertEq(scholar, alice);
+
+    vm.prank(alice);
     scholarship.bulkRevoke(nftIds);
     vm.expectRevert(bytes("Scholarship:NOT_LENDED"));
     scholarship.info(nftIds[0]);

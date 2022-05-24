@@ -68,7 +68,7 @@ contract Scholarship is Ownable {
   }
 
   function getScholar(uint256 nft_id) public view lended(nft_id) returns (address scholar) {
-    scholar = nft_owner[nft_id];
+    scholar = nft_scholar[nft_id];
   }
 
   function lendNFT(uint256 nft_id, address scholar) public notDisabled {
