@@ -24,15 +24,16 @@ contract ScholarshipTest is BasicSetup {
   function testSingleLend() public {
     uint256 nftId = 0;
     scholarship.lendNFT(nftId, alice);
-    const info = scholarship.info(nftId);
+    address owner = scholarship.getOwner(nftId);
+    address scholar = scholarship.getScholar(nftId);
 
-    assertEq(info.owner, address(this));
-    assertEq(info.scholar, alice);
+    assertEq(owner, address(this));
+    assertEq(scholar, alice);
 
     scholarship.transferScholar(nftId, bob);
-    const newInfo = scholarship.info(nftId);
+    scholar = scholarship.getScholar(nftId);
 
-    assertEq(newInfo.scholar, bob);
+    assertEq(scholar, bob);
 
     scholarship.revoke(nftId);
     vm.expectRevert(bytes("Scholarship:NOT_LENDED"));
@@ -48,16 +49,17 @@ contract ScholarshipTest is BasicSetup {
     addresses[3] = alice;
 
     scholarship.bulkLendNFT(nftIds, addresses);
-    const info = scholarship.info(nftIds[0]);
+    address owner = scholarship.getOwner(nftIds[0]);
+    address scholar = scholarship.getScholar(nftIds[0]);
 
-    assertEq(info.owner, address(this));
-    assertEq(info.scholar, alice);
+    assertEq(owner, address(this));
+    assertEq(scholar, alice);
 
     addresses[0] = bob;
     scholarship.bulkTransferScholar(nftIds, addresses);
-    const newInfo = scholarship.info(nftIds[0]);
+    scholar = scholarship.getScholar(nftIds[0]);
 
-    assertEq(newInfo.scholar, bob);
+    assertEq(scholar, bob);
 
     scholarship.bulkRevoke(nftIds);
     vm.expectRevert(bytes("Scholarship:NOT_LENDED"));
