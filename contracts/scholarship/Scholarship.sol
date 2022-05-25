@@ -16,8 +16,8 @@ contract Scholarship is Ownable {
   event Lend(uint256 nft_id, address scholar);
   event Transfer(uint256 nft_id, address scholar);
   event Revoke(uint256 nft_id);
-  event Disabled();
-  event Enabled();
+  event Disable();
+  event Enable();
 
   constructor(address _nft_contract_address) {
     nft_contract = IERC721(_nft_contract_address);
@@ -50,13 +50,13 @@ contract Scholarship is Ownable {
   function disable() public onlyOwner {
     disabled = true;
 
-    emit Disabled();
+    emit Disable();
   }
 
   function enable() public onlyOwner {
     disabled = false;
 
-    emit Enabled();
+    emit Enable();
   }
 
   function info(uint256 nft_id)
