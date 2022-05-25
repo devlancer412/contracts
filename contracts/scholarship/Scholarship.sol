@@ -93,10 +93,11 @@ contract Scholarship is Ownable {
   }
 
   function revoke(uint256 nft_id) public shouldBeOwner(nft_id) {
-    nft_contract.safeTransferFrom(address(this), msg.sender, nft_id);
     lended_nfts[msg.sender] = lended_nfts[msg.sender] - 1;
     nft_owner[nft_id] = address(0);
     nft_scholar[nft_id] = address(0);
+
+    nft_contract.safeTransferFrom(address(this), msg.sender, nft_id);
 
     emit Revoke(nft_id);
   }
