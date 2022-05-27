@@ -31,16 +31,10 @@ const setup = deployments.createFixture(async (hre) => {
   };
 });
 
-const sign = async (
-  signer: string,
-  fighter1: number,
-  fighter2: number,
-  startTime: number,
-  endTime: number,
-) => {
+const sign = async (to: string, fighter1: number, fighter2: number, startTime: number, endTime: number) => {
   const hash = solidityKeccak256(
     ["address", "uint256", "uint256", "uint32", "uint32"],
-    [signer, fighter1, fighter2, startTime, endTime],
+    [to, fighter1, fighter2, startTime, endTime],
   );
   const sig = await accounts.signer.signMessage(arrayify(hash));
   const { r, s, v } = splitSignature(sig);

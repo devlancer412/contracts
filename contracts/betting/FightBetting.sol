@@ -11,6 +11,8 @@ contract FightBetting is Auth {
     uint256 fighter2; // Second Fighter's token id
     uint32 startTime; // Start time of betting
     uint32 endTime; // End time of betting
+    uint256 minAmount; // Minimum value of amount
+    uint256 maxAmount; // Maximum value of amount
     address creator; // Creator of betting
     uint256 bettorCount1; // Count of bettor who bet first Fighter
     uint256 bettorCount2; // Count of bettor who bet second Fighter
@@ -55,6 +57,8 @@ contract FightBetting is Auth {
   modifier canBet(uint256 bettingId) {
     require(block.timestamp > bettings[bettingId].startTime, "FightBetting:NOT_STARTED_YET");
     require(block.timestamp < bettings[bettingId].endTime, "FightBetting:ALREADY_FINISHED");
+    require(msg.value >= bettings[bettingId].minAmount, "FightBetting:TOO_SMALL_AMOUNT");
+    require(msg.value <= bettings[bettingId].maxAmount, "FightBetting:TOO_MUCH_AMOUNT");
     _;
   }
 
@@ -69,10 +73,12 @@ contract FightBetting is Auth {
     uint256 fighter2,
     uint32 startTime,
     uint32 endTime,
+    uint256 minAmount,
+    uint256 maxAmount,
     Sig calldata sig
   ) external {
     require(
-      _isParamValid(fighter1, fighter2, startTime, endTime, sig),
+      _isParamValid(fighter1, fighter2, startTime, endTime, minAmount, maxAmount, sig),
       "FightBetting:INVALID_PARAM"
     );
 
@@ -81,6 +87,8 @@ contract FightBetting is Auth {
       fighter2,
       startTime,
       endTime,
+      minAmount,
+      maxAmount,
       msg.sender,
       0,
       0,
@@ -101,10 +109,12 @@ contract FightBetting is Auth {
     uint256 fighter2,
     uint32 startTime,
     uint32 endTime,
+    uint256 minAmount,
+    uint256 maxAmount,
     Sig calldata sig
   ) private view returns (bool) {
     bytes32 messageHash = keccak256(
-      abi.encodePacked(msg.sender, fighter1, fighter2, startTime, endTime)
+      abi.encodePacked(msg.sender, fighter1, fighter2, startTime, endTime, minAmount, maxAmount)
     );
     bytes32 ethSignedMessageHash = keccak256(
       abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash)
