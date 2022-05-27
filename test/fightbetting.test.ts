@@ -31,10 +31,18 @@ const setup = deployments.createFixture(async (hre) => {
   };
 });
 
-const sign = async (to: string, fighter1: number, fighter2: number, startTime: number, endTime: number) => {
+const sign = async (
+  to: string,
+  fighter1: number,
+  fighter2: number,
+  startTime: number,
+  endTime: number,
+  minAmount: string,
+  maxAmount: string,
+) => {
   const hash = solidityKeccak256(
-    ["address", "uint256", "uint256", "uint32", "uint32"],
-    [to, fighter1, fighter2, startTime, endTime],
+    ["address", "uint256", "uint256", "uint32", "uint32", "uint256", "uint256"],
+    [to, fighter1, fighter2, startTime, endTime, minAmount, maxAmount],
   );
   const sig = await accounts.signer.signMessage(arrayify(hash));
   const { r, s, v } = splitSignature(sig);
@@ -69,9 +77,14 @@ describe("FightBetting test", () => {
     dt.setSeconds(dt.getSeconds() + 3600); // duration 300s
     const endTime = Math.floor(dt.getTime() / 1000);
 
-    const sig = await sign(alice.address, 0, 1, startTime, endTime);
+    const minAmount = parseEther("0.5").toString();
+    const maxAmount = parseEther("5").toString();
 
-    const tx1 = await fightbetting.connect(alice).createBetting(0, 1, startTime, endTime, sig);
+    const sig = await sign(alice.address, 0, 1, startTime, endTime, minAmount, maxAmount);
+
+    const tx1 = await fightbetting
+      .connect(alice)
+      .createBetting(0, 1, startTime, endTime, minAmount, maxAmount, sig);
     await tx1.wait();
 
     const result = await fightbetting.bettingState(0);
@@ -79,6 +92,20 @@ describe("FightBetting test", () => {
     expect(result.bettorCount2.toNumber()).to.eq(0);
     expect(parseFloat(formatEther(result.totalPrice1.toString()))).to.eq(0);
     expect(parseFloat(formatEther(result.totalPrice2.toString()))).to.eq(0);
+  });
+
+  it("Amount may be between min and max", async () => {
+    await expect(
+      fightbetting.connect(alice).bettOne(0, true, {
+        value: parseEther("0.2"),
+      }),
+    ).to.be.revertedWith("FightBetting:TOO_SMALL_AMOUNT");
+
+    await expect(
+      fightbetting.connect(alice).bettOne(0, true, {
+        value: parseEther("6"),
+      }),
+    ).to.be.revertedWith("FightBetting:TOO_MUCH_AMOUNT");
   });
 
   it("Alice bets first fighter with 1 eth", async () => {

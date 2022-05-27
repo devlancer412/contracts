@@ -18,7 +18,9 @@ contract FightBettingSetup is BasicSetup {
     uint256 fighter1,
     uint256 fighter2,
     uint32 startTime,
-    uint32 endTime
+    uint32 endTime,
+    uint256 minAmount,
+    uint256 maxAmount
   )
     public
     virtual
@@ -28,7 +30,9 @@ contract FightBettingSetup is BasicSetup {
       uint8
     )
   {
-    bytes32 messageHash = keccak256(abi.encodePacked(to, fighter1, fighter2, startTime, endTime));
+    bytes32 messageHash = keccak256(
+      abi.encodePacked(to, fighter1, fighter2, startTime, endTime, minAmount, maxAmount)
+    );
     bytes32 digest = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
     (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerSecretKey, digest);
     return (r, s, v);

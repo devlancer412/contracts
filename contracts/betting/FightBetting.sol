@@ -55,6 +55,7 @@ contract FightBetting is Auth {
   event Finished(uint256 winner, ResultData[] results);
 
   modifier canBet(uint256 bettingId) {
+    require(bettingId < bettingIndex, "FightBetting:NOT_CREATED");
     require(block.timestamp > bettings[bettingId].startTime, "FightBetting:NOT_STARTED_YET");
     require(block.timestamp < bettings[bettingId].endTime, "FightBetting:ALREADY_FINISHED");
     require(msg.value >= bettings[bettingId].minAmount, "FightBetting:TOO_SMALL_AMOUNT");

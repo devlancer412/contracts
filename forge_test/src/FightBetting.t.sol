@@ -11,13 +11,15 @@ contract FightBettingTest is FightBettingSetup {
   function createBetting() public {
     uint32 startTime = 1000;
     uint32 endTime = startTime + 3600;
+    uint256 minAmount = 5 * 10**17;
+    uint256 maxAmount = 5 * 10**18;
 
     vm.warp(startTime);
-    (bytes32 r, bytes32 s, uint8 v) = sign(alice, 0, 1, startTime, endTime);
+    (bytes32 r, bytes32 s, uint8 v) = sign(alice, 0, 1, startTime, endTime, minAmount, maxAmount);
     FightBetting.Sig memory sig = FightBetting.Sig(r, s, v);
 
     vm.prank(alice);
-    bettingContract.createBetting(0, 1, startTime, endTime, sig);
+    bettingContract.createBetting(0, 1, startTime, endTime, minAmount, maxAmount, sig);
 
     FightBetting.BettingData memory state = bettingContract.bettingState(0);
     assertEq(state.totalPrice1, 0);
