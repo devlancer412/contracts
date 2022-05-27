@@ -2,6 +2,7 @@
 pragma solidity ^0.8.9;
 
 import {Auth} from "../utils/Auth.sol";
+import "hardhat/console.sol";
 
 contract FightBetting is Auth {
   //
@@ -57,8 +58,7 @@ contract FightBetting is Auth {
     _;
   }
 
-  constructor(address signer_) {
-    _grantRole("SIGNER", signer_);
+  constructor() {
     bettingIndex = 0;
     bettorIndex = 0;
     availableBettings = 0;
@@ -167,7 +167,7 @@ contract FightBetting is Auth {
     uint256 j = 0;
     for (
       uint256 i = bettings[bettingId].firstBettorId;
-      i < bettingIndex && j < totalBettorCount;
+      i < bettorIndex && j < totalBettorCount;
       i++
     ) {
       if (bettors[i].bettingId == bettingId && bettors[i].witch == result) {
@@ -205,7 +205,7 @@ contract FightBetting is Auth {
     uint256 j = 0;
     for (
       uint256 i = bettings[bettingId].firstBettorId;
-      i < bettingIndex && j < totalBettorCount;
+      i < bettorIndex && j < totalBettorCount;
       i++
     ) {
       if (bettors[i].bettingId == bettingId) {
@@ -243,7 +243,7 @@ contract FightBetting is Auth {
     BettingData[] memory results = new BettingData[](number);
 
     uint256 j = 0;
-    for (uint256 i = from - 1; i >= 0 && j < number; i--) {
+    for (uint256 i = from; i >= 0 && j < number; i--) {
       if (!bettings[i].isFinished) {
         results[j] = bettings[i];
         j++;
@@ -261,7 +261,7 @@ contract FightBetting is Auth {
     BettingData[] memory results = new BettingData[](number);
 
     uint256 j = 0;
-    for (uint256 i = from + 1; i >= 0 && j < number; i++) {
+    for (uint256 i = from; i >= 0 && j < number; i++) {
       if (!bettings[i].isFinished) {
         results[j] = bettings[i];
         j++;
