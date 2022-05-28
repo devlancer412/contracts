@@ -6,7 +6,7 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import chai from "chai";
 import { solidity } from "ethereum-waffle";
 import { Ship } from "../utils";
-import { arrayify, formatEther, parseEther, solidityKeccak256, splitSignature } from "ethers/lib/utils";
+import { arrayify, formatEther, solidityKeccak256, splitSignature } from "ethers/lib/utils";
 import { Accounts } from "../utils/Ship";
 import { parseSpecial } from "../utils/parseSpecial";
 
