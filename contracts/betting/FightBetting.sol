@@ -52,12 +52,12 @@ contract FightBetting is Auth {
   uint32 private currencyIndex;
   uint256 private availableBettings;
 
-  mapping(uint256 => BettingData) public bettings;
-  mapping(uint256 => BettingState) public bettingStates;
-  mapping(uint256 => BettorData) public bettors;
+  BettingData[] public bettings;
+  BettingState[] public bettingStates;
+  BettorData[] public bettors;
 
-  mapping(uint32 => address) private currencyTokens;
-  mapping(uint32 => uint256) private currencyAmounts;
+  address[] private currencyTokens;
+  uint256[] private currencyAmounts;
 
   // Events
   event NewBetting(
@@ -111,18 +111,20 @@ contract FightBetting is Auth {
       "FightBetting:INVALID_PARAM"
     );
 
-    bettings[bettingIndex] = BettingData(
-      fighter1,
-      fighter2,
-      startTime,
-      endTime,
-      minAmount,
-      maxAmount,
-      msg.sender,
-      tokenAddr
+    bettings.push(
+      BettingData(
+        fighter1,
+        fighter2,
+        startTime,
+        endTime,
+        minAmount,
+        maxAmount,
+        msg.sender,
+        tokenAddr
+      )
     );
 
-    bettingStates[bettingIndex] = BettingState(0, 0, 0, 0, 0, false, false);
+    bettingStates.push(BettingState(0, 0, 0, 0, 0, false, false));
 
     bettingIndex++;
     availableBettings++;
@@ -166,7 +168,7 @@ contract FightBetting is Auth {
     IERC20(bettings[bettingId].token).transferFrom(msg.sender, address(this), value);
     uint256 fighter;
 
-    bettors[bettorIndex] = BettorData(msg.sender, bettingId, witch, value);
+    bettors.push(BettorData(msg.sender, bettingId, witch, value));
 
     if (witch) {
       bettingStates[bettingId].totalPrice1 += value;
@@ -346,7 +348,8 @@ contract FightBetting is Auth {
     if (currency > 0) {
       return currencyAmounts[uint32(currency)];
     } else {
-      currencyTokens[currencyIndex] = token;
+      currencyTokens.push(token);
+      currencyAmounts.push(0);
       currencyIndex++;
       return 0;
     }
@@ -364,8 +367,8 @@ contract FightBetting is Auth {
     if (currency > 0) {
       currencyAmounts[uint32(currency)] = value;
     } else {
-      currencyTokens[currencyIndex] = token;
-      currencyAmounts[currencyIndex] = value;
+      currencyTokens.push(token);
+      currencyAmounts.push(value);
       currencyIndex++;
     }
   }
