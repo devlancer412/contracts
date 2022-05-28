@@ -177,4 +177,10 @@ describe("FightBetting test", () => {
 
     expect(await gwit.balanceOf(fightbetting.address)).to.eq(30);
   });
+
+  it("Can't bet after finished", async () => {
+    await expect(fightbetting.connect(gwitInitor).bettOne(0, false, 300)).to.be.revertedWith(
+      "FightBetting:ALREADY_FINISHED",
+    );
+  });
 });
