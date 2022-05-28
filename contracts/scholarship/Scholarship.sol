@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 contract Scholarship is Ownable {
-  IERC721 public nft_contract;
+  IERC721 public immutable nft_contract;
   bool public disabled;
 
   mapping(uint256 => address) public nft_scholar;
@@ -16,6 +16,8 @@ contract Scholarship is Ownable {
   event Lend(uint256 nft_id, address scholar);
   event Transfer(uint256 nft_id, address scholar);
   event Revoke(uint256 nft_id);
+  event Disable();
+  event Enable();
 
   constructor(address _nft_contract_address) {
     nft_contract = IERC721(_nft_contract_address);
@@ -47,10 +49,14 @@ contract Scholarship is Ownable {
 
   function disable() public onlyOwner {
     disabled = true;
+
+    emit Disable();
   }
 
   function enable() public onlyOwner {
     disabled = false;
+
+    emit Enable();
   }
 
   function info(uint256 nft_id)
@@ -72,14 +78,13 @@ contract Scholarship is Ownable {
   }
 
   function lendNFT(uint256 nft_id, address scholar) public notDisabled {
-    nft_contract.safeTransferFrom(msg.sender, address(this), nft_id);
-
     nft_scholar[nft_id] = scholar;
     nft_owner[nft_id] = msg.sender;
     unchecked {
       lended_nfts[msg.sender] += 1;
     }
 
+    nft_contract.safeTransferFrom(msg.sender, address(this), nft_id);
     emit Lend(nft_id, scholar);
   }
 
@@ -94,10 +99,11 @@ contract Scholarship is Ownable {
   }
 
   function revoke(uint256 nft_id) public shouldBeOwner(nft_id) {
-    nft_contract.safeTransferFrom(address(this), msg.sender, nft_id);
     lended_nfts[msg.sender] = lended_nfts[msg.sender] - 1;
     nft_owner[nft_id] = address(0);
     nft_scholar[nft_id] = address(0);
+
+    nft_contract.safeTransferFrom(address(this), msg.sender, nft_id);
 
     emit Revoke(nft_id);
   }
