@@ -5,6 +5,7 @@ import { Ship } from "../utils";
 
 const func: DeployFunction = async (hre) => {
   const { deploy, connect } = await Ship.init(hre);
+  await deployments.fixture(["mocks", "grp", "gwit", "gwit_init"]);
 
   await deploy(FightBetting__factory, {
     args: [],
