@@ -158,6 +158,12 @@ describe("FightBetting test", () => {
     expect(bettingState.totalPrice1.toNumber()).to.eq(300);
   });
 
+  it("Bob trys to transfer 1000 GWIT to alice", async () => {
+    await expect(gwit.connect(bob).transfer(alice.address, 1000)).to.be.revertedWith(
+      "ERC20: transfer amount exceeds balance",
+    );
+  });
+
   it("Vault bets second fighter with 300 GWIT", async () => {
     await gwit.connect(vault).approve(fightbetting.address, 300);
     const tx1 = await fightbetting.connect(vault).bettOne(0, false, 300);

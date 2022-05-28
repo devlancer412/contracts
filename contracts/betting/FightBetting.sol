@@ -218,8 +218,22 @@ contract FightBetting is Auth {
     require(bettings[bettingId].creator == msg.sender, "FightBetting:PERMISSION_ERROR");
 
     bettingStates[bettingId].liveState = BettingLiveState.Finished;
-    bettingStates[bettingId].witch = Winner.Fighter1;
     availableBettings--;
+    uint256 winner;
+    ResultData[] memory resultData;
+
+    if (result) {
+      winner = bettings[bettingId].fighter1;
+      bettingStates[bettingId].witch = Winner.Fighter1;
+    } else {
+      winner = bettings[bettingId].fighter2;
+      bettingStates[bettingId].witch = Winner.Fighter2;
+    }
+
+    if (bettingStates[bettingId].bettorCount1 + bettingStates[bettingId].bettorCount1 == 0) {
+      emit Finished(winner, resultData);
+      return;
+    }
 
     uint256 totalPrice = ((bettingStates[bettingId].totalPrice1 +
       bettingStates[bettingId].totalPrice2) * 19) / 20; // calculate 95%
@@ -228,10 +242,8 @@ contract FightBetting is Auth {
 
     uint256 betPrice;
     uint256 winnerCount = 0;
-    uint256 winner;
     uint256 totalBettorCount = bettingStates[bettingId].bettorCount1 +
       bettingStates[bettingId].bettorCount2;
-    ResultData[] memory resultData;
 
     if (result) {
       winner = bettings[bettingId].fighter1;
