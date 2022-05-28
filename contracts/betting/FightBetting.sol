@@ -77,7 +77,7 @@ contract FightBetting is Auth {
     require(value >= bettings[bettingId].minAmount, "FightBetting:TOO_SMALL_AMOUNT");
     require(value <= bettings[bettingId].maxAmount, "FightBetting:TOO_MUCH_AMOUNT");
     require(
-      IERC20Metadata(bettings[bettingId].token).balanceOf(msg.sender) >= value,
+      IERC20(bettings[bettingId].token).balanceOf(msg.sender) >= value,
       "FightBetting:NOT_ENOUGH"
     );
 
@@ -163,7 +163,7 @@ contract FightBetting is Auth {
     bool witch,
     uint256 value
   ) public canBet(bettingId, value) {
-    IERC20Metadata(bettings[bettingId].token).transferFrom(msg.sender, address(this), value);
+    IERC20(bettings[bettingId].token).transferFrom(msg.sender, address(this), value);
     uint256 fighter;
 
     bettors[bettorIndex] = BettorData(msg.sender, bettingId, witch, value);
@@ -225,7 +225,7 @@ contract FightBetting is Auth {
       i++
     ) {
       if (bettors[i].bettingId == bettingId && bettors[i].witch == result) {
-        IERC20Metadata(bettings[bettingId].token).transfer(
+        IERC20(bettings[bettingId].token).transfer(
           bettors[i].bettor,
           (totalPrice * bettors[i].amount) / betPrice
         );

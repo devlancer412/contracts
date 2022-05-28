@@ -1,7 +1,7 @@
 import { FightBetting__factory, GWITToken__factory, GWITToken, FightBetting } from "../types";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import {} from "./../types/contracts/betting/FightBetting";
-import { deployments, ethers, network } from "hardhat";
+import { deployments, network } from "hardhat";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import chai from "chai";
 import { solidity } from "ethereum-waffle";
