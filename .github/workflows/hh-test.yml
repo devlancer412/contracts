@@ -27,7 +27,7 @@ jobs:
           node-version: "16.x"
 
       - name: Install
-        run: yarn --frozen-lockfile
+        run: yarn --frozen-lockfile --ignore-scripts
 
       - name: Compile
         run: yarn compile
