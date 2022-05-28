@@ -38,5 +38,8 @@ jobs:
         with:
           version: nightly
 
+      - name: Setup forge
+        run: yarn setup:forge
+
       - name: Run tests
         run: yarn test:forge
