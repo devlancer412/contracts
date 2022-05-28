@@ -35,7 +35,7 @@ const setup = deployments.createFixture(async (hre) => {
   };
 });
 
-const sign = async (
+const signCreate = async (
   to: string,
   fighter1: number,
   fighter2: number,
@@ -49,6 +49,17 @@ const sign = async (
     ["address", "uint256", "uint256", "uint32", "uint32", "uint256", "uint256", "address"],
     [to, fighter1, fighter2, startTime, endTime, minAmount, maxAmount, tokenAddr],
   );
+  const sig = await accounts.signer.signMessage(arrayify(hash));
+  const { r, s, v } = splitSignature(sig);
+  return {
+    r,
+    s,
+    v,
+  };
+};
+
+const signFinish = async (to: string, bettingId: number, result: boolean) => {
+  const hash = solidityKeccak256(["address", "uint256", "bool"], [to, bettingId, result]);
   const sig = await accounts.signer.signMessage(arrayify(hash));
   const { r, s, v } = splitSignature(sig);
   return {
@@ -101,7 +112,7 @@ describe("FightBetting test", () => {
     const minAmount = "100";
     const maxAmount = "5000";
 
-    const sig = await sign(alice.address, 0, 1, startTime, endTime, minAmount, maxAmount, gwit.address);
+    const sig = await signCreate(alice.address, 0, 1, startTime, endTime, minAmount, maxAmount, gwit.address);
 
     const tx1 = await fightbetting
       .connect(alice)
@@ -166,21 +177,32 @@ describe("FightBetting test", () => {
   });
 
   it("Betting is finished and rewarded to winner", async () => {
-    expect(await gwit.balanceOf(fightbetting.address)).to.eq(600);
-
     // send time to over
     await network.provider.send("evm_increaseTime", [3601]);
     await network.provider.send("evm_mine"); // this one will have 02:00 PM as its timestamp
 
-    const tx1 = await fightbetting.connect(alice).finishBetting(0, true);
+    const sig = await signFinish(alice.address, 0, true);
+    const tx1 = await fightbetting.connect(alice).finishBetting(0, true, sig);
     await tx1.wait();
-
-    expect(await gwit.balanceOf(fightbetting.address)).to.eq(30);
   });
 
   it("Can't bet after finished", async () => {
     await expect(fightbetting.connect(gwitInitor).bettOne(0, false, 300)).to.be.revertedWith(
       "FightBetting:ALREADY_FINISHED",
     );
+  });
+
+  it("Alice and bob withdraws their token", async () => {
+    const amountOfAlice = await gwit.balanceOf(alice.address);
+    const amountOfBob = await gwit.balanceOf(bob.address);
+
+    expect(await gwit.balanceOf(fightbetting.address)).to.be.eq(600);
+
+    await fightbetting.connect(alice).withdrawReward();
+    await fightbetting.connect(bob).withdrawReward();
+
+    expect(await gwit.balanceOf(alice.address)).to.be.eq(amountOfAlice.add(190));
+    expect(await gwit.balanceOf(bob.address)).to.be.eq(amountOfBob.add(380));
+    expect(await gwit.balanceOf(fightbetting.address)).to.be.eq(30);
   });
 });
