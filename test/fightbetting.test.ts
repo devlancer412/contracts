@@ -122,8 +122,8 @@ describe("FightBetting test", () => {
     const result = await fightbetting.getBettingState(0);
     expect(result.bettorCount1.toNumber()).to.eq(0);
     expect(result.bettorCount2.toNumber()).to.eq(0);
-    expect(parseFloat(formatEther(result.totalPrice1.toString()))).to.eq(0);
-    expect(parseFloat(formatEther(result.totalPrice2.toString()))).to.eq(0);
+    expect(parseFloat(formatEther(result.totalAmount1.toString()))).to.eq(0);
+    expect(parseFloat(formatEther(result.totalAmount2.toString()))).to.eq(0);
   });
 
   it("Amount may be between min and max", async () => {
@@ -144,7 +144,7 @@ describe("FightBetting test", () => {
 
     const bettingState = await fightbetting.getBettingState(0);
     expect(bettingState.bettorCount1.toNumber()).to.eq(1);
-    expect(bettingState.totalPrice1.toNumber()).to.eq(100);
+    expect(bettingState.totalAmount1.toNumber()).to.eq(100);
   });
 
   it("Bob bets first fighter with 200 GWIT", async () => {
@@ -155,7 +155,7 @@ describe("FightBetting test", () => {
 
     const bettingState = await fightbetting.getBettingState(0);
     expect(bettingState.bettorCount1.toNumber()).to.eq(2);
-    expect(bettingState.totalPrice1.toNumber()).to.eq(300);
+    expect(bettingState.totalAmount1.toNumber()).to.eq(300);
   });
 
   it("Bob trys to transfer 1000 GWIT to alice", async () => {
@@ -172,7 +172,7 @@ describe("FightBetting test", () => {
 
     const bettingState = await fightbetting.getBettingState(0);
     expect(bettingState.bettorCount2.toNumber()).to.eq(1);
-    expect(bettingState.totalPrice2.toNumber()).to.eq(300);
+    expect(bettingState.totalAmount2.toNumber()).to.eq(300);
   });
 
   it("Bob can't bet again", async () => {
@@ -204,8 +204,8 @@ describe("FightBetting test", () => {
 
     expect(await gwit.balanceOf(fightbetting.address)).to.be.eq(600);
 
-    await fightbetting.connect(alice).withdrawReward();
-    await fightbetting.connect(bob).withdrawReward();
+    await fightbetting.connect(alice).withdrawReward(0);
+    await fightbetting.connect(bob).withdrawReward(0);
 
     expect(await gwit.balanceOf(alice.address)).to.be.eq(amountOfAlice.add(190));
     expect(await gwit.balanceOf(bob.address)).to.be.eq(amountOfBob.add(380));
