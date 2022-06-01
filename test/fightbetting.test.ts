@@ -1,12 +1,18 @@
+import { BigNumber } from "ethers";
 import { FightBetting__factory, GWITToken__factory, GWITToken, FightBetting } from "../types";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import {} from "./../types/contracts/betting/FightBetting";
 import { deployments, network } from "hardhat";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import chai from "chai";
 import { solidity } from "ethereum-waffle";
 import { Ship } from "../utils";
-import { arrayify, formatEther, solidityKeccak256, splitSignature } from "ethers/lib/utils";
+import {
+  arrayify,
+  formatEther,
+  parseBytes32String,
+  solidityKeccak256,
+  splitSignature,
+} from "ethers/lib/utils";
 import { Accounts } from "../utils/Ship";
 import { parseSpecial } from "../utils/parseSpecial";
 
@@ -67,6 +73,10 @@ const signFinish = async (to: string, bettingId: number, result: boolean) => {
     s,
     v,
   };
+};
+
+const swapArray = (arr: Array<any>, i: number, j: number) => {
+  [arr[i], arr[j]] = [arr[j], arr[i]];
 };
 
 describe("FightBetting test", () => {
@@ -207,8 +217,61 @@ describe("FightBetting test", () => {
     await fightbetting.connect(alice).withdrawReward(0);
     await fightbetting.connect(bob).withdrawReward(0);
 
-    expect(await gwit.balanceOf(alice.address)).to.be.eq(amountOfAlice.add(190));
-    expect(await gwit.balanceOf(bob.address)).to.be.eq(amountOfBob.add(380));
-    expect(await gwit.balanceOf(fightbetting.address)).to.be.eq(30);
+    expect(await gwit.balanceOf(alice.address)).to.be.eq(amountOfAlice.add(176)); // 600 * 88 / 100 / 3 = 176
+    expect(await gwit.balanceOf(bob.address)).to.be.eq(amountOfBob.add(352)); // (600 * 88 / 100) * 2 / 3 = 352
+    expect(await gwit.balanceOf(fightbetting.address)).to.be.eq(72); // 600 * 12 / 100 = 72
+  });
+
+  it("Get lucky winner data", async () => {
+    await fightbetting.connect(alice).withdrawLuckyWinnerReward(0);
+    await fightbetting.connect(bob).withdrawLuckyWinnerReward(0);
+    expect(await gwit.balanceOf(fightbetting.address)).to.be.eq(60);
+  });
+
+  it("Provably test", async () => {
+    const seedResult = await fightbetting.connect(alice).getSeeds(0);
+    const stateResult = await fightbetting.getBettingState(0);
+
+    const clientSeeds: FightBetting.ClientSeedDataStructOutput[] = seedResult.clientSeeds;
+    // hash client seed
+    let hashed: Array<any> = [];
+    hashed = clientSeeds.map((seedData) => {
+      return {
+        ...seedData,
+        seed: solidityKeccak256(
+          ["bytes32", "bytes32", "uint256", "uint256", "bool"],
+          [
+            seedResult.serverSeed,
+            seedData.seed,
+            stateResult.bettorCount1.add(stateResult.bettorCount2),
+            stateResult.totalAmount1.add(stateResult.totalAmount2),
+            !stateResult.witch,
+          ],
+        ),
+      };
+    });
+    // rearrange client seeds
+    for (let i = 0; i < hashed.length; i++) {
+      for (let j = i + 1; j < hashed.length; j++) {
+        if (!BigNumber.from(clientSeeds[i].seed).sub(BigNumber.from(hashed[j].seed)).isNegative()) {
+          const temp = hashed[i];
+          hashed[i] = hashed[j];
+          hashed[j] = temp;
+        }
+      }
+    }
+
+    // getting winners
+    const startIndex = BigNumber.from(seedResult.serverSeed).mod(seedResult.clientSeeds.length);
+
+    const luckyResult = await fightbetting.connect(alice).getLuckyWinner(0);
+    // compare
+    expect(luckyResult.winners[0]).to.eq(seedResult.clientSeeds[startIndex.toNumber()].who);
+    expect(luckyResult.winners[1]).to.eq(
+      seedResult.clientSeeds[startIndex.add(1).mod(seedResult.clientSeeds.length).toNumber()].who,
+    );
+    expect(luckyResult.winners[2]).to.eq(
+      seedResult.clientSeeds[startIndex.add(2).mod(seedResult.clientSeeds.length).toNumber()].who,
+    );
   });
 });
