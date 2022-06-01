@@ -232,7 +232,7 @@ describe("FightBetting test", () => {
     const seedResult = await fightbetting.connect(alice).getSeeds(0);
     const stateResult = await fightbetting.getBettingState(0);
 
-    const clientSeeds: FightBetting.ClientSeedDataStructOutput[] = seedResult.clientSeeds;
+    const { clientSeeds } = seedResult;
     // hash client seed
     let hashed: Array<any> = [];
     hashed = clientSeeds.map((seedData) => {
@@ -253,7 +253,7 @@ describe("FightBetting test", () => {
     // rearrange client seeds
     for (let i = 0; i < hashed.length; i++) {
       for (let j = i + 1; j < hashed.length; j++) {
-        if (!BigNumber.from(clientSeeds[i].seed).sub(BigNumber.from(hashed[j].seed)).isNegative()) {
+        if (BigNumber.from(clientSeeds[i].seed).sub(BigNumber.from(hashed[j].seed)).isNegative()) {
           const temp = hashed[i];
           hashed[i] = hashed[j];
           hashed[j] = temp;
