@@ -1,5 +1,12 @@
 import { BigNumber } from "ethers";
-import { FightBetting__factory, GWITToken__factory, GWITToken, FightBetting } from "../types";
+import {
+  FightBetting__factory,
+  GWITToken__factory,
+  GWITToken,
+  FightBetting,
+  JackPotTicket,
+  JackPotTicket__factory,
+} from "../types";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { deployments, network } from "hardhat";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
@@ -23,6 +30,7 @@ const supply_size = parseSpecial("1bi|18");
 let ship: Ship;
 let fightbetting: FightBetting;
 let gwit: GWITToken;
+let jackpotTicket: JackPotTicket;
 let alice: SignerWithAddress;
 let bob: SignerWithAddress;
 let vault: SignerWithAddress;
@@ -33,7 +41,7 @@ let users: SignerWithAddress[];
 const setup = deployments.createFixture(async (hre) => {
   ship = await Ship.init(hre);
   const { accounts, users } = ship;
-  await deployments.fixture(["fightbetting", "gwit"]);
+  await deployments.fixture(["fightbetting", "gwit", "jackpot_ticket"]);
 
   return {
     ship,
@@ -89,8 +97,7 @@ describe("FightBetting test", () => {
 
     fightbetting = await scaffold.ship.connect(FightBetting__factory);
     gwit = await scaffold.ship.connect(GWITToken__factory);
-
-    console.log(await gwit.balanceOf(deployer.address));
+    jackpotTicket = await scaffold.ship.connect(JackPotTicket__factory);
   });
 
   it("Initialize gwit token", async () => {
@@ -103,6 +110,10 @@ describe("FightBetting test", () => {
     expect(await gwit.balanceOf(bob.address)).to.eq(1000);
     await gwit.connect(deployer).transfer(vault.address, 1000);
     expect(await gwit.balanceOf(vault.address)).to.eq(1000);
+
+    await jackpotTicket.grantRole("MINTER", fightbetting.address);
+    expect(await gwit.balanceOf(jackpotTicket.address)).to.eq(0);
+    await fightbetting.connect(deployer).setJackPotMin(1);
   });
 
   it("Set signer", async () => {
@@ -222,7 +233,7 @@ describe("FightBetting test", () => {
 
   it("Betting is finished and rewarded to winner", async () => {
     // send time to over
-    await network.provider.send("evm_increaseTime", [3601]);
+    await network.provider.send("evm_increaseTime", [3600]);
     await network.provider.send("evm_mine"); // this one will have 02:00 PM as its timestamp
 
     const sig = await signFinish(alice.address, 0, true);
@@ -240,20 +251,20 @@ describe("FightBetting test", () => {
     const amountOfAlice = await gwit.balanceOf(alice.address);
     const amountOfBob = await gwit.balanceOf(bob.address);
 
-    expect(await gwit.balanceOf(fightbetting.address)).to.be.eq(5600);
+    expect(await gwit.balanceOf(fightbetting.address)).to.be.eq(5570); // 5600 - 600/20
 
     await fightbetting.connect(alice).withdrawReward(0);
     await fightbetting.connect(bob).withdrawReward(0);
 
     expect(await gwit.balanceOf(alice.address)).to.be.eq(amountOfAlice.add(176)); // 600 * 88 / 100 / 3 = 176
     expect(await gwit.balanceOf(bob.address)).to.be.eq(amountOfBob.add(352)); // (600 * 88 / 100) * 2 / 3 = 352
-    expect(await gwit.balanceOf(fightbetting.address)).to.be.eq(5072); // 600 * 12 / 100 = 72
+    expect(await gwit.balanceOf(fightbetting.address)).to.be.eq(5042); // 600 * 12 / 100 = 72
   });
 
   it("Get lucky winner data", async () => {
-    // await fightbetting.connect(alice).withdrawLuckyWinnerReward(0);
-    // await fightbetting.connect(bob).withdrawLuckyWinnerReward(0);
-    // expect(await gwit.balanceOf(fightbetting.address)).to.be.eq(5060);
+    await fightbetting.connect(alice).withdrawLuckyWinnerReward(0);
+    await fightbetting.connect(bob).withdrawLuckyWinnerReward(0);
+    expect(await gwit.balanceOf(fightbetting.address)).to.be.eq(5030); // 5042 - 600/50(Lucky winner reward)
   });
 
   it("Prepare for provably test: finishing", async () => {
@@ -307,5 +318,18 @@ describe("FightBetting test", () => {
     expect(luckyResult.winners[0]).to.eq(hashed[startIndex.toNumber()].who);
     expect(luckyResult.winners[1]).to.eq(hashed[startIndex.add(1).mod(hashed.length).toNumber()].who);
     expect(luckyResult.winners[2]).to.eq(hashed[startIndex.add(2).mod(hashed.length).toNumber()].who);
+  });
+
+  it("JackPot balance test", async () => {
+    expect(await gwit.balanceOf(jackpotTicket.address)).to.eq(280);
+  });
+
+  it("Minter can get JackPot NFT", async () => {
+    const resultAmount = await fightbetting.connect(alice).canGetJackPotNFT();
+    expect(resultAmount).to.eq(1);
+    expect(await jackpotTicket.balanceOf(alice.address)).to.eq(0);
+
+    await fightbetting.connect(alice).getJackPotNFT();
+    expect(await jackpotTicket.balanceOf(alice.address)).to.eq(1);
   });
 });

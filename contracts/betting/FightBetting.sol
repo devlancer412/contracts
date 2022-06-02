@@ -3,7 +3,10 @@ pragma solidity ^0.8.9;
 
 import {Auth} from "../utils/Auth.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "hardhat/console.sol";
+
+interface IJackPot {
+  function mintTo(uint256 amount, address to) external;
+}
 
 contract FightBetting is Auth {
   enum BettingLiveState {
@@ -68,7 +71,8 @@ contract FightBetting is Auth {
     bool bronze;
   }
   //
-  uint256 private availableBettings;
+  uint256 private _availableBettings;
+  address private _jackpotAddr;
 
   BettingData[] public bettings;
   BettingState[] public bettingStates;
@@ -78,6 +82,9 @@ contract FightBetting is Auth {
 
   address[] private currencyTokens;
   uint256[] private currencyAmounts;
+
+  uint256 public minBetNumForJackPot;
+  mapping(address => uint256) public betNumber;
 
   // Events
   event NewBetting(
@@ -103,7 +110,10 @@ contract FightBetting is Auth {
     _;
   }
 
-  constructor() {}
+  constructor(address jackpotAddr) {
+    _jackpotAddr = jackpotAddr;
+    minBetNumForJackPot = 1000;
+  }
 
   function createBetting(
     uint256 fighter1,
@@ -145,7 +155,7 @@ contract FightBetting is Auth {
     bettingStates.push(BettingState(0, 0, 0, 0, 0, BettingLiveState.Alive, Side.Fighter1));
     luckyWinnerStates.push(LuckyWinnerWithdrawState(false, false, false));
 
-    availableBettings++;
+    _availableBettings++;
     emit NewBetting(fighter1, fighter2, startTime, endTime, IERC20Metadata(tokenAddr).symbol());
   }
 
@@ -190,6 +200,7 @@ contract FightBetting is Auth {
       BettorData(msg.sender, bettingId, value, witch ? Side.Fighter1 : Side.Fighter2, false)
     );
     betted[bettingId][msg.sender] = true;
+    betNumber[msg.sender]++;
 
     if (witch) {
       bettingStates[bettingId].totalAmount1 += value;
@@ -218,7 +229,7 @@ contract FightBetting is Auth {
     require(bettings[bettingId].creator == msg.sender, "FightBetting:PERMISSION_ERROR");
 
     bettingStates[bettingId].liveState = BettingLiveState.Finished;
-    availableBettings--;
+    _availableBettings--;
     uint256 winner;
 
     uint256 fee = (bettingStates[bettingId].totalAmount1 + bettingStates[bettingId].totalAmount2) /
@@ -233,6 +244,7 @@ contract FightBetting is Auth {
       winner = bettings[bettingId].fighter2;
       bettingStates[bettingId].witch = Side.Fighter2;
     }
+    IERC20(bettings[bettingId].token).transfer(_jackpotAddr, fee);
 
     emit Finished(bettingId, winner);
   }
@@ -296,10 +308,10 @@ contract FightBetting is Auth {
   }
 
   function getAvailableBettings() public view returns (BettingData[] memory) {
-    BettingData[] memory results = new BettingData[](availableBettings);
+    BettingData[] memory results = new BettingData[](_availableBettings);
 
     uint256 j = 0;
-    for (uint256 i = bettings.length - 1; i >= 0 && j < availableBettings; i++) {
+    for (uint256 i = bettings.length - 1; i >= 0 && j < _availableBettings; i++) {
       if (bettingStates[i].liveState == BettingLiveState.Alive) {
         results[j] = bettings[i];
         j++;
@@ -562,5 +574,26 @@ contract FightBetting is Auth {
       luckyWinnerStates[bettingId].bronze = true;
       IERC20(bettings[bettingId].token).transfer(msg.sender, rewards[2]);
     }
+  }
+
+  // JackPot
+  function setJackPot(address jackpotAddr) public onlyOwner {
+    _jackpotAddr = jackpotAddr;
+  }
+
+  function canGetJackPotNFT() public view returns (uint256 amount) {
+    amount = betNumber[msg.sender] / minBetNumForJackPot;
+  }
+
+  function getJackPotNFT() public returns (uint256 amount) {
+    amount = canGetJackPotNFT();
+    require(amount > 0, "FightBetting:NOT_ENOUGH");
+
+    betNumber[msg.sender] -= minBetNumForJackPot * amount;
+    IJackPot(_jackpotAddr).mintTo(amount, msg.sender);
+  }
+
+  function setJackPotMin(uint256 _min) public onlyOwner {
+    minBetNumForJackPot = _min;
   }
 }
