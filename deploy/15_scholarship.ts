@@ -5,7 +5,7 @@ import { Ship } from "../utils";
 
 const func: DeployFunction = async (hre) => {
   const { deploy, connect } = await Ship.init(hre);
-  await deployments.fixture(["grp", "gwit", "gwit_init", "nfts"]);
+  // await deployments.fixture(["grp", "gwit", "gwit_init", "nfts"]);
 
   const rooster = await connect(Rooster__factory);
   await deploy(Scholarship__factory, {
