@@ -171,23 +171,23 @@ describe("FightBetting test", () => {
     // bets
     for (let index = 0; index < users.length; index++) {
       await gwit.connect(users[index]).approve(fightbetting.address, 500);
-      await fightbetting.connect(users[index]).bettOne(1, index % 2 ? true : false, 500);
+      await fightbetting.connect(users[index]).bettOne(1, index % 2 ? 0 : 1, 500);
     }
   });
 
   it("Amount may be between min and max", async () => {
-    await expect(fightbetting.connect(alice).bettOne(0, true, 10)).to.be.revertedWith(
+    await expect(fightbetting.connect(alice).bettOne(0, 1, 10)).to.be.revertedWith(
       "FightBetting:TOO_SMALL_AMOUNT",
     );
 
-    await expect(fightbetting.connect(alice).bettOne(0, true, 10000)).to.be.revertedWith(
+    await expect(fightbetting.connect(alice).bettOne(0, 1, 10000)).to.be.revertedWith(
       "FightBetting:TOO_MUCH_AMOUNT",
     );
   });
 
   it("Alice bets first fighter with 100 GWIT", async () => {
     await gwit.connect(alice).approve(fightbetting.address, 100);
-    const tx1 = await fightbetting.connect(alice).bettOne(0, true, 100);
+    const tx1 = await fightbetting.connect(alice).bettOne(0, 0, 100);
 
     await tx1.wait();
 
@@ -198,7 +198,7 @@ describe("FightBetting test", () => {
 
   it("Bob bets first fighter with 200 GWIT", async () => {
     await gwit.connect(bob).approve(fightbetting.address, 200);
-    const tx1 = await fightbetting.connect(bob).bettOne(0, true, 200);
+    const tx1 = await fightbetting.connect(bob).bettOne(0, 0, 200);
 
     await tx1.wait();
 
@@ -215,7 +215,7 @@ describe("FightBetting test", () => {
 
   it("Vault bets second fighter with 300 GWIT", async () => {
     await gwit.connect(vault).approve(fightbetting.address, 300);
-    const tx1 = await fightbetting.connect(vault).bettOne(0, false, 300);
+    const tx1 = await fightbetting.connect(vault).bettOne(0, 1, 300);
 
     await tx1.wait();
 
@@ -226,9 +226,7 @@ describe("FightBetting test", () => {
 
   it("Bob can't bet again", async () => {
     await gwit.connect(bob).approve(fightbetting.address, 200);
-    await expect(fightbetting.connect(bob).bettOne(0, true, 200)).to.be.revertedWith(
-      "FightBetting:ALREADY_BET",
-    );
+    await expect(fightbetting.connect(bob).bettOne(0, 0, 200)).to.be.revertedWith("FightBetting:ALREADY_BET");
   });
 
   it("Betting is finished and rewarded to winner", async () => {
@@ -242,7 +240,7 @@ describe("FightBetting test", () => {
   });
 
   it("Can't bet after finished", async () => {
-    await expect(fightbetting.connect(deployer).bettOne(0, false, 300)).to.be.revertedWith(
+    await expect(fightbetting.connect(deployer).bettOne(0, 1, 300)).to.be.revertedWith(
       "FightBetting:ALREADY_FINISHED",
     );
   });
@@ -287,13 +285,14 @@ describe("FightBetting test", () => {
       return {
         ...seedData,
         seed: solidityKeccak256(
-          ["bytes32", "bytes32", "uint256", "uint256", "bool"],
+          ["bytes32", "bytes32", "address", "uint256", "uint256", "bool"],
           [
             seedResult.serverSeed,
             seedData.seed,
+            seedData.user,
             stateResult.bettorCount1.toNumber() + stateResult.bettorCount2.toNumber(),
             stateResult.totalAmount1.toNumber() + stateResult.totalAmount2.toNumber(),
-            !stateResult.witch,
+            !stateResult.which,
           ],
         ),
       };
@@ -315,9 +314,9 @@ describe("FightBetting test", () => {
 
     const luckyResult = await fightbetting.connect(users[1]).getLuckyWinner(1);
     // compare
-    expect(luckyResult.winners[0]).to.eq(hashed[startIndex.toNumber()].who);
-    expect(luckyResult.winners[1]).to.eq(hashed[startIndex.add(1).mod(hashed.length).toNumber()].who);
-    expect(luckyResult.winners[2]).to.eq(hashed[startIndex.add(2).mod(hashed.length).toNumber()].who);
+    expect(luckyResult.winners[0]).to.eq(hashed[startIndex.toNumber()].user);
+    expect(luckyResult.winners[1]).to.eq(hashed[startIndex.add(1).mod(hashed.length).toNumber()].user);
+    expect(luckyResult.winners[2]).to.eq(hashed[startIndex.add(2).mod(hashed.length).toNumber()].user);
   });
 
   it("JackPot balance test", async () => {
