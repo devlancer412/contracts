@@ -37,6 +37,9 @@ let vault: SignerWithAddress;
 let signer: SignerWithAddress;
 let deployer: SignerWithAddress;
 let users: SignerWithAddress[];
+let hashedServerSeed: string;
+
+const serverSeedString = "FightBetting test";
 
 const setup = deployments.createFixture(async (hre) => {
   ship = await Ship.init(hre);
@@ -59,10 +62,11 @@ const signCreate = async (
   minAmount: string,
   maxAmount: string,
   tokenAddr: string,
+  result: number,
 ) => {
   const hash = solidityKeccak256(
-    ["address", "uint256", "uint256", "uint32", "uint32", "uint256", "uint256", "address"],
-    [to, fighter1, fighter2, startTime, endTime, minAmount, maxAmount, tokenAddr],
+    ["address", "uint256", "uint256", "uint32", "uint32", "uint256", "uint256", "address", "bool"],
+    [to, fighter1, fighter2, startTime, endTime, minAmount, maxAmount, tokenAddr, result == 0],
   );
   const sig = await signer.signMessage(arrayify(hash));
   const { r, s, v } = splitSignature(sig);
@@ -73,8 +77,8 @@ const signCreate = async (
   };
 };
 
-const signFinish = async (to: string, bettingId: number, result: boolean) => {
-  const hash = solidityKeccak256(["address", "uint256", "bool"], [to, bettingId, result]);
+const signFinish = async (to: string, bettingId: number, result: number) => {
+  const hash = solidityKeccak256(["address", "uint256", "bool"], [to, bettingId, result == 0]);
   const sig = await signer.signMessage(arrayify(hash));
   const { r, s, v } = splitSignature(sig);
   return {
@@ -98,6 +102,8 @@ describe("FightBetting test", () => {
     fightbetting = await scaffold.ship.connect(FightBetting__factory);
     gwit = await scaffold.ship.connect(GWITToken__factory);
     jackpotTicket = await scaffold.ship.connect(JackPotTicket__factory);
+
+    await fightbetting.setTokenVerification(gwit.address, true);
   });
 
   it("Initialize gwit token", async () => {
@@ -130,11 +136,21 @@ describe("FightBetting test", () => {
     const minAmount = "100";
     const maxAmount = "5000";
 
-    const sig = await signCreate(alice.address, 0, 1, startTime, endTime, minAmount, maxAmount, gwit.address);
+    const sig = await signCreate(
+      alice.address,
+      0,
+      1,
+      startTime,
+      endTime,
+      minAmount,
+      maxAmount,
+      gwit.address,
+      0,
+    );
 
     const tx1 = await fightbetting
       .connect(alice)
-      .createBetting(0, 1, startTime, endTime, minAmount, maxAmount, gwit.address, sig);
+      .createBetting(0, 1, startTime, endTime, minAmount, maxAmount, gwit.address, 0, serverSeedString, sig);
     await tx1.wait();
 
     const result = await fightbetting.getBettingState(0);
@@ -154,6 +170,7 @@ describe("FightBetting test", () => {
     const endTime = Math.floor(dt.getTime() / 1000);
     const minAmount = "100";
     const maxAmount = "5000";
+
     const sigCreate = await signCreate(
       alice.address,
       0,
@@ -163,16 +180,31 @@ describe("FightBetting test", () => {
       minAmount,
       maxAmount,
       gwit.address,
+      0,
     );
 
     await fightbetting
       .connect(alice)
-      .createBetting(0, 1, startTime, endTime, minAmount, maxAmount, gwit.address, sigCreate);
+      .createBetting(
+        0,
+        1,
+        startTime,
+        endTime,
+        minAmount,
+        maxAmount,
+        gwit.address,
+        0,
+        serverSeedString,
+        sigCreate,
+      );
     // bets
     for (let index = 0; index < users.length; index++) {
       await gwit.connect(users[index]).approve(fightbetting.address, 500);
-      await fightbetting.connect(users[index]).bettOne(1, index % 2 ? 0 : 1, 500);
+      await fightbetting.connect(users[index]).bettOne(1, index % 2, 500);
     }
+
+    hashedServerSeed = await fightbetting.getServerSeedHash(1);
+    await expect(fightbetting.getServerSeed(1)).to.be.revertedWith("FightBetting:NOT_FINISHED");
   });
 
   it("Amount may be between min and max", async () => {
@@ -234,9 +266,8 @@ describe("FightBetting test", () => {
     await network.provider.send("evm_increaseTime", [3600]);
     await network.provider.send("evm_mine"); // this one will have 02:00 PM as its timestamp
 
-    const sig = await signFinish(alice.address, 0, true);
-    const tx1 = await fightbetting.connect(alice).finishBetting(0, true, sig);
-    await tx1.wait();
+    const sig = await signFinish(alice.address, 0, 0);
+    await fightbetting.connect(alice).finishBetting(0, 0, sig);
   });
 
   it("Can't bet after finished", async () => {
@@ -270,53 +301,38 @@ describe("FightBetting test", () => {
     await network.provider.send("evm_increaseTime", [3601]);
     await network.provider.send("evm_mine");
 
-    const sigFinish = await signFinish(alice.address, 1, true);
-    await fightbetting.connect(alice).finishBetting(1, true, sigFinish);
+    const sigFinish = await signFinish(alice.address, 1, 0);
+    await fightbetting.connect(alice).finishBetting(1, 0, sigFinish);
   });
 
-  it("Provably test", async () => {
-    const seedResult = await fightbetting.getSeeds(1, true);
+  it("Provably test: server seed", async () => {
+    const serverSeed = await fightbetting.getServerSeed(1);
+    expect(solidityKeccak256(["bytes32", "uint256"], [serverSeed, 1])).to.eq(hashedServerSeed);
+  });
+
+  it("Provably test : lucky winner", async () => {
+    const serverSeed = await fightbetting.getServerSeed(1);
+    const clientSeed = await fightbetting.getClientSeed(1);
     const stateResult = await fightbetting.getBettingState(1);
+    const winnerIds = await fightbetting.getWinBettorIds(1);
+    const winnerBettorCount = stateResult.which == 0 ? stateResult.bettorCount1 : stateResult.bettorCount2;
+    const luckyWinnerRewardAmount = stateResult.totalAmount1.add(stateResult.totalAmount2).div(50);
 
-    const { clientSeeds } = seedResult;
-    // hash client seed
-    let hashed: Array<any> = [];
-    hashed = clientSeeds.map((seedData) => {
-      return {
-        ...seedData,
-        seed: solidityKeccak256(
-          ["bytes32", "bytes32", "address", "uint256", "uint256", "bool"],
-          [
-            seedResult.serverSeed,
-            seedData.seed,
-            seedData.user,
-            stateResult.bettorCount1.toNumber() + stateResult.bettorCount2.toNumber(),
-            stateResult.totalAmount1.toNumber() + stateResult.totalAmount2.toNumber(),
-            !stateResult.which,
-          ],
-        ),
-      };
-    });
+    const hashed = solidityKeccak256(
+      ["bytes32", "bytes32", "uint256", "uint256"],
+      [serverSeed, clientSeed, winnerBettorCount, luckyWinnerRewardAmount],
+    );
 
-    // rearrange client seeds
-    for (let i = 0; i < hashed.length; i++) {
-      for (let j = i + 1; j < hashed.length; j++) {
-        if (BigNumber.from(hashed[i].seed).sub(BigNumber.from(hashed[j].seed)).isNegative()) {
-          const temp = hashed[i];
-          hashed[i] = hashed[j];
-          hashed[j] = temp;
-        }
-      }
-    }
+    const goldIndex = BigNumber.from(hashed).mod(winnerIds.length).toNumber();
 
-    // getting winners
-    const startIndex = BigNumber.from(seedResult.serverSeed).mod(hashed.length);
+    const silverIndex = (goldIndex + 1) % winnerIds.length;
+    const bronzeIndex = (goldIndex + 2) % winnerIds.length;
 
-    const luckyResult = await fightbetting.connect(users[1]).getLuckyWinner(1);
+    const luckyResult = await fightbetting.connect(users[2]).getLuckyWinner(1);
     // compare
-    expect(luckyResult.winners[0]).to.eq(hashed[startIndex.toNumber()].user);
-    expect(luckyResult.winners[1]).to.eq(hashed[startIndex.add(1).mod(hashed.length).toNumber()].user);
-    expect(luckyResult.winners[2]).to.eq(hashed[startIndex.add(2).mod(hashed.length).toNumber()].user);
+    expect((await fightbetting.getBettorData(winnerIds[goldIndex])).bettor).to.eq(luckyResult.winners[0]);
+    expect((await fightbetting.getBettorData(winnerIds[silverIndex])).bettor).to.eq(luckyResult.winners[1]);
+    expect((await fightbetting.getBettorData(winnerIds[bronzeIndex])).bettor).to.eq(luckyResult.winners[2]);
   });
 
   it("JackPot balance test", async () => {
