@@ -19,7 +19,7 @@ let signer: SignerWithAddress;
 let deployer: SignerWithAddress;
 let users: SignerWithAddress[];
 
-let aliceSeed: string;
+let hashedServerSeed: string;
 
 const setup = deployments.createFixture(async (hre) => {
   ship = await Ship.init(hre);
@@ -74,7 +74,7 @@ describe("JackPot test", () => {
   });
 
   it("Get client seed", async () => {
-    aliceSeed = await jackpotTicket.connect(alice).getClienctSeed();
+    hashedServerSeed = await jackpotTicket.getHashedServerSeed();
   });
 
   it("Can't get serverseed before finish", async () => {
@@ -103,33 +103,30 @@ describe("JackPot test", () => {
 
   it("Provably test", async () => {
     const serverSeed = await jackpotTicket.getServerSeed();
-    expect(solidityKeccak256(["bytes32", "address"], [serverSeed, alice.address])).to.eq(aliceSeed);
+    const openTime = await jackpotTicket.getOpenTime();
+    expect(solidityKeccak256(["bytes32", "uint256"], [serverSeed, openTime])).to.eq(hashedServerSeed);
 
+    const clientSeed = await jackpotTicket.getClienctSeed();
     const aliceReward = await jackpotTicket.connect(alice).getResult();
     let addressList: Array<string> = [];
     addressList = (await jackpotTicket.getAddressList()).map((address) => address);
-    let hashes: Array<string> = [];
-    hashes = addressList.map((address, index) =>
-      solidityKeccak256(["bytes32", "uint256", "address"], [serverSeed, index * addressList.length, address]),
+
+    const hashed = solidityKeccak256(
+      ["bytes32", "bytes32", "uint256"],
+      [serverSeed, clientSeed, addressList.length],
     );
 
-    for (let i = 0; i < hashes.length; i++) {
-      for (let j = i + 1; j < hashes.length; j++) {
-        if (BigNumber.from(hashes[i]).sub(BigNumber.from(hashes[j])).isNegative()) {
-          [hashes[i], hashes[j]] = [hashes[j], hashes[i]];
-          [addressList[i], addressList[j]] = [addressList[j], addressList[i]];
-        }
-      }
-    }
+    const winnerIndex = BigNumber.from(hashed).mod(addressList.length).toNumber();
 
     const { tokenName, amount } = await jackpotTicket.getTotalReward();
+
     let aliceRewardTest = 0;
-    if (addressList[0] == alice.address) {
+    if (addressList[winnerIndex] == alice.address) {
       aliceRewardTest += (amount.toNumber() * 8) / 10;
     }
 
     for (let i = 1; i < 11; i++) {
-      if (addressList[i] == alice.address) {
+      if (addressList[(winnerIndex + i) % addressList.length] == alice.address) {
         aliceRewardTest += (amount.toNumber() * 15) / 1000;
       }
     }

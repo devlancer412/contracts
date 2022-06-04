@@ -14,8 +14,9 @@ contract JackPotTicket is Auth, ERC721 {
 
   uint256 public openTime;
   uint256 public period;
-  address public currency;
   uint256 public totalDistributeAmount;
+  bytes32 public clientSeed;
+  address public currency;
 
   mapping(address => bool) private rewarded;
 
@@ -30,6 +31,11 @@ contract JackPotTicket is Auth, ERC721 {
     _baseTokenURI = "";
     period = 1 weeks;
     _treasuryAddr = msg.sender;
+  }
+
+  modifier hasTicket() {
+    require(balanceOf(msg.sender) > 0, "JackPotTicket:NO_TICKET");
+    _;
   }
 
   function mintTo(uint256 amount, address to) public {
@@ -71,41 +77,29 @@ contract JackPotTicket is Auth, ERC721 {
     openTime = block.timestamp + period;
     totalDistributeAmount = totalAmount;
     currency = currencyAddr;
+    clientSeed = bytes32(0);
     for (uint256 i = 0; i < _tokenCounter; i++) {
       rewarded[ownerOf(i)] = false;
     }
     IERC20(currency).transfer(_treasuryAddr, totalAmount / 20);
   }
 
-  function getResult() public view returns (uint256) {
-    require(balanceOf(msg.sender) > 0, "JackPotTicket:NEED_NFT");
+  function getResult() public view hasTicket returns (uint256) {
     require(block.timestamp > openTime, "JackPotTicket:NOT_FINISHED");
 
     uint256 total = _tokenCounter;
-    uint256[] memory results = new uint256[](total);
-    address[] memory addressList = new address[](total);
+    address[] memory addressList = getAddressList();
     uint256 reward = 0;
 
-    for (uint256 i = 0; i < total; i++) {
-      results[i] = uint256(keccak256(abi.encodePacked(_serverSeed, i * total, ownerOf(i))));
-      addressList[i] = ownerOf(i);
-    }
+    bytes32 hashed = keccak256(abi.encodePacked(_serverSeed, clientSeed, total));
+    uint256 winnerIndex = uint256(hashed) % total;
 
-    for (uint256 i = 0; i < total; i++) {
-      for (uint256 j = i + 1; j < total; j++) {
-        if (results[i] < results[j]) {
-          (results[i], results[j]) = (results[j], results[i]);
-          (addressList[i], addressList[j]) = (addressList[j], addressList[i]);
-        }
-      }
-    }
-
-    if (msg.sender == addressList[0]) {
+    if (msg.sender == addressList[winnerIndex]) {
       reward += (totalDistributeAmount * 80) / 100; // 80% to winner
     }
 
     for (uint256 i = 1; i < total && i < 11; i++) {
-      if (msg.sender == addressList[i]) {
+      if (msg.sender == addressList[(winnerIndex + i) % total]) {
         reward += (totalDistributeAmount * 15) / 1000; // 1.5% to winners
       }
     }
@@ -125,12 +119,20 @@ contract JackPotTicket is Auth, ERC721 {
 
   // for provably
   function getClienctSeed() public view returns (bytes32) {
-    return keccak256(abi.encodePacked(_serverSeed, msg.sender));
+    return clientSeed;
   }
 
   function getServerSeed() public view returns (bytes32) {
     require(block.timestamp > openTime, "JackPotTicket:NOT_FINISHED");
     return _serverSeed;
+  }
+
+  function getHashedServerSeed() public view returns (bytes32) {
+    return keccak256(abi.encodePacked(_serverSeed, openTime));
+  }
+
+  function getOpenTime() public view returns (uint256) {
+    return openTime;
   }
 
   function getAddressList() public view returns (address[] memory) {
@@ -163,5 +165,14 @@ contract JackPotTicket is Auth, ERC721 {
   // NFT functions
   function tokenURI(uint256 tokenId) public view override returns (string memory) {
     return _baseTokenURI;
+  }
+
+  function setSeedString(string memory seedStr) public hasTicket {
+    clientSeed = keccak256(abi.encodePacked(clientSeed, msg.sender, seedStr));
+  }
+
+  function getClientSeed() public view hasTicket returns (bytes32) {
+    require(block.timestamp < openTime, "JackPotTicket:FINISHED");
+    return clientSeed;
   }
 }
