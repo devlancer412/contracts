@@ -8,7 +8,7 @@ import {
   JackPotTicket__factory,
 } from "../types";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { deployments, network } from "hardhat";
+import { deployments, ethers, network } from "hardhat";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import chai from "chai";
 import { solidity } from "ethereum-waffle";
@@ -39,7 +39,7 @@ let deployer: SignerWithAddress;
 let users: SignerWithAddress[];
 let hashedServerSeed: string;
 
-const serverSeedString = "FightBetting test";
+const serverSeedString = solidityKeccak256(["string"], ["FightBetting test"]);
 
 const setup = deployments.createFixture(async (hre) => {
   ship = await Ship.init(hre);
@@ -103,7 +103,7 @@ describe("FightBetting test", () => {
     gwit = await scaffold.ship.connect(GWITToken__factory);
     jackpotTicket = await scaffold.ship.connect(JackPotTicket__factory);
 
-    await fightbetting.setTokenVerification(gwit.address, true);
+    await fightbetting.setTokenAllowance(gwit.address, true);
   });
 
   it("Initialize gwit token", async () => {
@@ -128,10 +128,15 @@ describe("FightBetting test", () => {
   });
 
   it("Alice creates a betting", async () => {
-    const dt = new Date();
-    const startTime = Math.floor(dt.getTime() / 1000);
-    dt.setSeconds(dt.getSeconds() + 3600); // duration 300s
-    const endTime = Math.floor(dt.getTime() / 1000);
+    const blockNumBefore = await ethers.provider.getBlockNumber();
+    const blockBefore = await ethers.provider.getBlock(blockNumBefore);
+    const timestampBefore = blockBefore.timestamp;
+
+    const startTime = timestampBefore + 100;
+    const endTime = startTime + 3600;
+
+    await network.provider.send("evm_setNextBlockTimestamp", [startTime]);
+    await network.provider.send("evm_mine");
 
     const minAmount = "100";
     const maxAmount = "5000";
@@ -148,10 +153,9 @@ describe("FightBetting test", () => {
       0,
     );
 
-    const tx1 = await fightbetting
+    await fightbetting
       .connect(alice)
       .createBetting(0, 1, startTime, endTime, minAmount, maxAmount, gwit.address, 0, serverSeedString, sig);
-    await tx1.wait();
 
     const result = await fightbetting.getBettingState(0);
     expect(result.bettorCount1.toNumber()).to.eq(0);
@@ -164,10 +168,16 @@ describe("FightBetting test", () => {
     const transferPromises = users.map((user) => gwit.connect(deployer).transfer(user.address, 1000));
     await Promise.all(transferPromises);
     // alice creates a new betting
-    const dt = new Date();
-    const startTime = Math.floor(dt.getTime() / 1000);
-    dt.setSeconds(dt.getSeconds() + 3600); // duration 300s
-    const endTime = Math.floor(dt.getTime() / 1000);
+    const blockNumBefore = await ethers.provider.getBlockNumber();
+    const blockBefore = await ethers.provider.getBlock(blockNumBefore);
+    const timestampBefore = blockBefore.timestamp;
+
+    const startTime = timestampBefore + 100;
+    const endTime = startTime + 3600;
+
+    await network.provider.send("evm_setNextBlockTimestamp", [startTime]);
+    await network.provider.send("evm_mine");
+
     const minAmount = "100";
     const maxAmount = "5000";
 
@@ -315,7 +325,7 @@ describe("FightBetting test", () => {
     const clientSeed = await fightbetting.getClientSeed(1);
     const stateResult = await fightbetting.getBettingState(1);
     const winnerIds = await fightbetting.getWinBettorIds(1);
-    const winnerBettorCount = stateResult.which == 0 ? stateResult.bettorCount1 : stateResult.bettorCount2;
+    const winnerBettorCount = stateResult.side == 0 ? stateResult.bettorCount1 : stateResult.bettorCount2;
     const luckyWinnerRewardAmount = stateResult.totalAmount1.add(stateResult.totalAmount2).div(50);
 
     const hashed = solidityKeccak256(
@@ -330,9 +340,9 @@ describe("FightBetting test", () => {
 
     const luckyResult = await fightbetting.connect(users[2]).getLuckyWinner(1);
     // compare
-    expect((await fightbetting.getBettorData(winnerIds[goldIndex])).bettor).to.eq(luckyResult.winners[0]);
-    expect((await fightbetting.getBettorData(winnerIds[silverIndex])).bettor).to.eq(luckyResult.winners[1]);
-    expect((await fightbetting.getBettorData(winnerIds[bronzeIndex])).bettor).to.eq(luckyResult.winners[2]);
+    expect((await fightbetting.getBettorData(1, goldIndex)).bettor).to.eq(luckyResult.winners[0]);
+    expect((await fightbetting.getBettorData(1, silverIndex)).bettor).to.eq(luckyResult.winners[1]);
+    expect((await fightbetting.getBettorData(1, bronzeIndex)).bettor).to.eq(luckyResult.winners[2]);
   });
 
   it("JackPot balance test", async () => {

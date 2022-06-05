@@ -2,79 +2,14 @@
 pragma solidity ^0.8.9;
 
 import {Auth} from "../utils/Auth.sol";
+import {IFightBetting} from "./IFightBetting.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "hardhat/console.sol";
 
 interface IJackPot {
   function mintTo(uint256 amount, address to) external;
 }
 
-interface IFightLiveBetting {
-  enum BettingLiveState {
-    Alive,
-    Finished
-  }
-
-  enum Side {
-    Fighter1,
-    Fighter2
-  }
-  //
-  struct Betting {
-    uint256 fighter1; // First Fighter's token id
-    uint256 fighter2; // Second Fighter's token id
-    uint256 minAmount; // Minimum value of amount
-    uint256 maxAmount; // Maximum value of amount
-    uint32 startTime; // Start time of betting
-    uint32 endTime; // End time of betting
-    address creator; // Creator of betting
-    address token; // Payable token address
-  }
-
-  struct BettingState {
-    uint256 bettorCount1; // Count of bettor who bet first Fighter
-    uint256 bettorCount2; // Count of bettor who bet second Fighter
-    uint256 totalAmount1; // Total price of first Fighter bettors
-    uint256 totalAmount2; // Total price of second Fighter bettors
-    uint256 firstBettorId; // First bettor of betting
-    BettingLiveState liveState; // Set true after finish betting
-    Side which; // who has winned
-  }
-
-  struct Bettor {
-    address bettor; // Address of bettor
-    uint256 bettingId; // Id of betting which bettor betted
-    uint256 amount; // Deposit amount
-    Side which; // What betted
-    bool hasWithdrawn; // has withdrawn?
-  }
-
-  struct Sig {
-    bytes32 r;
-    bytes32 s;
-    uint8 v;
-  }
-
-  struct ResultData {
-    address bettor;
-    uint256 amount;
-    int256 reward; // Winner true => fighter1 | false => fighter2
-  }
-
-  struct SeedData {
-    bytes32 serverSeed;
-    bytes32 clientSeed;
-    string seedString;
-  }
-
-  struct LuckyWinnerWithdrawState {
-    bool gold;
-    bool silver;
-    bool bronze;
-  }
-}
-
-contract FightBetting is Auth, IFightLiveBetting {
+contract FightBetting is Auth, IFightBetting {
   //
   uint256 public availableBettings;
   address public jackpotAddr;
@@ -82,32 +17,19 @@ contract FightBetting is Auth, IFightLiveBetting {
   Betting[] public bettings;
   BettingState[] public bettingStates;
   SeedData[] private seedData;
-  Bettor[] public bettors;
-  LuckyWinnerWithdrawState[] public luckyWinnerStates;
+  mapping(uint256 => Bettor[]) public bettors;
+  uint8[] public luckyWinnerStates;
   mapping(uint256 => mapping(address => bool)) private betted;
 
   mapping(address => uint256) private tokenAmounts;
 
   uint256 public minBetNumForJackPot;
   mapping(address => uint256) public betNumber;
-  mapping(address => bool) public tokenVerify;
-
-  // Events
-  event NewBetting(
-    uint256 fighter1,
-    uint256 fighter2,
-    uint32 startTime,
-    uint32 endTime,
-    address token
-  );
-
-  event Betted(address indexed from, uint256 fighter, uint256 amount);
-  event Finished(uint256 bettingId, uint256 winner);
-  event WinnerWithdrawed(uint256 bettingId, address indexed to, uint256 amount);
+  mapping(address => bool) public allowedTokens;
 
   modifier canBet(uint256 bettingId, uint256 value) {
     require(bettingId < bettings.length, "FightBetting:NOT_CREATED");
-    require(block.timestamp > bettings[bettingId].startTime, "FightBetting:NOT_STARTED_YET");
+    require(block.timestamp >= bettings[bettingId].startTime, "FightBetting:NOT_STARTED_YET");
     require(block.timestamp < bettings[bettingId].endTime, "FightBetting:ALREADY_FINISHED");
     require(value >= bettings[bettingId].minAmount, "FightBetting:TOO_SMALL_AMOUNT");
     require(value <= bettings[bettingId].maxAmount, "FightBetting:TOO_MUCH_AMOUNT");
@@ -130,7 +52,7 @@ contract FightBetting is Auth, IFightLiveBetting {
     uint256 maxAmount,
     address tokenAddr,
     Side result,
-    string memory seedString,
+    bytes32 seedString,
     Sig calldata sig
   ) external {
     require(
@@ -147,14 +69,16 @@ contract FightBetting is Auth, IFightLiveBetting {
       ),
       "FightBetting:INVALID_PARAM"
     );
-    require(tokenVerify[tokenAddr], "FightBetting:INVALID_TOKEN");
+    require(allowedTokens[tokenAddr], "FightBetting:INVALID_TOKEN");
+    require(startTime < endTime, "FightBetting:INVALID_PARAM");
+    require(endTime > block.timestamp, "FightBetting:INVALID_PARAM");
 
     bettings.push(
       Betting(fighter1, fighter2, minAmount, maxAmount, startTime, endTime, msg.sender, tokenAddr)
     );
 
-    bettingStates.push(BettingState(0, 0, 0, 0, 0, BettingLiveState.Alive, Side.Fighter1));
-    luckyWinnerStates.push(LuckyWinnerWithdrawState(false, false, false));
+    bettingStates.push(BettingState(0, 0, 0, 0, BettingLiveState.Alive, Side.Fighter1));
+    luckyWinnerStates.push(0);
 
     bytes32 serverSeed = keccak256(abi.encodePacked(result, seedString));
     seedData.push(SeedData(serverSeed, bytes32(0), seedString));
@@ -196,19 +120,19 @@ contract FightBetting is Auth, IFightLiveBetting {
 
   function bettOne(
     uint256 bettingId,
-    Side which,
+    Side side,
     uint256 value
   ) public canBet(bettingId, value) {
     uint256 fighter;
 
-    bettors.push(Bettor(msg.sender, bettingId, value, which, false));
+    bettors[bettingId].push(Bettor(msg.sender, value, side, false));
     betted[bettingId][msg.sender] = true;
     betNumber[msg.sender]++;
     seedData[bettingId].clientSeed = keccak256(
-      abi.encodePacked(seedData[bettingId].clientSeed, msg.sender, which == Side.Fighter1)
+      abi.encodePacked(seedData[bettingId].clientSeed, msg.sender, side == Side.Fighter1)
     );
 
-    if (which == Side.Fighter1) {
+    if (side == Side.Fighter1) {
       bettingStates[bettingId].totalAmount1 += value;
       bettingStates[bettingId].bettorCount1++;
       fighter = bettings[bettingId].fighter1;
@@ -216,10 +140,6 @@ contract FightBetting is Auth, IFightLiveBetting {
       bettingStates[bettingId].totalAmount2 += value;
       bettingStates[bettingId].bettorCount2++;
       fighter = bettings[bettingId].fighter2;
-    }
-
-    if (bettingStates[bettingId].totalAmount1 + bettingStates[bettingId].totalAmount2 == 1) {
-      bettingStates[bettingId].firstBettorId = bettors.length;
     }
 
     IERC20(bettings[bettingId].token).transferFrom(msg.sender, address(this), value);
@@ -242,7 +162,7 @@ contract FightBetting is Auth, IFightLiveBetting {
     );
 
     bettingStates[bettingId].liveState = BettingLiveState.Finished;
-    bettingStates[bettingId].which = result;
+    bettingStates[bettingId].side = result;
     availableBettings--;
     uint256 winner;
 
@@ -251,7 +171,7 @@ contract FightBetting is Auth, IFightLiveBetting {
 
     tokenAmounts[bettings[bettingId].token] += fee;
 
-    if (bettingStates[bettingId].which == Side.Fighter1) {
+    if (bettingStates[bettingId].side == Side.Fighter1) {
       winner = bettings[bettingId].fighter1;
     } else {
       winner = bettings[bettingId].fighter2;
@@ -299,26 +219,22 @@ contract FightBetting is Auth, IFightLiveBetting {
       bettingStates[bettingId].bettorCount2;
     uint256 totalReward = ((bettingStates[bettingId].totalAmount1 +
       bettingStates[bettingId].totalAmount2) * 88) / 100;
-    uint256 betPrice = bettingStates[bettingId].which == Side.Fighter1
+    uint256 betPrice = bettingStates[bettingId].side == Side.Fighter1
       ? bettingStates[bettingId].totalAmount1
       : bettingStates[bettingId].totalAmount2;
     ResultData[] memory results = new ResultData[](totalBettorCount);
 
     uint256 j = 0;
-    for (
-      uint256 i = bettingStates[bettingId].firstBettorId;
-      i < bettors.length && j < totalBettorCount;
-      i++
-    ) {
-      if (bettors[i].bettingId == bettingId) {
-        results[j] = ResultData(bettors[i].bettor, bettors[i].amount, 0);
-        if (bettors[i].which == bettingStates[bettingId].which) {
-          results[j].reward = int256(((totalReward - betPrice) * bettors[i].amount) / betPrice);
-        } else {
-          results[j].reward = -1 * int256(bettors[i].amount);
-        }
-        j++;
+    for (uint256 i = 0; i < bettors[bettingId].length && j < totalBettorCount; i++) {
+      results[j] = ResultData(bettors[bettingId][i].bettor, bettors[bettingId][i].amount, 0);
+      if (bettors[bettingId][i].side == bettingStates[bettingId].side) {
+        results[j].reward = int256(
+          ((totalReward - betPrice) * bettors[bettingId][i].amount) / betPrice
+        );
+      } else {
+        results[j].reward = -1 * int256(bettors[bettingId][i].amount);
       }
+      j++;
     }
     return results;
   }
@@ -386,27 +302,23 @@ contract FightBetting is Auth, IFightLiveBetting {
     );
     require(betted[bettingId][msg.sender] == true, "FightBetting:DID'T_BET");
 
-    for (
-      uint256 bettorId = bettingStates[bettingId].firstBettorId;
-      bettorId < bettors.length;
-      bettorId++
-    ) {
-      if (bettors[bettorId].bettor == msg.sender) {
+    for (uint256 i = 0; i < bettors[bettingId].length; i++) {
+      if (bettors[bettingId][i].bettor == msg.sender) {
         require(
-          bettors[bettorId].which == bettingStates[bettingId].which,
+          bettors[bettingId][i].side == bettingStates[bettingId].side,
           "FightBetting:DIDN'T_WINNER"
         );
-        require(!bettors[bettorId].hasWithdrawn, "FightBetting:ALREADY_WITHDRAWED");
-        bettors[bettorId].hasWithdrawn = true;
+        require(!bettors[bettingId][i].hasWithdrawn, "FightBetting:ALREADY_WITHDRAWED");
+        bettors[bettingId][i].hasWithdrawn = true;
         // calculate withdraw amount
         uint256 totalAmount = ((bettingStates[bettingId].totalAmount1 +
           bettingStates[bettingId].totalAmount2) * 88) / 100;
 
-        uint256 winnerAmount = bettingStates[bettingId].which == Side.Fighter1
+        uint256 winnerAmount = bettingStates[bettingId].side == Side.Fighter1
           ? bettingStates[bettingId].totalAmount1
           : bettingStates[bettingId].totalAmount1;
 
-        uint256 rewardAmount = (totalAmount * bettors[bettorId].amount) / winnerAmount;
+        uint256 rewardAmount = (totalAmount * bettors[bettingId][i].amount) / winnerAmount;
         IERC20(bettings[bettingId].token).transfer(msg.sender, rewardAmount);
 
         emit WinnerWithdrawed(bettingId, msg.sender, totalAmount);
@@ -432,16 +344,8 @@ contract FightBetting is Auth, IFightLiveBetting {
     return seedData[bettingId].serverSeed;
   }
 
-  function getWinner(uint256 bettingId) public view returns (Side) {
-    require(
-      bettingStates[bettingId].liveState == BettingLiveState.Finished,
-      "FightBetting:NOT_FINISHED"
-    );
-    return bettingStates[bettingId].which;
-  }
-
-  function getBettorData(uint256 bettorId) public view returns (Bettor memory) {
-    return bettors[bettorId];
+  function getBettorData(uint256 bettingId, uint256 bettorId) public view returns (Bettor memory) {
+    return bettors[bettingId][bettorId];
   }
 
   function getWinBettorIds(uint256 bettingId) public view returns (uint256[] memory ids) {
@@ -450,15 +354,15 @@ contract FightBetting is Auth, IFightLiveBetting {
       "FightBetting:NOT_FINISHED"
     );
 
-    uint256 total = bettingStates[bettingId].which == Side.Fighter1
+    uint256 total = bettingStates[bettingId].side == Side.Fighter1
       ? bettingStates[bettingId].bettorCount1
       : bettingStates[bettingId].bettorCount2;
 
     ids = new uint256[](total);
 
     uint256 j = 0;
-    for (uint256 i = bettingStates[bettingId].firstBettorId; j < total && i < bettors.length; i++) {
-      if (bettors[i].bettingId == bettingId && bettors[i].which == bettingStates[bettingId].which) {
+    for (uint256 i = 0; j < total && i < bettors[bettingId].length; i++) {
+      if (bettors[bettingId][i].side == bettingStates[bettingId].side) {
         ids[j] = i;
         j++;
       }
@@ -480,17 +384,17 @@ contract FightBetting is Auth, IFightLiveBetting {
     // get bettor data
     Bettor memory bettor;
 
-    for (uint256 i = bettingStates[bettingId].firstBettorId; i < bettors.length; i++) {
-      if (bettors[i].bettingId == bettingId && bettors[i].bettor == msg.sender) {
-        bettor = bettors[i];
+    for (uint256 i = 0; i < bettors[bettingId].length; i++) {
+      if (bettors[bettingId][i].bettor == msg.sender) {
+        bettor = bettors[bettingId][i];
         break;
       }
     }
 
-    require(bettingStates[bettingId].which == bettor.which, "FightBetting:LOSS");
+    require(bettingStates[bettingId].side == bettor.side, "FightBetting:LOSS");
 
     // hash seeds;
-    uint256 winnerBettorCount = bettingStates[bettingId].which == Side.Fighter1
+    uint256 winnerBettorCount = bettingStates[bettingId].side == Side.Fighter1
       ? bettingStates[bettingId].bettorCount1
       : bettingStates[bettingId].bettorCount2;
     uint256 luckyWinnerRewardAmount = ((bettingStates[bettingId].totalAmount1 +
@@ -506,51 +410,21 @@ contract FightBetting is Auth, IFightLiveBetting {
     );
 
     uint256 goldIndex = uint256(hashed) % winnerBettorCount;
-    bool goldSetted = false;
     uint256 silverIndex = (goldIndex + 1) % winnerBettorCount;
-    bool silverSetted = false;
     uint256 bronzeIndex = (goldIndex + 2) % winnerBettorCount;
-    bool bronzeSetted = false;
-
-    uint256 j = 0;
-    for (
-      uint256 i = bettingStates[bettingId].firstBettorId;
-      i < bettors.length && j < winnerBettorCount;
-      i++
-    ) {
-      if (bettors[i].bettingId == bettingId && bettors[i].which == bettingStates[bettingId].which) {
-        if (j == goldIndex && !goldSetted) {
-          goldIndex = i;
-          goldSetted = true;
-        }
-        if (j == silverIndex && !silverSetted) {
-          silverIndex = i;
-          silverSetted = true;
-        }
-        if (j == bronzeIndex && !bronzeSetted) {
-          bronzeIndex = i;
-          bronzeSetted = true;
-        }
-
-        if (goldSetted && silverSetted && bronzeSetted) {
-          break;
-        }
-        j++;
-      }
-    }
 
     winners = new address[](3);
     rewards = new uint256[](3);
     // gold winner
-    winners[0] = bettors[goldIndex].bettor;
+    winners[0] = bettors[bettingId][goldIndex].bettor;
     rewards[0] = (luckyWinnerRewardAmount * 5) / 8;
 
     // silver medal
-    winners[1] = bettors[silverIndex].bettor;
+    winners[1] = bettors[bettingId][silverIndex].bettor;
     rewards[1] = luckyWinnerRewardAmount / 4;
 
     // bronze medal
-    winners[2] = bettors[bronzeIndex].bettor;
+    winners[2] = bettors[bettingId][bronzeIndex].bettor;
     rewards[2] = luckyWinnerRewardAmount - rewards[0] - rewards[1];
   }
 
@@ -560,20 +434,20 @@ contract FightBetting is Auth, IFightLiveBetting {
     (winners, rewards) = getLuckyWinner(bettingId);
 
     if (winners[0] == msg.sender) {
-      require(!luckyWinnerStates[bettingId].gold, "FightBetting:ALREADY_WITHDRAWD");
-      luckyWinnerStates[bettingId].gold = true;
+      require(luckyWinnerStates[bettingId] & 0x01 == 0, "FightBetting:ALREADY_WITHDRAWD");
+      luckyWinnerStates[bettingId] += 0x01;
       IERC20(bettings[bettingId].token).transfer(msg.sender, rewards[0]);
     }
 
     if (winners[1] == msg.sender) {
-      require(!luckyWinnerStates[bettingId].silver, "FightBetting:ALREADY_WITHDRAWD");
-      luckyWinnerStates[bettingId].silver = true;
+      require(luckyWinnerStates[bettingId] & 0x02 == 0, "FightBetting:ALREADY_WITHDRAWD");
+      luckyWinnerStates[bettingId] += 0x02;
       IERC20(bettings[bettingId].token).transfer(msg.sender, rewards[1]);
     }
 
     if (winners[2] == msg.sender) {
-      require(!luckyWinnerStates[bettingId].bronze, "FightBetting:ALREADY_WITHDRAWD");
-      luckyWinnerStates[bettingId].bronze = true;
+      require(luckyWinnerStates[bettingId] & 0x04 == 0, "FightBetting:ALREADY_WITHDRAWD");
+      luckyWinnerStates[bettingId] += 0x04;
       IERC20(bettings[bettingId].token).transfer(msg.sender, rewards[2]);
     }
   }
@@ -599,7 +473,7 @@ contract FightBetting is Auth, IFightLiveBetting {
     minBetNumForJackPot = min;
   }
 
-  function setTokenVerification(address token, bool value) public onlyOwner {
-    tokenVerify[token] = value;
+  function setTokenAllowance(address token, bool value) public onlyOwner {
+    allowedTokens[token] = value;
   }
 }
