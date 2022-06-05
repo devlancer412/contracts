@@ -271,7 +271,7 @@ describe("FightBetting test", () => {
     await expect(fightbetting.connect(bob).bettOne(0, 0, 200)).to.be.revertedWith("FightBetting:ALREADY_BET");
   });
 
-  it("Betting is finished and rewarded to winner", async () => {
+  it("Betting is finished", async () => {
     // send time to over
     await network.provider.send("evm_increaseTime", [3600]);
     await network.provider.send("evm_mine"); // this one will have 02:00 PM as its timestamp

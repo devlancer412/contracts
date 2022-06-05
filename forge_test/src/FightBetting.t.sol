@@ -53,6 +53,29 @@ contract FightBettingTest is BasicSetup {
     return (r, s, v);
   }
 
+  function signFinish(
+    address to,
+    uint256 bettingId,
+    IFightBetting.Side result
+  )
+    public
+    virtual
+    returns (
+      bytes32,
+      bytes32,
+      uint8
+    )
+  {
+    bytes32 messageHash = keccak256(
+      abi.encodePacked(to, bettingId, bool(result == IFightBetting.Side.Fighter1))
+    );
+
+    bytes32 digest = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
+    console.log(uint256(messageHash));
+    (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerSecretKey, digest);
+    return (r, s, v);
+  }
+
   //  test
   function setUp() public {
     jackpot = new JackPotTicket();
@@ -165,7 +188,7 @@ contract FightBettingTest is BasicSetup {
   }
 
   function testBetFighter2ByVault() public {
-    testCreateBetting();
+    testBetFighter1ByBob();
     vm.prank(vault);
     usdc.approve(address(fightbetting), 300);
     vm.prank(vault);
@@ -186,11 +209,64 @@ contract FightBettingTest is BasicSetup {
   }
 
   function testCantBetAgain() public {
-    testBetFighter1ByBob();
+    testBetFighter2ByVault();
     vm.prank(bob);
     usdc.approve(address(fightbetting), 200);
     vm.prank(bob);
     vm.expectRevert(bytes("FightBetting:ALREADY_BET"));
     fightbetting.bettOne(0, IFightBetting.Side.Fighter1, 200);
+  }
+
+  function testFinish() public {
+    testBetFighter2ByVault();
+
+    (bytes32 r, bytes32 s, uint8 v) = signFinish(alice, 0, IFightBetting.Side.Fighter1);
+    IFightBetting.Sig memory sig = IFightBetting.Sig(r, s, v);
+    vm.warp(block.timestamp + 3700);
+    assertEq(usdc.balanceOf(address(fightbetting)), 600);
+    vm.prank(alice);
+    fightbetting.finishBetting(0, IFightBetting.Side.Fighter1, sig);
+    assertEq(usdc.balanceOf(address(fightbetting)), 570);
+  }
+
+  function testWithdraw() public {
+    testFinish();
+    uint256 balanceAlice = usdc.balanceOf(alice);
+    uint256 balanceBob = usdc.balanceOf(bob);
+
+    vm.prank(alice);
+    fightbetting.withdrawReward(0);
+    assertEq(usdc.balanceOf(alice), balanceAlice + 176);
+    vm.prank(bob);
+    fightbetting.withdrawReward(0);
+    assertEq(usdc.balanceOf(bob), balanceBob + 352);
+    assertEq(usdc.balanceOf(address(fightbetting)), 42);
+  }
+
+  function testLuckyWithdrawReward() public {
+    testWithdraw();
+    vm.prank(alice);
+    fightbetting.withdrawLuckyWinnerReward(0);
+    vm.prank(bob);
+    fightbetting.withdrawLuckyWinnerReward(0);
+    assertEq(usdc.balanceOf(address(fightbetting)), 30);
+  }
+
+  function testJackPotBalance() public {
+    testLuckyWithdrawReward();
+
+    assertEq(usdc.balanceOf(address(jackpot)), 30);
+  }
+
+  function mintJackPotNFT() public {
+    testJackPotBalance();
+
+    vm.prank(alice);
+    uint256 amountNFT = fightbetting.canGetJackPotNFT();
+    assertEq(amountNFT, 1);
+
+    vm.prank(alice);
+    fightbetting.getJackPotNFT();
+    assertEq(jackpot.balanceOf(alice), 1);
   }
 }
