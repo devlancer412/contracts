@@ -15,8 +15,9 @@ contract JackPotTicket is Auth, ERC721 {
   uint256 public openTime;
   uint256 public period;
   uint256 public totalDistributeAmount;
+  bytes32 public hashedServerSeed;
   bytes32 public clientSeed;
-  address public currency;
+  address public token;
 
   mapping(address => bool) private rewarded;
 
@@ -31,6 +32,7 @@ contract JackPotTicket is Auth, ERC721 {
     _baseTokenURI = "";
     period = 1 weeks;
     _treasuryAddr = msg.sender;
+    openTime = block.timestamp;
   }
 
   modifier hasTicket() {
@@ -48,11 +50,11 @@ contract JackPotTicket is Auth, ERC721 {
   }
 
   function _validateCreateParam(
-    string memory serverSeed,
-    address currencyAddr,
+    bytes32 hashedServerSeedParam,
+    address tokenAddr,
     Sig calldata sig
   ) private view returns (bool) {
-    bytes32 messageHash = keccak256(abi.encodePacked(msg.sender, currencyAddr, serverSeed));
+    bytes32 messageHash = keccak256(abi.encodePacked(msg.sender, tokenAddr, hashedServerSeedParam));
     bytes32 ethSignedMessageHash = keccak256(
       abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash)
     );
@@ -61,31 +63,58 @@ contract JackPotTicket is Auth, ERC721 {
   }
 
   function createRound(
-    string memory serverSeed,
-    address currencyAddr,
+    bytes32 hashedServerSeedParam,
+    address tokenAddr,
     Sig calldata sig
   ) public {
-    require(block.timestamp > openTime, "JackPotTicket:NOT_FINISHED");
-    require(_validateCreateParam(serverSeed, currencyAddr, sig), "JackPotTicket:NOT_CREATOR");
+    require(block.timestamp >= openTime, "JackPotTicket:NOT_FINISHED");
+    require(
+      _validateCreateParam(hashedServerSeedParam, tokenAddr, sig),
+      "JackPotTicket:NOT_CREATOR"
+    );
 
-    uint256 totalAmount = IERC20(currencyAddr).balanceOf(address(this));
+    uint256 totalAmount = IERC20(tokenAddr).balanceOf(address(this));
     require(totalAmount > 0, "JackPotTicket:INSUFFICIENT_BALANCE");
 
-    _serverSeed = keccak256(
-      abi.encodePacked(msg.sender, serverSeed, currencyAddr, block.timestamp)
-    );
+    hashedServerSeed = hashedServerSeedParam;
+    _serverSeed = bytes32(0);
+
     openTime = block.timestamp + period;
     totalDistributeAmount = totalAmount;
-    currency = currencyAddr;
+    token = tokenAddr;
     clientSeed = bytes32(0);
     for (uint256 i = 0; i < _tokenCounter; i++) {
       rewarded[ownerOf(i)] = false;
     }
-    IERC20(currency).transfer(_treasuryAddr, totalAmount / 20);
+    IERC20(token).transfer(_treasuryAddr, totalAmount / 20);
+  }
+
+  function _validateFinishParam(bytes32 serverSeedParam, Sig calldata sig)
+    private
+    view
+    returns (bool)
+  {
+    bytes32 messageHash = keccak256(abi.encodePacked(msg.sender, serverSeedParam));
+    bytes32 ethSignedMessageHash = keccak256(
+      abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash)
+    );
+
+    return hasRole("CREATOR", ecrecover(ethSignedMessageHash, sig.v, sig.r, sig.s));
+  }
+
+  function finishRound(bytes32 serverSeed, Sig calldata sig) public {
+    require(_validateFinishParam(serverSeed, sig), "JackPotTicket:NOT_CREATOR");
+    require(
+      keccak256(abi.encodePacked(serverSeed, token)) == hashedServerSeed,
+      "JackPotTicket:INVALID_SEED"
+    );
+    require(block.timestamp > openTime, "JackPotTicket:NOT_FINISHED");
+    _serverSeed = serverSeed;
   }
 
   function getResult() public view hasTicket returns (uint256) {
     require(block.timestamp > openTime, "JackPotTicket:NOT_FINISHED");
+    require(_serverSeed != bytes32(0), "JackPotTicket:NO_SERVERSEED");
 
     uint256 total = _tokenCounter;
     address[] memory addressList = getAddressList();
@@ -98,7 +127,7 @@ contract JackPotTicket is Auth, ERC721 {
       reward += (totalDistributeAmount * 80) / 100; // 80% to winner
     }
 
-    for (uint256 i = 1; i < total && i < 11; i++) {
+    for (uint256 i = 1; i < 11; i++) {
       if (msg.sender == addressList[(winnerIndex + i) % total]) {
         reward += (totalDistributeAmount * 15) / 1000; // 1.5% to winners
       }
@@ -114,21 +143,18 @@ contract JackPotTicket is Auth, ERC721 {
 
     rewarded[msg.sender] = true;
 
-    IERC20(currency).transfer(msg.sender, reward);
+    IERC20(token).transfer(msg.sender, reward);
   }
 
   // for provably
-  function getClienctSeed() public view returns (bytes32) {
-    return clientSeed;
-  }
-
   function getServerSeed() public view returns (bytes32) {
     require(block.timestamp > openTime, "JackPotTicket:NOT_FINISHED");
+    // require(_serverSeed != bytes32(0), "JackPotTicket:NOT_FINISHED");
     return _serverSeed;
   }
 
   function getHashedServerSeed() public view returns (bytes32) {
-    return keccak256(abi.encodePacked(_serverSeed, openTime));
+    return hashedServerSeed;
   }
 
   function getOpenTime() public view returns (uint256) {
@@ -145,7 +171,7 @@ contract JackPotTicket is Auth, ERC721 {
   }
 
   function getTotalReward() public view returns (string memory tokenName, uint256 amount) {
-    tokenName = IERC20Metadata(currency).symbol();
+    tokenName = IERC20Metadata(token).symbol();
     amount = totalDistributeAmount;
   }
 
@@ -172,7 +198,6 @@ contract JackPotTicket is Auth, ERC721 {
   }
 
   function getClientSeed() public view hasTicket returns (bytes32) {
-    require(block.timestamp < openTime, "JackPotTicket:FINISHED");
     return clientSeed;
   }
 }

@@ -19,7 +19,8 @@ let signer: SignerWithAddress;
 let deployer: SignerWithAddress;
 let users: SignerWithAddress[];
 
-let hashedServerSeed: string;
+const serverSeedString = "First round";
+const serverSeed = solidityKeccak256(["string"], [serverSeedString]);
 
 const setup = deployments.createFixture(async (hre) => {
   ship = await Ship.init(hre);
@@ -34,7 +35,18 @@ const setup = deployments.createFixture(async (hre) => {
 });
 
 const signCreate = async (to: string, token: string, seed: string) => {
-  const hash = solidityKeccak256(["address", "address", "string"], [to, token, seed]);
+  const hash = solidityKeccak256(["address", "address", "bytes32"], [to, token, seed]);
+  const sig = await signer.signMessage(arrayify(hash));
+  const { r, s, v } = splitSignature(sig);
+  return {
+    r,
+    s,
+    v,
+  };
+};
+
+const signFinish = async (to: string, seed: string) => {
+  const hash = solidityKeccak256(["address", "bytes32"], [to, seed]);
   const sig = await signer.signMessage(arrayify(hash));
   const { r, s, v } = splitSignature(sig);
   return {
@@ -68,16 +80,12 @@ describe("JackPot test", () => {
   });
 
   it("Create a round", async () => {
-    const serverSeedString = "First round";
-    const sig = await signCreate(signer.address, gwit.address, serverSeedString);
-    await jackpotTicket.connect(signer).createRound("First round", gwit.address, sig);
+    const hashedServerSeed = solidityKeccak256(["bytes32", "address"], [serverSeed, gwit.address]);
+    const sig = await signCreate(signer.address, gwit.address, hashedServerSeed);
+    await jackpotTicket.connect(signer).createRound(hashedServerSeed, gwit.address, sig);
   });
 
-  it("Get client seed", async () => {
-    hashedServerSeed = await jackpotTicket.getHashedServerSeed();
-  });
-
-  it("Can't get serverseed before finish", async () => {
+  it("Can't get server seed before finish", async () => {
     await expect(jackpotTicket.connect(alice).getServerSeed()).to.be.revertedWith(
       "JackPotTicket:NOT_FINISHED",
     );
@@ -87,6 +95,9 @@ describe("JackPot test", () => {
     // send time to over
     await network.provider.send("evm_increaseTime", [8 * 24 * 60 * 60]);
     await network.provider.send("evm_mine"); // this one will have 02:00 PM as its timestamp
+
+    const sig = await signFinish(signer.address, serverSeed);
+    await jackpotTicket.connect(signer).finishRound(serverSeed, sig);
 
     const resultPromises = users.map((user) => jackpotTicket.connect(user).getResult());
     const results = (await Promise.all(resultPromises)).map((result) => result.toNumber());
@@ -103,9 +114,6 @@ describe("JackPot test", () => {
 
   it("Provably test", async () => {
     const serverSeed = await jackpotTicket.getServerSeed();
-    const openTime = await jackpotTicket.getOpenTime();
-    expect(solidityKeccak256(["bytes32", "uint256"], [serverSeed, openTime])).to.eq(hashedServerSeed);
-
     const clientSeed = await jackpotTicket.getClienctSeed();
     const aliceReward = await jackpotTicket.connect(alice).getResult();
     let addressList: Array<string> = [];
