@@ -51,8 +51,7 @@ contract FightBetting is Auth, IFightBetting {
     uint256 minAmount,
     uint256 maxAmount,
     address tokenAddr,
-    Side result,
-    bytes32 seedString,
+    bytes32 hashedServerSeed,
     Sig calldata sig
   ) external {
     require(
@@ -64,7 +63,7 @@ contract FightBetting is Auth, IFightBetting {
         minAmount,
         maxAmount,
         tokenAddr,
-        result,
+        hashedServerSeed,
         sig
       ),
       "FightBetting:INVALID_PARAM"
@@ -80,8 +79,7 @@ contract FightBetting is Auth, IFightBetting {
     bettingStates.push(BettingState(0, 0, 0, 0, BettingLiveState.Alive, Side.Fighter1));
     luckyWinnerStates.push(0);
 
-    bytes32 serverSeed = keccak256(abi.encodePacked(result, seedString));
-    seedData.push(SeedData(serverSeed, bytes32(0), seedString));
+    seedData.push(SeedData(hashedServerSeed, bytes32(0), bytes32(0)));
 
     availableBettings++;
     emit NewBetting(fighter1, fighter2, startTime, endTime, tokenAddr);
@@ -95,7 +93,7 @@ contract FightBetting is Auth, IFightBetting {
     uint256 minAmount,
     uint256 maxAmount,
     address token,
-    Side result,
+    bytes32 hashedServerSeed,
     Sig calldata sig
   ) private view returns (bool) {
     bytes32 messageHash = keccak256(
@@ -108,7 +106,7 @@ contract FightBetting is Auth, IFightBetting {
         minAmount,
         maxAmount,
         token,
-        bool(result == Side.Fighter1)
+        hashedServerSeed
       )
     );
     bytes32 ethSignedMessageHash = keccak256(
@@ -149,20 +147,22 @@ contract FightBetting is Auth, IFightBetting {
 
   function finishBetting(
     uint256 bettingId,
+    bytes32 serverSeed,
     Side result,
     Sig calldata sig
   ) public {
-    require(_isFinishParamValid(bettingId, result, sig), "FightBetting:INVALID_PARAM");
+    require(_isFinishParamValid(bettingId, serverSeed, result, sig), "FightBetting:INVALID_PARAM");
     require(block.timestamp > bettings[bettingId].endTime, "FightBetting:TIME_YET");
     require(bettings[bettingId].creator == msg.sender, "FightBetting:PERMISSION_ERROR");
     require(
-      keccak256(abi.encodePacked(result, seedData[bettingId].seedString)) ==
-        seedData[bettingId].serverSeed,
+      keccak256(abi.encodePacked(bool(result == Side.Fighter1), serverSeed)) ==
+        seedData[bettingId].hashedServerSeed,
       "FightBtting:INVALID_SEED"
     );
 
     bettingStates[bettingId].liveState = BettingLiveState.Finished;
     bettingStates[bettingId].side = result;
+    seedData[bettingId].serverSeed = serverSeed;
     availableBettings--;
     uint256 winner;
 
@@ -184,11 +184,12 @@ contract FightBetting is Auth, IFightBetting {
 
   function _isFinishParamValid(
     uint256 bettingId,
+    bytes32 serverSeed,
     Side result,
     Sig calldata sig
   ) private view returns (bool) {
     bytes32 messageHash = keccak256(
-      abi.encodePacked(msg.sender, bettingId, bool(result == Side.Fighter1))
+      abi.encodePacked(msg.sender, bettingId, serverSeed, bool(result == Side.Fighter1))
     );
     bytes32 ethSignedMessageHash = keccak256(
       abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash)
@@ -329,7 +330,7 @@ contract FightBetting is Auth, IFightBetting {
 
   // For provably.
   function getServerSeedHash(uint256 bettingId) public view returns (bytes32) {
-    return keccak256(abi.encodePacked(seedData[bettingId].serverSeed, bettingId));
+    return seedData[bettingId].hashedServerSeed;
   }
 
   function getClientSeed(uint256 bettingId) public view returns (bytes32) {
@@ -341,6 +342,7 @@ contract FightBetting is Auth, IFightBetting {
       bettingStates[bettingId].liveState == BettingLiveState.Finished,
       "FightBetting:NOT_FINISHED"
     );
+
     return seedData[bettingId].serverSeed;
   }
 

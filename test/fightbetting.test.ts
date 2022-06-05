@@ -9,18 +9,10 @@ import {
 } from "../types";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { deployments, ethers, network } from "hardhat";
-import { HardhatRuntimeEnvironment } from "hardhat/types";
 import chai from "chai";
 import { solidity } from "ethereum-waffle";
 import { Ship } from "../utils";
-import {
-  arrayify,
-  formatEther,
-  parseBytes32String,
-  solidityKeccak256,
-  splitSignature,
-} from "ethers/lib/utils";
-import { Accounts } from "../utils/Ship";
+import { arrayify, formatEther, solidityKeccak256, splitSignature } from "ethers/lib/utils";
 import { parseSpecial } from "../utils/parseSpecial";
 
 chai.use(solidity);
@@ -37,9 +29,8 @@ let vault: SignerWithAddress;
 let signer: SignerWithAddress;
 let deployer: SignerWithAddress;
 let users: SignerWithAddress[];
-let hashedServerSeed: string;
 
-const serverSeedString = solidityKeccak256(["string"], ["FightBetting test"]);
+const serverSeed = solidityKeccak256(["string"], ["FightBetting test"]);
 
 const setup = deployments.createFixture(async (hre) => {
   ship = await Ship.init(hre);
@@ -62,11 +53,11 @@ const signCreate = async (
   minAmount: string,
   maxAmount: string,
   tokenAddr: string,
-  result: number,
+  hashedServerSeed: string,
 ) => {
   const hash = solidityKeccak256(
-    ["address", "uint256", "uint256", "uint32", "uint32", "uint256", "uint256", "address", "bool"],
-    [to, fighter1, fighter2, startTime, endTime, minAmount, maxAmount, tokenAddr, result == 0],
+    ["address", "uint256", "uint256", "uint32", "uint32", "uint256", "uint256", "address", "bytes32"],
+    [to, fighter1, fighter2, startTime, endTime, minAmount, maxAmount, tokenAddr, hashedServerSeed],
   );
   const sig = await signer.signMessage(arrayify(hash));
   const { r, s, v } = splitSignature(sig);
@@ -77,8 +68,11 @@ const signCreate = async (
   };
 };
 
-const signFinish = async (to: string, bettingId: number, result: number) => {
-  const hash = solidityKeccak256(["address", "uint256", "bool"], [to, bettingId, result == 0]);
+const signFinish = async (to: string, bettingId: number, serverSeed: string, result: number) => {
+  const hash = solidityKeccak256(
+    ["address", "uint256", "bytes32", "bool"],
+    [to, bettingId, serverSeed, result == 0],
+  );
   const sig = await signer.signMessage(arrayify(hash));
   const { r, s, v } = splitSignature(sig);
   return {
@@ -141,6 +135,8 @@ describe("FightBetting test", () => {
     const minAmount = "100";
     const maxAmount = "5000";
 
+    const hashedServerSeed = solidityKeccak256(["bool", "bytes32"], [true, serverSeed]);
+
     const sig = await signCreate(
       alice.address,
       0,
@@ -150,12 +146,12 @@ describe("FightBetting test", () => {
       minAmount,
       maxAmount,
       gwit.address,
-      0,
+      hashedServerSeed,
     );
 
     await fightbetting
       .connect(alice)
-      .createBetting(0, 1, startTime, endTime, minAmount, maxAmount, gwit.address, 0, serverSeedString, sig);
+      .createBetting(0, 1, startTime, endTime, minAmount, maxAmount, gwit.address, hashedServerSeed, sig);
 
     const result = await fightbetting.getBettingState(0);
     expect(result.bettorCount1.toNumber()).to.eq(0);
@@ -181,6 +177,8 @@ describe("FightBetting test", () => {
     const minAmount = "100";
     const maxAmount = "5000";
 
+    const hashedServerSeed = solidityKeccak256(["bool", "bytes32"], [true, serverSeed]);
+
     const sigCreate = await signCreate(
       alice.address,
       0,
@@ -190,7 +188,7 @@ describe("FightBetting test", () => {
       minAmount,
       maxAmount,
       gwit.address,
-      0,
+      hashedServerSeed,
     );
 
     await fightbetting
@@ -203,8 +201,7 @@ describe("FightBetting test", () => {
         minAmount,
         maxAmount,
         gwit.address,
-        0,
-        serverSeedString,
+        hashedServerSeed,
         sigCreate,
       );
     // bets
@@ -213,7 +210,6 @@ describe("FightBetting test", () => {
       await fightbetting.connect(users[index]).bettOne(1, index % 2, 500);
     }
 
-    hashedServerSeed = await fightbetting.getServerSeedHash(1);
     await expect(fightbetting.getServerSeed(1)).to.be.revertedWith("FightBetting:NOT_FINISHED");
   });
 
@@ -276,8 +272,8 @@ describe("FightBetting test", () => {
     await network.provider.send("evm_increaseTime", [3600]);
     await network.provider.send("evm_mine"); // this one will have 02:00 PM as its timestamp
 
-    const sig = await signFinish(alice.address, 0, 0);
-    await fightbetting.connect(alice).finishBetting(0, 0, sig);
+    const sig = await signFinish(alice.address, 0, serverSeed, 0);
+    await fightbetting.connect(alice).finishBetting(0, serverSeed, 0, sig);
   });
 
   it("Can't bet after finished", async () => {
@@ -311,13 +307,8 @@ describe("FightBetting test", () => {
     await network.provider.send("evm_increaseTime", [3601]);
     await network.provider.send("evm_mine");
 
-    const sigFinish = await signFinish(alice.address, 1, 0);
-    await fightbetting.connect(alice).finishBetting(1, 0, sigFinish);
-  });
-
-  it("Provably test: server seed", async () => {
-    const serverSeed = await fightbetting.getServerSeed(1);
-    expect(solidityKeccak256(["bytes32", "uint256"], [serverSeed, 1])).to.eq(hashedServerSeed);
+    const sigFinish = await signFinish(alice.address, 1, serverSeed, 0);
+    await fightbetting.connect(alice).finishBetting(1, serverSeed, 0, sigFinish);
   });
 
   it("Provably test : lucky winner", async () => {

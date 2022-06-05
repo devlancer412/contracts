@@ -11,7 +11,7 @@ contract FightBettingTest is BasicSetup {
   FightBetting fightbetting;
   MockUsdc usdc;
   JackPotTicket jackpot;
-  bytes32 seedString = keccak256(abi.encodePacked("Foundry test seed"));
+  bytes32 serverSeed = keccak256(abi.encodePacked("Foundry test seed"));
 
   //  utils
   function signCreate(
@@ -23,7 +23,7 @@ contract FightBettingTest is BasicSetup {
     uint256 minAmount,
     uint256 maxAmount,
     address tokenAddr,
-    IFightBetting.Side result
+    bytes32 hashedServerSeed
   )
     public
     virtual
@@ -43,12 +43,11 @@ contract FightBettingTest is BasicSetup {
         minAmount,
         maxAmount,
         tokenAddr,
-        bool(result == IFightBetting.Side.Fighter1)
+        hashedServerSeed
       )
     );
 
     bytes32 digest = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
-    console.log(uint256(messageHash));
     (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerSecretKey, digest);
     return (r, s, v);
   }
@@ -56,6 +55,7 @@ contract FightBettingTest is BasicSetup {
   function signFinish(
     address to,
     uint256 bettingId,
+    bytes32 serverSeed,
     IFightBetting.Side result
   )
     public
@@ -67,7 +67,7 @@ contract FightBettingTest is BasicSetup {
     )
   {
     bytes32 messageHash = keccak256(
-      abi.encodePacked(to, bettingId, bool(result == IFightBetting.Side.Fighter1))
+      abi.encodePacked(to, bettingId, serverSeed, bool(result == IFightBetting.Side.Fighter1))
     );
 
     bytes32 digest = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
@@ -111,6 +111,10 @@ contract FightBettingTest is BasicSetup {
     address tokenAddr = address(usdc);
     IFightBetting.Side result = IFightBetting.Side.Fighter1;
 
+    bytes32 hashedServerSeed = keccak256(
+      abi.encodePacked(bool(result == IFightBetting.Side.Fighter1), serverSeed)
+    );
+
     (bytes32 r, bytes32 s, uint8 v) = signCreate(
       alice,
       fighter1,
@@ -120,7 +124,7 @@ contract FightBettingTest is BasicSetup {
       minAmount,
       maxAmount,
       tokenAddr,
-      result
+      hashedServerSeed
     );
 
     IFightBetting.Sig memory sig = IFightBetting.Sig(r, s, v);
@@ -134,8 +138,7 @@ contract FightBettingTest is BasicSetup {
       minAmount,
       maxAmount,
       tokenAddr,
-      result,
-      seedString,
+      hashedServerSeed,
       sig
     );
 
@@ -220,12 +223,12 @@ contract FightBettingTest is BasicSetup {
   function testFinish() public {
     testBetFighter2ByVault();
 
-    (bytes32 r, bytes32 s, uint8 v) = signFinish(alice, 0, IFightBetting.Side.Fighter1);
+    (bytes32 r, bytes32 s, uint8 v) = signFinish(alice, 0, serverSeed, IFightBetting.Side.Fighter1);
     IFightBetting.Sig memory sig = IFightBetting.Sig(r, s, v);
     vm.warp(block.timestamp + 3700);
     assertEq(usdc.balanceOf(address(fightbetting)), 600);
     vm.prank(alice);
-    fightbetting.finishBetting(0, IFightBetting.Side.Fighter1, sig);
+    fightbetting.finishBetting(0, serverSeed, IFightBetting.Side.Fighter1, sig);
     assertEq(usdc.balanceOf(address(fightbetting)), 570);
   }
 

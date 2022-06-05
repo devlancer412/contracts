@@ -52,9 +52,9 @@ interface IFightBetting {
   }
 
   struct SeedData {
+    bytes32 hashedServerSeed;
     bytes32 serverSeed;
     bytes32 clientSeed;
-    bytes32 seedString;
   }
 
   // Events
