@@ -114,7 +114,7 @@ describe("JackPot test", () => {
 
   it("Provably test", async () => {
     const serverSeed = await jackpotTicket.getServerSeed();
-    const clientSeed = await jackpotTicket.getClienctSeed();
+    const clientSeed = await jackpotTicket.getClientSeed();
     const aliceReward = await jackpotTicket.connect(alice).getResult();
     let addressList: Array<string> = [];
     addressList = (await jackpotTicket.getAddressList()).map((address) => address);
