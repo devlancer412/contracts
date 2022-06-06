@@ -55,7 +55,7 @@ contract FightBettingTest is BasicSetup {
   function signFinish(
     address to,
     uint256 bettingId,
-    bytes32 serverSeed,
+    bytes32 serverSeedParam,
     IFightBetting.Side result
   )
     public
@@ -67,7 +67,7 @@ contract FightBettingTest is BasicSetup {
     )
   {
     bytes32 messageHash = keccak256(
-      abi.encodePacked(to, bettingId, serverSeed, bool(result == IFightBetting.Side.Fighter1))
+      abi.encodePacked(to, bettingId, serverSeedParam, bool(result == IFightBetting.Side.Fighter1))
     );
 
     bytes32 digest = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
@@ -98,6 +98,7 @@ contract FightBettingTest is BasicSetup {
     fightbetting.setJackPotMin(1);
 
     fightbetting.grantRole("SIGNER", signer);
+    fightbetting.grantRole("MAINTAINER", alice);
     assertTrue(fightbetting.hasRole("SIGNER", signer));
   }
 
@@ -238,10 +239,14 @@ contract FightBettingTest is BasicSetup {
     uint256 balanceBob = usdc.balanceOf(bob);
 
     vm.prank(alice);
-    fightbetting.withdrawReward(0);
+    uint256 aliceIndex = fightbetting.getBettorIndex(0);
+    vm.prank(alice);
+    fightbetting.withdrawReward(0, aliceIndex);
     assertEq(usdc.balanceOf(alice), balanceAlice + 176);
     vm.prank(bob);
-    fightbetting.withdrawReward(0);
+    uint256 bobIndex = fightbetting.getBettorIndex(0);
+    vm.prank(bob);
+    fightbetting.withdrawReward(0, bobIndex);
     assertEq(usdc.balanceOf(bob), balanceBob + 352);
     assertEq(usdc.balanceOf(address(fightbetting)), 42);
   }
@@ -265,7 +270,7 @@ contract FightBettingTest is BasicSetup {
     testJackPotBalance();
 
     vm.prank(alice);
-    uint256 amountNFT = fightbetting.canGetJackPotNFT();
+    uint256 amountNFT = fightbetting.jackPotNFTAmount();
     assertEq(amountNFT, 1);
 
     vm.prank(alice);

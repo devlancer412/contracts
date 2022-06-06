@@ -19,7 +19,8 @@ contract JackPotTicket is Auth, ERC721 {
   bytes32 public clientSeed;
   address public token;
 
-  mapping(address => bool) private rewarded;
+  mapping(uint256 => mapping(address => bool)) private rewarded;
+  uint256 currentRound;
 
   struct Sig {
     bytes32 r;
@@ -27,9 +28,7 @@ contract JackPotTicket is Auth, ERC721 {
     uint8 v;
   }
 
-  constructor() ERC721("Rooster wars betting jackpot ticket", "RWBJT") {
-    _tokenCounter = 0;
-    _baseTokenURI = "";
+  constructor() ERC721("RoosterWarsJackpotTicket ", "RWJT") {
     period = 1 weeks;
     _treasuryAddr = msg.sender;
     openTime = block.timestamp;
@@ -43,10 +42,13 @@ contract JackPotTicket is Auth, ERC721 {
   function mintTo(uint256 amount, address to) public {
     require(hasRole("MINTER", msg.sender), "JackPotTicket:CANT_MINT");
 
+    uint256 tokenId = _tokenCounter;
     for (uint256 i = 0; i < amount; i++) {
-      _mint(to, _tokenCounter);
-      _tokenCounter++;
+      _mint(to, tokenId);
+      tokenId++;
     }
+
+    _tokenCounter = tokenId;
   }
 
   function _validateCreateParam(
@@ -83,9 +85,7 @@ contract JackPotTicket is Auth, ERC721 {
     totalDistributeAmount = totalAmount;
     token = tokenAddr;
     clientSeed = bytes32(0);
-    for (uint256 i = 0; i < _tokenCounter; i++) {
-      rewarded[ownerOf(i)] = false;
-    }
+    currentRound++;
     IERC20(token).transfer(_treasuryAddr, totalAmount / 20);
   }
 
@@ -116,19 +116,15 @@ contract JackPotTicket is Auth, ERC721 {
     require(block.timestamp > openTime, "JackPotTicket:NOT_FINISHED");
     require(_serverSeed != bytes32(0), "JackPotTicket:NO_SERVERSEED");
 
-    uint256 total = _tokenCounter;
-    address[] memory addressList = getAddressList();
+    address[] memory addressList = getWinnerAddressList();
     uint256 reward = 0;
 
-    bytes32 hashed = keccak256(abi.encodePacked(_serverSeed, clientSeed, total));
-    uint256 winnerIndex = uint256(hashed) % total;
-
-    if (msg.sender == addressList[winnerIndex]) {
+    if (msg.sender == addressList[0]) {
       reward += (totalDistributeAmount * 80) / 100; // 80% to winner
     }
 
     for (uint256 i = 1; i < 11; i++) {
-      if (msg.sender == addressList[(winnerIndex + i) % total]) {
+      if (msg.sender == addressList[i]) {
         reward += (totalDistributeAmount * 15) / 1000; // 1.5% to winners
       }
     }
@@ -139,9 +135,9 @@ contract JackPotTicket is Auth, ERC721 {
   function withdrawReward() public {
     uint256 reward = getResult();
     require(reward > 0, "JackPotTicket:NO_REWARD");
-    require(!rewarded[msg.sender], "JackPotTicket:REWARDED");
+    require(rewarded[currentRound - 1][msg.sender] == false, "JackPotTicket:REWARDED");
 
-    rewarded[msg.sender] = true;
+    rewarded[currentRound - 1][msg.sender] = true;
 
     IERC20(token).transfer(msg.sender, reward);
   }
@@ -161,9 +157,25 @@ contract JackPotTicket is Auth, ERC721 {
     return openTime;
   }
 
+  function getWinnerAddressList() public view returns (address[] memory) {
+    address[] memory addressList = new address[](11);
+    uint256 total = _tokenCounter;
+
+    bytes32 hashed = keccak256(abi.encodePacked(_serverSeed, clientSeed, total));
+    uint256 winnerIndex = uint256(hashed) % total;
+
+    for (uint256 i = 0; i < 11; i++) {
+      addressList[i] = ownerOf((winnerIndex + i) % total);
+    }
+
+    return addressList;
+  }
+
   function getAddressList() public view returns (address[] memory) {
-    address[] memory addressList = new address[](_tokenCounter);
-    for (uint256 i = 0; i < _tokenCounter; i++) {
+    uint256 total = _tokenCounter;
+    address[] memory addressList = new address[](total);
+
+    for (uint256 i = 0; i < total; i++) {
       addressList[i] = ownerOf(i);
     }
 
@@ -193,11 +205,11 @@ contract JackPotTicket is Auth, ERC721 {
     return _baseTokenURI;
   }
 
-  function setSeedString(string memory seedStr) public hasTicket {
+  function setSeedString(bytes32 seedStr) public hasTicket {
     clientSeed = keccak256(abi.encodePacked(clientSeed, msg.sender, seedStr));
   }
 
-  function getClientSeed() public view hasTicket returns (bytes32) {
+  function getClientSeed() public view returns (bytes32) {
     return clientSeed;
   }
 }
