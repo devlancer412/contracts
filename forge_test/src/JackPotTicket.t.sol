@@ -52,6 +52,7 @@ contract JackPotTicketTest is BasicSetup {
     usdc.mint(address(jackpot), 1000);
     jackpot.grantRole("CREATOR", signer);
     jackpot.grantRole("MINTER", address(this));
+    jackpot.grantRole("MAINTAINER", signer);
 
     jackpot.mintTo(1, alice);
     jackpot.mintTo(2, bob);
@@ -59,6 +60,8 @@ contract JackPotTicketTest is BasicSetup {
     assertEq(jackpot.balanceOf(alice), 1);
     assertEq(jackpot.balanceOf(bob), 2);
     assertEq(jackpot.balanceOf(vault), 3);
+
+    jackpot.setTokenAllowance(address(usdc), true);
   }
 
   function testCreateRound() public {
@@ -68,7 +71,7 @@ contract JackPotTicketTest is BasicSetup {
 
     vm.prank(signer);
     jackpot.createRound(hashedServerSeed, address(usdc), sig);
-    assertEq(jackpot.getOpenTime(), block.timestamp + 3600 * 24 * 7);
+    assertEq(jackpot.getCloseTime(), block.timestamp + 3600 * 24 * 7);
   }
 
   function testGetServerSeedBeforeFinished() public {
@@ -114,7 +117,7 @@ contract JackPotTicketTest is BasicSetup {
     vm.prank(alice);
     bytes32 hashedServerSeed = jackpot.getHashedServerSeed();
     vm.prank(alice);
-    bytes32 clientSeed = jackpot.getClientSeed();
+    bytes32 clientSeed = jackpot.clientSeed();
     uint256 totalReward;
     (, totalReward) = jackpot.getTotalReward();
     assertEq(keccak256(abi.encodePacked(serverSeed, address(usdc))), hashedServerSeed);
@@ -123,6 +126,7 @@ contract JackPotTicketTest is BasicSetup {
 
     bytes32 hashed = keccak256(abi.encodePacked(serverSeed, clientSeed, addressList.length));
 
+    hashed = keccak256(abi.encodePacked(hashed, serverSeed, clientSeed, addressList.length));
     uint256 winnerIndex = uint256(hashed) % addressList.length;
 
     uint256 rewardTest = 0;
@@ -131,7 +135,9 @@ contract JackPotTicketTest is BasicSetup {
     }
 
     for (uint256 i = 1; i < 11; i++) {
-      if (addressList[(winnerIndex + i) % addressList.length] == alice) {
+      hashed = keccak256(abi.encodePacked(hashed, serverSeed, clientSeed, addressList.length));
+      winnerIndex = uint256(hashed) % addressList.length;
+      if (addressList[winnerIndex % addressList.length] == alice) {
         rewardTest += (totalReward * 15) / 1000;
       }
     }
@@ -139,5 +145,14 @@ contract JackPotTicketTest is BasicSetup {
     vm.prank(alice);
     jackpot.withdrawReward();
     assertEq(usdc.balanceOf(alice), rewardTest);
+  }
+
+  function testWithdrawTimeOver() public {
+    testFinishRound();
+    vm.warp(block.timestamp + 3600 * 24 * 3 + 1);
+
+    vm.expectRevert(bytes("JackPotTicket:TIME_OVER"));
+    vm.prank(alice);
+    jackpot.withdrawReward();
   }
 }

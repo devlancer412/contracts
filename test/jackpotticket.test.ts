@@ -15,6 +15,7 @@ let ship: Ship;
 let gwit: GWITToken;
 let jackpotTicket: JackPotTicket;
 let alice: SignerWithAddress;
+let bob: SignerWithAddress;
 let signer: SignerWithAddress;
 let deployer: SignerWithAddress;
 let users: SignerWithAddress[];
@@ -61,6 +62,7 @@ describe("JackPot test", () => {
     const scaffold = await setup();
 
     alice = scaffold.accounts.alice;
+    bob = scaffold.accounts.bob;
     deployer = scaffold.accounts.deployer;
     signer = scaffold.accounts.signer;
     users = scaffold.users;
@@ -69,6 +71,9 @@ describe("JackPot test", () => {
     jackpotTicket = await scaffold.ship.connect(JackPotTicket__factory);
     await jackpotTicket.grantRole("CREATOR", signer.address);
     await jackpotTicket.grantRole("MINTER", signer.address);
+    await jackpotTicket.grantRole("MAINTAINER", signer.address);
+
+    await jackpotTicket.setTokenAllowance(gwit.address, true);
   });
 
   it("Distribute NFTs to users and charge token to jackpot", async () => {
@@ -114,17 +119,21 @@ describe("JackPot test", () => {
 
   it("Provably test", async () => {
     const serverSeed = await jackpotTicket.getServerSeed();
-    const clientSeed = await jackpotTicket.getClientSeed();
+    const clientSeed = await jackpotTicket.clientSeed();
     const aliceReward = await jackpotTicket.connect(alice).getResult();
     let addressList: Array<string> = [];
     addressList = (await jackpotTicket.getAddressList()).map((address) => address);
 
-    const hashed = solidityKeccak256(
+    let hashed = solidityKeccak256(
       ["bytes32", "bytes32", "uint256"],
       [serverSeed, clientSeed, addressList.length],
     );
 
-    const winnerIndex = BigNumber.from(hashed).mod(addressList.length).toNumber();
+    hashed = solidityKeccak256(
+      ["bytes32", "bytes32", "bytes32", "uint256"],
+      [hashed, serverSeed, clientSeed, addressList.length],
+    );
+    let winnerIndex = BigNumber.from(hashed).mod(addressList.length).toNumber();
 
     const { tokenName, amount } = await jackpotTicket.getTotalReward();
 
@@ -134,12 +143,33 @@ describe("JackPot test", () => {
     }
 
     for (let i = 1; i < 11; i++) {
-      if (addressList[(winnerIndex + i) % addressList.length] == alice.address) {
+      hashed = solidityKeccak256(
+        ["bytes32", "bytes32", "bytes32", "uint256"],
+        [hashed, serverSeed, clientSeed, addressList.length],
+      );
+      winnerIndex = BigNumber.from(hashed).mod(addressList.length).toNumber();
+
+      if (addressList[winnerIndex % addressList.length] == alice.address) {
         aliceRewardTest += (amount.toNumber() * 15) / 1000;
       }
     }
 
     expect(tokenName).to.eq("GWIT");
     expect(aliceReward).to.eq(aliceRewardTest);
+  });
+
+  it("Alice withdraw money", async () => {
+    const initailAmount = await gwit.balanceOf(alice.address);
+    const rewardAmount = await jackpotTicket.connect(alice).getResult();
+    await jackpotTicket.connect(alice).withdrawReward();
+    expect(await gwit.balanceOf(alice.address)).to.eq(initailAmount.add(rewardAmount));
+  });
+
+  it("Bob can't withdraw after new time overed", async () => {
+    // send time to over
+    await network.provider.send("evm_increaseTime", [3 * 24 * 60 * 60]);
+    await network.provider.send("evm_mine"); // this one will have 02:00 PM as its timestamp
+
+    await expect(jackpotTicket.connect(bob).withdrawReward()).to.be.revertedWith("JackPotTicket:TIME_OVER");
   });
 });

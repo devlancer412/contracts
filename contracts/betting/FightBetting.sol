@@ -419,8 +419,34 @@ contract FightBetting is Auth, IFightBetting {
     );
 
     uint256 goldIndex = uint256(hashed) % winnerBettorCount;
-    uint256 silverIndex = (goldIndex + 1) % winnerBettorCount;
-    uint256 bronzeIndex = (goldIndex + 2) % winnerBettorCount;
+    uint256 silverIndex;
+    uint256 bronzeIndex;
+
+    // do {
+    hashed = keccak256(
+      abi.encodePacked(
+        hashed,
+        seedData[bettingId].serverSeed,
+        seedData[bettingId].clientSeed,
+        winnerBettorCount,
+        luckyWinnerRewardAmount
+      )
+    );
+    silverIndex = uint256(hashed) % winnerBettorCount;
+    // } while (goldIndex != silverIndex);
+
+    // do {
+    hashed = keccak256(
+      abi.encodePacked(
+        hashed,
+        seedData[bettingId].serverSeed,
+        seedData[bettingId].clientSeed,
+        winnerBettorCount,
+        luckyWinnerRewardAmount
+      )
+    );
+    bronzeIndex = uint256(hashed) % winnerBettorCount;
+    // } while (goldIndex != bronzeIndex);
 
     winners = new address[](3);
     rewards = new uint256[](3);

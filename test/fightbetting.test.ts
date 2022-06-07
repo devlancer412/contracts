@@ -321,15 +321,23 @@ describe("FightBetting test", () => {
     const winnerBettorCount = stateResult.side == 0 ? stateResult.bettorCount1 : stateResult.bettorCount2;
     const luckyWinnerRewardAmount = stateResult.totalAmount1.add(stateResult.totalAmount2).div(50);
 
-    const hashed = solidityKeccak256(
+    let hashed = solidityKeccak256(
       ["bytes32", "bytes32", "uint256", "uint256"],
       [serverSeed, clientSeed, winnerBettorCount, luckyWinnerRewardAmount],
     );
-
     const goldIndex = BigNumber.from(hashed).mod(winnerIds.length).toNumber();
 
-    const silverIndex = (goldIndex + 1) % winnerIds.length;
-    const bronzeIndex = (goldIndex + 2) % winnerIds.length;
+    hashed = solidityKeccak256(
+      ["bytes32", "bytes32", "bytes32", "uint256", "uint256"],
+      [hashed, serverSeed, clientSeed, winnerBettorCount, luckyWinnerRewardAmount],
+    );
+    const silverIndex = BigNumber.from(hashed).mod(winnerIds.length).toNumber();
+
+    hashed = solidityKeccak256(
+      ["bytes32", "bytes32", "bytes32", "uint256", "uint256"],
+      [hashed, serverSeed, clientSeed, winnerBettorCount, luckyWinnerRewardAmount],
+    );
+    const bronzeIndex = BigNumber.from(hashed).mod(winnerIds.length).toNumber();
 
     const luckyResult = await fightbetting.connect(users[2]).getLuckyWinner(1);
     // compare
