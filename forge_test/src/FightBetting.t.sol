@@ -4,6 +4,7 @@ pragma solidity ^0.8.9;
 import {IFightBetting, FightBetting} from "contracts/betting/FightBetting.sol";
 import {MockUsdc} from "contracts/mocks/Usdc.sol";
 import {JackPotTicket} from "contracts/betting/JackPotTicket.sol";
+import {MockVRFCoordinatorV2} from "contracts/mocks/MockVRFCoordinatorV2.sol";
 import {Auth} from "contracts/utils/Auth.sol";
 import "./utils/BasicSetup.sol";
 
@@ -11,6 +12,7 @@ contract FightBettingTest is BasicSetup {
   FightBetting fightbetting;
   MockUsdc usdc;
   JackPotTicket jackpot;
+  MockVRFCoordinatorV2 coordinator;
   bytes32 serverSeed = keccak256(abi.encodePacked("Foundry test seed"));
 
   //  utils
@@ -78,7 +80,9 @@ contract FightBettingTest is BasicSetup {
 
   //  test
   function setUp() public {
-    jackpot = new JackPotTicket();
+    coordinator = new MockVRFCoordinatorV2(0, 0);
+    uint64 subId = coordinator.createSubscription();
+    jackpot = new JackPotTicket(subId, address(coordinator));
     usdc = new MockUsdc();
     fightbetting = new FightBetting(address(jackpot));
 

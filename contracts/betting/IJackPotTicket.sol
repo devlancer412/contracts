@@ -37,4 +37,7 @@ interface IJackPotTicket is IERC165 {
    * @dev Returns the Uniform Resource Identifier (URI) for `tokenId` token.
    */
   function tokenURI(uint256 tokenId) external view returns (string memory);
+
+  // events
+  event NewRequest(uint256 indexed id);
 }

@@ -4,19 +4,16 @@ pragma solidity ^0.8.9;
 import {MockUsdc} from "contracts/mocks/Usdc.sol";
 import {JackPotTicket} from "contracts/betting/JackPotTicket.sol";
 import {Auth} from "contracts/utils/Auth.sol";
+import {MockVRFCoordinatorV2} from "contracts/mocks/MockVRFCoordinatorV2.sol";
 import "./utils/BasicSetup.sol";
 
 contract JackPotTicketTest is BasicSetup {
   JackPotTicket jackpot;
   MockUsdc usdc;
-  bytes32 serverSeed = keccak256(abi.encodePacked("JackPot test"));
+  MockVRFCoordinatorV2 coordinator;
 
   // utils
-  function signCreate(
-    address to,
-    address token,
-    bytes32 seed
-  )
+  function signCreate(address to, address token)
     public
     returns (
       bytes32,
@@ -24,13 +21,13 @@ contract JackPotTicketTest is BasicSetup {
       uint8
     )
   {
-    bytes32 messageHash = keccak256(abi.encodePacked(to, token, seed));
+    bytes32 messageHash = keccak256(abi.encodePacked(to, token));
     bytes32 digest = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
     (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerSecretKey, digest);
     return (r, s, v);
   }
 
-  function signFinish(address to, bytes32 seed)
+  function signFinish(address to)
     public
     returns (
       bytes32,
@@ -38,7 +35,7 @@ contract JackPotTicketTest is BasicSetup {
       uint8
     )
   {
-    bytes32 messageHash = keccak256(abi.encodePacked(to, seed));
+    bytes32 messageHash = keccak256(abi.encodePacked(to));
     bytes32 digest = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
     (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerSecretKey, digest);
     return (r, s, v);
@@ -46,11 +43,13 @@ contract JackPotTicketTest is BasicSetup {
 
   // test
   function setUp() public {
-    jackpot = new JackPotTicket();
+    coordinator = new MockVRFCoordinatorV2(0, 0);
+    uint64 subId = coordinator.createSubscription();
+    jackpot = new JackPotTicket(subId, address(coordinator));
     usdc = new MockUsdc();
 
     usdc.mint(address(jackpot), 1000);
-    jackpot.grantRole("CREATOR", signer);
+    jackpot.grantRole("SIGNER", signer);
     jackpot.grantRole("MINTER", address(this));
     jackpot.grantRole("MAINTAINER", signer);
 
@@ -65,31 +64,24 @@ contract JackPotTicketTest is BasicSetup {
   }
 
   function testCreateRound() public {
-    bytes32 hashedServerSeed = keccak256(abi.encodePacked(serverSeed, address(usdc)));
-    (bytes32 r, bytes32 s, uint8 v) = signCreate(signer, address(usdc), hashedServerSeed);
+    (bytes32 r, bytes32 s, uint8 v) = signCreate(signer, address(usdc));
     JackPotTicket.Sig memory sig = JackPotTicket.Sig(r, s, v);
 
     vm.prank(signer);
-    jackpot.createRound(hashedServerSeed, address(usdc), sig);
+    jackpot.createRound(address(usdc), sig);
     assertEq(jackpot.getCloseTime(), block.timestamp + 3600 * 24 * 7);
-  }
-
-  function testGetServerSeedBeforeFinished() public {
-    testCreateRound();
-    vm.prank(bob);
-    vm.expectRevert(bytes("JackPotTicket:NOT_FINISHED"));
-    jackpot.getServerSeed();
   }
 
   function testFinishRound() public {
     testCreateRound();
     vm.warp(block.timestamp + 3600 * 24 * 7 + 1);
 
-    (bytes32 r, bytes32 s, uint8 v) = signFinish(signer, serverSeed);
+    (bytes32 r, bytes32 s, uint8 v) = signFinish(signer);
     JackPotTicket.Sig memory sig = JackPotTicket.Sig(r, s, v);
     vm.prank(signer);
-    jackpot.finishRound(serverSeed, sig);
-    assertEq(jackpot.getServerSeed(), serverSeed);
+    uint256 requestId = jackpot.finishRound(sig);
+
+    coordinator.fulfillRandomWords(requestId, address(jackpot));
 
     (string memory name, uint256 amount) = jackpot.getTotalReward();
     assertEq(amount, 1000);
@@ -115,12 +107,11 @@ contract JackPotTicketTest is BasicSetup {
   function testProvably() public {
     testFinishRound();
     vm.prank(alice);
-    bytes32 hashedServerSeed = jackpot.getHashedServerSeed();
+    bytes32 serverSeed = jackpot.getServerSeed();
     vm.prank(alice);
     bytes32 clientSeed = jackpot.clientSeed();
     uint256 totalReward;
     (, totalReward) = jackpot.getTotalReward();
-    assertEq(keccak256(abi.encodePacked(serverSeed, address(usdc))), hashedServerSeed);
 
     address[] memory addressList = jackpot.getAddressList();
 

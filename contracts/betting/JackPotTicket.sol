@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.9;
 
-import {Auth} from "../utils/Auth.sol";
-import {IJackPotTicket} from "./IJackPotTicket.sol";
+import "./IJackPotTicket.sol";
+import "../utils/Auth.sol";
+import "../utils/VRF/VRFv2Consumer.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "hardhat/console.sol";
 
-contract JackPotTicket is Auth {
+contract JackPotTicket is Auth, VRFv2Consumer, IJackPotTicket {
   // Token name
   string private _name;
 
@@ -20,7 +21,6 @@ contract JackPotTicket is Auth {
   mapping(address => uint256) private _balances;
 
   uint256 private _tokenCounter;
-  bytes32 private _serverSeed;
   address private _treasuryAddr;
   string private _baseTokenURI;
 
@@ -29,12 +29,12 @@ contract JackPotTicket is Auth {
   uint256 public period;
   uint256 public withdrawPeriod;
   uint256 public totalDistributeAmount;
-  bytes32 public hashedServerSeed;
   bytes32 public clientSeed;
   address public token;
   mapping(address => bool) public allowedTokens;
 
   mapping(uint256 => mapping(address => bool)) private rewarded;
+  mapping(uint256 => uint256) private requestIds;
   uint256 public currentRound;
 
   struct Sig {
@@ -43,7 +43,9 @@ contract JackPotTicket is Auth {
     uint8 v;
   }
 
-  constructor() {
+  constructor(uint64 subscriptionId, address vrfCoordinator)
+    VRFv2Consumer(subscriptionId, vrfCoordinator)
+  {
     _name = "RoosterWarsJackpotTicket";
     _symbol = "RWJT";
     period = 1 weeks;
@@ -51,6 +53,7 @@ contract JackPotTicket is Auth {
     _treasuryAddr = msg.sender;
     closeTime = block.timestamp;
     openTime = block.timestamp;
+    currentRound = 0;
   }
 
   /**
@@ -82,6 +85,24 @@ contract JackPotTicket is Auth {
    */
   function symbol() public view virtual returns (string memory) {
     return _symbol;
+  }
+
+  /**
+   * @dev Returns true if this contract implements the interface defined by
+   * `interfaceId`. See the corresponding
+   * https://eips.ethereum.org/EIPS/eip-165#how-interfaces-are-identified[EIP section]
+   * to learn more about how these ids are created.
+   *
+   * This function call must use less than 30 000 gas.
+   */
+  function supportsInterface(bytes4 interfaceId)
+    public
+    view
+    virtual
+    override(IERC165)
+    returns (bool)
+  {
+    return interfaceId == type(IJackPotTicket).interfaceId;
   }
 
   /**
@@ -133,72 +154,58 @@ contract JackPotTicket is Auth {
     _tokenCounter = tokenId;
   }
 
-  function _validateCreateParam(
-    bytes32 hashedServerSeedParam,
-    address tokenAddr,
-    Sig calldata sig
-  ) private view onlyRole("MAINTAINER") returns (bool) {
-    bytes32 messageHash = keccak256(abi.encodePacked(msg.sender, tokenAddr, hashedServerSeedParam));
+  function _validateCreateParam(address tokenAddr, Sig calldata sig)
+    private
+    view
+    onlyRole("MAINTAINER")
+    returns (bool)
+  {
+    bytes32 messageHash = keccak256(abi.encodePacked(msg.sender, tokenAddr));
     bytes32 ethSignedMessageHash = keccak256(
       abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash)
     );
 
-    return hasRole("CREATOR", ecrecover(ethSignedMessageHash, sig.v, sig.r, sig.s));
+    return hasRole("SIGNER", ecrecover(ethSignedMessageHash, sig.v, sig.r, sig.s));
   }
 
-  function createRound(
-    bytes32 hashedServerSeedParam,
-    address tokenAddr,
-    Sig calldata sig
-  ) public {
+  function createRound(address tokenAddr, Sig calldata sig) public {
     require(allowedTokens[tokenAddr], "JackPotTicket:INVALID_TOKEN");
     require(block.timestamp >= openTime, "JackPotTicket:NOT_REWARDED");
-    require(
-      _validateCreateParam(hashedServerSeedParam, tokenAddr, sig),
-      "JackPotTicket:NOT_CREATOR"
-    );
+    require(_validateCreateParam(tokenAddr, sig), "JackPotTicket:NOT_SIGNER");
 
     uint256 totalAmount = IERC20(tokenAddr).balanceOf(address(this));
     require(totalAmount > 0, "JackPotTicket:INSUFFICIENT_BALANCE");
-
-    hashedServerSeed = hashedServerSeedParam;
-    _serverSeed = bytes32(0);
 
     closeTime = block.timestamp + period;
     totalDistributeAmount = totalAmount;
     token = tokenAddr;
     clientSeed = bytes32(0);
-    currentRound++;
     IERC20(token).transfer(_treasuryAddr, totalAmount / 20);
   }
 
-  function _validateFinishParam(bytes32 serverSeedParam, Sig calldata sig)
-    private
-    view
-    returns (bool)
-  {
-    bytes32 messageHash = keccak256(abi.encodePacked(msg.sender, serverSeedParam));
+  function _validateFinishParam(Sig calldata sig) private view returns (bool) {
+    bytes32 messageHash = keccak256(abi.encodePacked(msg.sender));
     bytes32 ethSignedMessageHash = keccak256(
       abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash)
     );
 
-    return hasRole("CREATOR", ecrecover(ethSignedMessageHash, sig.v, sig.r, sig.s));
+    return hasRole("SIGNER", ecrecover(ethSignedMessageHash, sig.v, sig.r, sig.s));
   }
 
-  function finishRound(bytes32 serverSeed, Sig calldata sig) public onlyRole("MAINTAINER") {
-    require(_validateFinishParam(serverSeed, sig), "JackPotTicket:NOT_CREATOR");
-    require(
-      keccak256(abi.encodePacked(serverSeed, token)) == hashedServerSeed,
-      "JackPotTicket:INVALID_SEED"
-    );
+  function finishRound(Sig calldata sig) public onlyRole("MAINTAINER") returns (uint256) {
+    require(_validateFinishParam(sig), "JackPotTicket:NOT_SIGNER");
     require(block.timestamp > closeTime, "JackPotTicket:NOT_FINISHED");
     openTime = block.timestamp + withdrawPeriod;
-    _serverSeed = serverSeed;
+    currentRound++;
+    requestIds[currentRound - 1] = requestRandomWords();
+
+    emit NewRequest(requestIds[currentRound - 1]);
+
+    return requestIds[currentRound - 1];
   }
 
   function getResult() public view hasTicket returns (uint256) {
     require(block.timestamp > closeTime, "JackPotTicket:NOT_FINISHED");
-    require(_serverSeed != bytes32(0), "JackPotTicket:NO_SERVERSEED");
     require(block.timestamp < openTime, "JackPotTicket:TIME_OVER");
 
     address[] memory addressList = getWinnerAddressList();
@@ -227,29 +234,33 @@ contract JackPotTicket is Auth {
     IERC20(token).transfer(msg.sender, reward);
   }
 
-  // for provably
-  function getServerSeed() public view returns (bytes32) {
-    require(block.timestamp > closeTime, "JackPotTicket:NOT_FINISHED");
-    // require(_serverSeed != bytes32(0), "JackPotTicket:NOT_FINISHED");
-    return _serverSeed;
-  }
-
-  function getHashedServerSeed() public view returns (bytes32) {
-    return hashedServerSeed;
-  }
-
   function getCloseTime() public view returns (uint256) {
     return closeTime;
   }
 
+  function getResultData() public view returns (uint256[] memory) {
+    return s_randomWords[requestIds[currentRound - 1]];
+  }
+
+  function getRequestId() public view returns (uint256) {
+    return requestIds[currentRound - 1];
+  }
+
   function getWinnerAddressList() public view returns (address[] memory) {
+    require(s_randomWords[requestIds[currentRound - 1]].length == 2, "JackPotTicket:NOT_FINISHED");
     address[] memory addressList = new address[](11);
     uint256 total = _tokenCounter;
+    bytes32 serverSeed = keccak256(
+      abi.encodePacked(
+        s_randomWords[requestIds[currentRound - 1]][0],
+        s_randomWords[requestIds[currentRound - 1]][1]
+      )
+    );
 
-    bytes32 hashed = keccak256(abi.encodePacked(_serverSeed, clientSeed, total));
+    bytes32 hashed = keccak256(abi.encodePacked(serverSeed, clientSeed, total));
 
     for (uint256 i = 0; i < 11; i++) {
-      hashed = keccak256(abi.encodePacked(hashed, _serverSeed, clientSeed, total));
+      hashed = keccak256(abi.encodePacked(hashed, serverSeed, clientSeed, total));
       uint256 winnerIndex = uint256(hashed) % total;
       addressList[i] = ownerOf(winnerIndex % total);
     }
@@ -287,7 +298,7 @@ contract JackPotTicket is Auth {
   }
 
   // NFT functions
-  function tokenURI(uint256 _tokenId) public view returns (string memory) {
+  function tokenURI(uint256 _tokenId) public view override returns (string memory) {
     return _baseTokenURI;
   }
 
@@ -297,5 +308,11 @@ contract JackPotTicket is Auth {
 
   function setTokenAllowance(address _token, bool value) public onlyOwner {
     allowedTokens[_token] = value;
+  }
+
+  function getServerSeed() public view returns (bytes32 serverSeed) {
+    require(currentRound > 0, "JackPotTicket:NOT_YET");
+    require(s_randomWords[requestIds[currentRound - 1]].length == 2, "JackPotTicket:NOT_FINISHED");
+    return keccak256(abi.encodePacked(s_randomWords[0], s_randomWords[1]));
   }
 }

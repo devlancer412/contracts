@@ -1,11 +1,11 @@
 import { BigNumber } from "ethers";
 import {
   FightBetting__factory,
-  GWITToken__factory,
-  GWITToken,
   FightBetting,
   JackPotTicket,
   JackPotTicket__factory,
+  MockUsdc,
+  MockUsdc__factory,
 } from "../types";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { deployments, ethers, network } from "hardhat";
@@ -21,7 +21,7 @@ const supply_size = parseSpecial("1bi|18");
 
 let ship: Ship;
 let fightbetting: FightBetting;
-let gwit: GWITToken;
+let usdc: MockUsdc;
 let jackpotTicket: JackPotTicket;
 let alice: SignerWithAddress;
 let bob: SignerWithAddress;
@@ -35,7 +35,7 @@ const serverSeed = solidityKeccak256(["string"], ["FightBetting test"]);
 const setup = deployments.createFixture(async (hre) => {
   ship = await Ship.init(hre);
   const { accounts, users } = ship;
-  await deployments.fixture(["fightbetting", "gwit", "jackpot_ticket"]);
+  await deployments.fixture(["fightbetting", "usdc", "jackpot_ticket"]);
 
   return {
     ship,
@@ -94,27 +94,21 @@ describe("FightBetting test", () => {
     users = scaffold.users.slice(10, 20);
 
     fightbetting = await scaffold.ship.connect(FightBetting__factory);
-    gwit = await scaffold.ship.connect(GWITToken__factory);
+    usdc = await scaffold.ship.connect(MockUsdc__factory);
     jackpotTicket = await scaffold.ship.connect(JackPotTicket__factory);
 
-    await fightbetting.setTokenAllowance(gwit.address, true);
+    await fightbetting.setTokenAllowance(usdc.address, true);
     await fightbetting.grantRole("MAINTAINER", alice.address);
     expect(await fightbetting.hasRole("MAINTAINER", alice.address)).to.eq(true);
   });
 
-  it("Initialize gwit token", async () => {
-    const res = await gwit.initialSupply();
-    expect(res).to.eq(supply_size);
-
-    await gwit.connect(deployer).transfer(alice.address, 1000);
-    expect(await gwit.balanceOf(alice.address)).to.eq(1000);
-    await gwit.connect(deployer).transfer(bob.address, 1000);
-    expect(await gwit.balanceOf(bob.address)).to.eq(1000);
-    await gwit.connect(deployer).transfer(vault.address, 1000);
-    expect(await gwit.balanceOf(vault.address)).to.eq(1000);
+  it("Initialize usdc token", async () => {
+    expect(await usdc.balanceOf(alice.address)).to.eq(1000000000);
+    expect(await usdc.balanceOf(bob.address)).to.eq(1000000000);
+    expect(await usdc.balanceOf(vault.address)).to.eq(1000000000);
 
     await jackpotTicket.grantRole("MINTER", fightbetting.address);
-    expect(await gwit.balanceOf(jackpotTicket.address)).to.eq(0);
+    expect(await usdc.balanceOf(jackpotTicket.address)).to.eq(0);
     await fightbetting.connect(deployer).setJackPotMin(1);
   });
 
@@ -143,13 +137,13 @@ describe("FightBetting test", () => {
       endTime,
       minAmount,
       maxAmount,
-      gwit.address,
+      usdc.address,
       hashedServerSeed,
     );
 
     await fightbetting
       .connect(alice)
-      .createBetting(0, 1, startTime, endTime, minAmount, maxAmount, gwit.address, hashedServerSeed, sig);
+      .createBetting(0, 1, startTime, endTime, minAmount, maxAmount, usdc.address, hashedServerSeed, sig);
 
     await network.provider.send("evm_setNextBlockTimestamp", [startTime]);
     await network.provider.send("evm_mine");
@@ -162,7 +156,7 @@ describe("FightBetting test", () => {
   });
 
   it("Prepare for provably test : create & betting", async () => {
-    const transferPromises = users.map((user) => gwit.connect(deployer).transfer(user.address, 1000));
+    const transferPromises = users.map((user) => usdc.connect(deployer).transfer(user.address, 1000));
     await Promise.all(transferPromises);
     // alice creates a new betting
     const blockNumBefore = await ethers.provider.getBlockNumber();
@@ -183,7 +177,7 @@ describe("FightBetting test", () => {
       endTime,
       minAmount,
       maxAmount,
-      gwit.address,
+      usdc.address,
       hashedServerSeed,
     );
 
@@ -196,7 +190,7 @@ describe("FightBetting test", () => {
         endTime,
         minAmount,
         maxAmount,
-        gwit.address,
+        usdc.address,
         hashedServerSeed,
         sigCreate,
       );
@@ -206,7 +200,7 @@ describe("FightBetting test", () => {
 
     // bets
     for (let index = 0; index < users.length; index++) {
-      await gwit.connect(users[index]).approve(fightbetting.address, 500);
+      await usdc.connect(users[index]).approve(fightbetting.address, 500);
       await fightbetting.connect(users[index]).bettOne(1, index % 2, 500);
     }
 
@@ -223,8 +217,8 @@ describe("FightBetting test", () => {
     );
   });
 
-  it("Alice bets first fighter with 100 GWIT", async () => {
-    await gwit.connect(alice).approve(fightbetting.address, 100);
+  it("Alice bets first fighter with 100 usdc", async () => {
+    await usdc.connect(alice).approve(fightbetting.address, 100);
     const tx1 = await fightbetting.connect(alice).bettOne(0, 0, 100);
 
     await tx1.wait();
@@ -234,8 +228,8 @@ describe("FightBetting test", () => {
     expect(bettingState.totalAmount1.toNumber()).to.eq(100);
   });
 
-  it("Bob bets first fighter with 200 GWIT", async () => {
-    await gwit.connect(bob).approve(fightbetting.address, 200);
+  it("Bob bets first fighter with 200 usdc", async () => {
+    await usdc.connect(bob).approve(fightbetting.address, 200);
     const tx1 = await fightbetting.connect(bob).bettOne(0, 0, 200);
 
     await tx1.wait();
@@ -245,14 +239,14 @@ describe("FightBetting test", () => {
     expect(bettingState.totalAmount1.toNumber()).to.eq(300);
   });
 
-  it("Bob trys to transfer 1000 GWIT to alice", async () => {
-    await expect(gwit.connect(bob).transfer(alice.address, 1000)).to.be.revertedWith(
+  it("Bob trys to transfer 1000000000 usdc to alice", async () => {
+    await expect(usdc.connect(bob).transfer(alice.address, 1000000000)).to.be.revertedWith(
       "ERC20: transfer amount exceeds balance",
     );
   });
 
-  it("Vault bets second fighter with 300 GWIT", async () => {
-    await gwit.connect(vault).approve(fightbetting.address, 300);
+  it("Vault bets second fighter with 300 usdc", async () => {
+    await usdc.connect(vault).approve(fightbetting.address, 300);
     const tx1 = await fightbetting.connect(vault).bettOne(0, 1, 300);
 
     await tx1.wait();
@@ -263,7 +257,7 @@ describe("FightBetting test", () => {
   });
 
   it("Bob can't bet again", async () => {
-    await gwit.connect(bob).approve(fightbetting.address, 200);
+    await usdc.connect(bob).approve(fightbetting.address, 200);
     await expect(fightbetting.connect(bob).bettOne(0, 0, 200)).to.be.revertedWith("FightBetting:ALREADY_BET");
   });
 
@@ -283,25 +277,25 @@ describe("FightBetting test", () => {
   });
 
   it("Alice and bob withdraws their token", async () => {
-    const amountOfAlice = await gwit.balanceOf(alice.address);
-    const amountOfBob = await gwit.balanceOf(bob.address);
+    const amountOfAlice = await usdc.balanceOf(alice.address);
+    const amountOfBob = await usdc.balanceOf(bob.address);
 
-    expect(await gwit.balanceOf(fightbetting.address)).to.be.eq(5570); // 5600 - 600/20
+    expect(await usdc.balanceOf(fightbetting.address)).to.be.eq(5570); // 5600 - 600/20
 
     const aliceIndex = await fightbetting.connect(alice).getBettorIndex(0);
     await fightbetting.connect(alice).withdrawReward(0, aliceIndex);
     const bobIndex = await fightbetting.connect(bob).getBettorIndex(0);
     await fightbetting.connect(bob).withdrawReward(0, bobIndex);
 
-    expect(await gwit.balanceOf(alice.address)).to.be.eq(amountOfAlice.add(176)); // 600 * 88 / 100 / 3 = 176
-    expect(await gwit.balanceOf(bob.address)).to.be.eq(amountOfBob.add(352)); // (600 * 88 / 100) * 2 / 3 = 352
-    expect(await gwit.balanceOf(fightbetting.address)).to.be.eq(5042); // 600 * 12 / 100 = 72
+    expect(await usdc.balanceOf(alice.address)).to.be.eq(amountOfAlice.add(176)); // 600 * 88 / 100 / 3 = 176
+    expect(await usdc.balanceOf(bob.address)).to.be.eq(amountOfBob.add(352)); // (600 * 88 / 100) * 2 / 3 = 352
+    expect(await usdc.balanceOf(fightbetting.address)).to.be.eq(5042); // 600 * 12 / 100 = 72
   });
 
   it("Get lucky winner data", async () => {
     await fightbetting.connect(alice).withdrawLuckyWinnerReward(0);
     await fightbetting.connect(bob).withdrawLuckyWinnerReward(0);
-    expect(await gwit.balanceOf(fightbetting.address)).to.be.eq(5030); // 5042 - 600/50(Lucky winner reward)
+    expect(await usdc.balanceOf(fightbetting.address)).to.be.eq(5030); // 5042 - 600/50(Lucky winner reward)
   });
 
   it("Prepare for provably test: finishing", async () => {
@@ -347,7 +341,7 @@ describe("FightBetting test", () => {
   });
 
   it("JackPot balance test", async () => {
-    expect(await gwit.balanceOf(jackpotTicket.address)).to.eq(280);
+    expect(await usdc.balanceOf(jackpotTicket.address)).to.eq(280);
   });
 
   it("Minter can get JackPot NFT", async () => {

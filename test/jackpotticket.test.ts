@@ -1,6 +1,13 @@
 import { BigNumber } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { JackPotTicket, JackPotTicket__factory, GWITToken, GWITToken__factory } from "../types";
+import {
+  JackPotTicket,
+  JackPotTicket__factory,
+  MockUsdc,
+  MockUsdc__factory,
+  MockVRFCoordinatorV2,
+  MockVRFCoordinatorV2__factory,
+} from "../types";
 import { deployments, network } from "hardhat";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import chai from "chai";
@@ -12,21 +19,19 @@ chai.use(solidity);
 const { expect } = chai;
 
 let ship: Ship;
-let gwit: GWITToken;
+let usdc: MockUsdc;
 let jackpotTicket: JackPotTicket;
+let coordinator: MockVRFCoordinatorV2;
 let alice: SignerWithAddress;
 let bob: SignerWithAddress;
 let signer: SignerWithAddress;
 let deployer: SignerWithAddress;
 let users: SignerWithAddress[];
 
-const serverSeedString = "First round";
-const serverSeed = solidityKeccak256(["string"], [serverSeedString]);
-
 const setup = deployments.createFixture(async (hre) => {
   ship = await Ship.init(hre);
   const { accounts, users } = ship;
-  await deployments.fixture(["jackpot_ticket", "mocks", "gwit", "grp", "gwit_init"]);
+  await deployments.fixture(["jackpot_ticket", "mocks"]);
 
   return {
     ship,
@@ -35,8 +40,8 @@ const setup = deployments.createFixture(async (hre) => {
   };
 });
 
-const signCreate = async (to: string, token: string, seed: string) => {
-  const hash = solidityKeccak256(["address", "address", "bytes32"], [to, token, seed]);
+const signCreate = async (to: string, token: string) => {
+  const hash = solidityKeccak256(["address", "address"], [to, token]);
   const sig = await signer.signMessage(arrayify(hash));
   const { r, s, v } = splitSignature(sig);
   return {
@@ -46,8 +51,8 @@ const signCreate = async (to: string, token: string, seed: string) => {
   };
 };
 
-const signFinish = async (to: string, seed: string) => {
-  const hash = solidityKeccak256(["address", "bytes32"], [to, seed]);
+const signFinish = async (to: string) => {
+  const hash = solidityKeccak256(["address"], [to]);
   const sig = await signer.signMessage(arrayify(hash));
   const { r, s, v } = splitSignature(sig);
   return {
@@ -67,13 +72,15 @@ describe("JackPot test", () => {
     signer = scaffold.accounts.signer;
     users = scaffold.users;
 
-    gwit = await scaffold.ship.connect(GWITToken__factory);
+    usdc = await scaffold.ship.connect(MockUsdc__factory);
     jackpotTicket = await scaffold.ship.connect(JackPotTicket__factory);
-    await jackpotTicket.grantRole("CREATOR", signer.address);
+    coordinator = await scaffold.ship.connect(MockVRFCoordinatorV2__factory);
+
+    await jackpotTicket.grantRole("SIGNER", signer.address);
     await jackpotTicket.grantRole("MINTER", signer.address);
     await jackpotTicket.grantRole("MAINTAINER", signer.address);
 
-    await jackpotTicket.setTokenAllowance(gwit.address, true);
+    await jackpotTicket.setTokenAllowance(usdc.address, true);
   });
 
   it("Distribute NFTs to users and charge token to jackpot", async () => {
@@ -81,13 +88,12 @@ describe("JackPot test", () => {
     await Promise.all(distributePromise);
     expect(await jackpotTicket.balanceOf(alice.address)).to.eq(1);
 
-    await gwit.connect(deployer).transfer(jackpotTicket.address, 5000);
+    await usdc.connect(deployer).transfer(jackpotTicket.address, 5000);
   });
 
   it("Create a round", async () => {
-    const hashedServerSeed = solidityKeccak256(["bytes32", "address"], [serverSeed, gwit.address]);
-    const sig = await signCreate(signer.address, gwit.address, hashedServerSeed);
-    await jackpotTicket.connect(signer).createRound(hashedServerSeed, gwit.address, sig);
+    const sig = await signCreate(signer.address, usdc.address);
+    await jackpotTicket.connect(signer).createRound(usdc.address, sig);
   });
 
   it("Can't get server seed before finish", async () => {
@@ -96,14 +102,21 @@ describe("JackPot test", () => {
     );
   });
 
-  it("Finished round and get result", async () => {
+  it("Finished round", async () => {
     // send time to over
     await network.provider.send("evm_increaseTime", [8 * 24 * 60 * 60]);
     await network.provider.send("evm_mine"); // this one will have 02:00 PM as its timestamp
 
-    const sig = await signFinish(signer.address, serverSeed);
-    await jackpotTicket.connect(signer).finishRound(serverSeed, sig);
+    const sig = await signFinish(signer.address);
+    const tx = await jackpotTicket.connect(signer).finishRound(sig);
+    const result = await tx.wait();
 
+    const requestId = result.events?.filter((event) => event.event == "NewRequest")[0]?.args?.id;
+    const tx1 = await coordinator.fulfillRandomWords(requestId, jackpotTicket.address);
+    await tx1.wait();
+  });
+
+  it("Get result", async () => {
     const resultPromises = users.map((user) => jackpotTicket.connect(user).getResult());
     const results = (await Promise.all(resultPromises)).map((result) => result.toNumber());
 
@@ -111,10 +124,9 @@ describe("JackPot test", () => {
     const topWinner = users[results.indexOf(topWinnerResult)];
 
     expect(topWinnerResult).to.eq(4000);
-    expect(await gwit.balanceOf(topWinner.address)).to.eq(0);
+    const balance = await usdc.balanceOf(topWinner.address);
     await jackpotTicket.connect(topWinner).withdrawReward();
-
-    expect(await gwit.balanceOf(topWinner.address)).to.eq(4000);
+    expect(await usdc.balanceOf(topWinner.address)).to.eq(balance.add(4000));
   });
 
   it("Provably test", async () => {
@@ -154,16 +166,16 @@ describe("JackPot test", () => {
       }
     }
 
-    expect(tokenName).to.eq("GWIT");
+    expect(tokenName).to.eq("USDC");
     expect(aliceReward).to.eq(aliceRewardTest);
   });
 
-  it("Alice withdraw money", async () => {
-    const initailAmount = await gwit.balanceOf(alice.address);
-    const rewardAmount = await jackpotTicket.connect(alice).getResult();
-    await jackpotTicket.connect(alice).withdrawReward();
-    expect(await gwit.balanceOf(alice.address)).to.eq(initailAmount.add(rewardAmount));
-  });
+  // it("Alice withdraw money", async () => {
+  //   const initailAmount = await usdc.balanceOf(alice.address);
+  //   const rewardAmount = await jackpotTicket.connect(alice).getResult();
+  //   await jackpotTicket.connect(alice).withdrawReward();
+  //   expect(await usdc.balanceOf(alice.address)).to.eq(initailAmount.add(rewardAmount));
+  // });
 
   it("Bob can't withdraw after new time overed", async () => {
     // send time to over
