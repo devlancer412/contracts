@@ -20,9 +20,9 @@ contract Tournament is ITournament, Auth {
   Game[] public games;
   // List of roosters (game id => rooster id => rooster state)
   // 0: not registered
-  // 1 ~ 2^64 - 2: ranking of winners
-  // 2^64 - 1: registered / unranked roosters
-  mapping(uint256 => mapping(uint256 => uint64)) public roosters;
+  // 1 ~ 2^32 - 2: ranking of winners
+  // 2^32 - 1: registered / unranked roosters
+  mapping(uint256 => mapping(uint256 => uint32)) public roosters;
   // Burned nonces
   mapping(bytes32 => bool) private _nonceBurned;
 
@@ -38,65 +38,58 @@ contract Tournament is ITournament, Auth {
 
   /**
    * @notice Creates new game
-   * @param deadline Sign up deadline
-   * @param startTime Tournament starting time
-   * @param endTime Tournament ending time
-   * @param maxPlayers Max roosters for event
-   * @param entranceFee Entrance fee in USDC
-   * @param qualification Tournament qualification hash
+   * @param game Game info
    * @return gameId uint256
    */
-  function createGame(
-    uint64 deadline,
-    uint64 startTime,
-    uint64 endTime,
-    uint64 maxPlayers,
-    uint256 entranceFee,
-    bytes32 qualification
-  ) external onlyRole("MANAGER") returns (uint256 gameId) {
-    // Check param
-    if (deadline < block.timestamp) revert InvalidDeadline();
-    if (startTime > endTime) revert InvalidTimeWindow();
-    if (startTime < deadline) revert InvalidStartTime();
+  function createGame(Game memory game) external onlyRole("MANAGER") returns (uint256 gameId) {
+    // Param check
+    require(game.checkinStartTime < game.checkinEndTime, "");
+    require(game.checkinStartTime >= block.timestamp, "");
+    require(game.gameStartTime > game.checkinEndTime, "");
+    require(game.gameStartTime < game.gameEndTime, "");
 
     // Get game id
     gameId = games.length;
 
     // Create game
-    Game memory game = Game(
-      deadline,
-      startTime,
-      endTime,
-      maxPlayers,
-      entranceFee,
-      qualification,
-      bytes32(0),
-      msg.sender,
-      State.ALIVE
-    );
+    game.roosters = 0;
+    game.distribution = bytes32(0);
+    game.organizer = msg.sender;
+    game.state = State.ALIVE;
     games.push(game);
 
-    emit NewGame(gameId, deadline, startTime, endTime, maxPlayers, entranceFee, qualification);
+    emit NewGame(gameId, game.requirementId, msg.sender);
   }
 
   /**
-   * @notice Finish game
-   * @param gameId uint256
-   * @param distribution Merkle root of prize distribution
+   * @notice Sets state of game
+   * @param action Action enum
+   * @param gameId Game id
+   * @param distribution Merkle root of prize distrubution
    */
-  function finishGame(uint256 gameId, bytes32 distribution) external {
+  function setGame(
+    Action action,
+    uint256 gameId,
+    bytes32 distribution
+  ) external {
     Game storage game = games[gameId];
 
-    // Check
-    if (block.timestamp < game.endTime) revert GameNotFinished();
-    if (msg.sender != game.organizer) revert InvalidAccess();
-    if (distribution == bytes32(0)) revert();
+    // Access check
+    require(msg.sender == game.organizer, "");
 
-    // Set game
-    game.distribution = distribution;
-    game.state = State.ENDED;
+    if (action == Action.END) {
+      require(block.timestamp >= game.gameEndTime, "");
+      require(distribution != bytes32(0), "");
+      game.distribution = distribution;
+      game.state = State.ENDED;
+    } else if (action == Action.CANCEL) {
+      require(game.state != State.ENDED, "");
+      game.state = State.CANCELLED;
+    } else if (action == Action.PAUSE) {
+      game.state = State.PAUSED;
+    }
 
-    emit Distrubute(gameId, distribution);
+    emit SetGame(gameId, distribution);
   }
 
   function register(
@@ -110,7 +103,7 @@ contract Tournament is ITournament, Auth {
     if (_canRegister(gameId, roosterId) == false) revert();
     if (_isQualified(roosterId, nonce, sig) == false) revert();
 
-    roosters[gameId][roosterId] = type(uint64).max;
+    roosters[gameId][roosterId] = type(uint32).max;
 
     usdc.transferFrom(msg.sender, address(this), game.entranceFee);
   }
@@ -119,7 +112,7 @@ contract Tournament is ITournament, Auth {
     uint256 gameId,
     uint256 roosterId,
     uint256 amount,
-    uint64 ranking,
+    uint32 ranking,
     bytes32[] calldata proof
   ) external {
     Game storage game = games[gameId];

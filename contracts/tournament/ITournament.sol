@@ -2,16 +2,21 @@
 pragma solidity >=0.8.4;
 
 interface ITournament {
+  // 4slots
   struct Game {
-    uint64 deadline; // Sign up deadline in block.timestamp [8]
-    uint64 startTime; // Tournament start time in block.timestamp [8]
-    uint64 endTime; // Tournament end time in block.timestamp [8]
-    uint64 maxPlayers; // Max roosters for event [8]
+    uint32 checkinStartTime; // Registration start date in block.timestamp [4]
+    uint32 checkinEndTime; // Registeration end date in block.timestamp [4]
+    uint32 gameStartTime; // Tournament start date in block.timestamp [4]
+    uint32 gameEndTime; // Tournament end date in block.timestamp [4]
+    uint32 rewardExpiration; // Reward expiration date to claim in block.timestamp [4]
+    uint32 minRoosters; // Minimum roosters required to start [4]
+    uint32 maxRoosters; // Maximum roosters for game [4]
+    uint32 roosters; // Number of rooosters [4]
     uint256 entranceFee; // Entrance fee in USDC [32]
-    bytes32 qualification; // Tournament qualification hash [32]
     bytes32 distribution; // Merkle root of prize distribution [32]
+    bytes8 requirementId; // Requirement id [8]
     address organizer; // Organizer [20]
-    State state; // Game state [1]
+    State state; // Event state [1]
   }
 
   struct Sig {
@@ -27,16 +32,14 @@ interface ITournament {
     CANCELLED
   }
 
-  event NewGame(
-    uint256 gameId,
-    uint64 deadline,
-    uint64 startTime,
-    uint64 endTime,
-    uint64 maxPlayers,
-    uint256 entranceFee,
-    bytes32 requirement
-  );
-  event Distrubute(uint256 gameId, bytes32 distribution);
+  enum Action {
+    END,
+    PAUSE,
+    CANCEL
+  }
+
+  event NewGame(uint256 indexed gameId, bytes8 indexed requirementId, address indexed organzier);
+  event SetGame(uint256 indexed gameId, bytes32 distribution);
 
   error InvalidDeadline();
   error InvalidTimeWindow();
