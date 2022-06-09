@@ -11,7 +11,7 @@ import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProo
 contract Tournament is ITournament, Auth {
   // Address of USDC
   IERC20 public immutable usdc;
-  // Address of rooster contract
+  // Address of rooster
   IERC721 public immutable rooster;
   // Address of vault -- where fees go
   address public vault;
@@ -19,7 +19,7 @@ contract Tournament is ITournament, Auth {
   // List of tournament games
   Game[] public games;
   // List of roosters (game id => rooster id => rooster state)
-  // 0: not in game
+  // 0: not registered
   // 1 ~ 2^64 - 2: ranking of winners
   // 2^64 - 1: registered / unranked roosters
   mapping(uint256 => mapping(uint256 => uint64)) public roosters;
@@ -37,7 +37,14 @@ contract Tournament is ITournament, Auth {
   }
 
   /**
-   * Creates new game
+   * @notice Creates new game
+   * @param deadline Sign up deadline
+   * @param startTime Tournament starting time
+   * @param endTime Tournament ending time
+   * @param maxPlayers Max roosters for event
+   * @param entranceFee Entrance fee in USDC
+   * @param qualification Tournament qualification hash
+   * @return gameId uint256
    */
   function createGame(
     uint64 deadline,
@@ -45,38 +52,51 @@ contract Tournament is ITournament, Auth {
     uint64 endTime,
     uint64 maxPlayers,
     uint256 entranceFee,
-    bytes32 requirement
-  ) external returns (uint256 gameId) {
+    bytes32 qualification
+  ) external onlyRole("MANAGER") returns (uint256 gameId) {
+    // Check param
     if (deadline < block.timestamp) revert InvalidDeadline();
     if (startTime > endTime) revert InvalidTimeWindow();
     if (startTime < deadline) revert InvalidStartTime();
 
+    // Get game id
+    gameId = games.length;
+
+    // Create game
     Game memory game = Game(
       deadline,
       startTime,
       endTime,
       maxPlayers,
       entranceFee,
-      requirement,
+      qualification,
       bytes32(0),
       msg.sender,
-      false
+      State.ALIVE
     );
-
-    gameId = games.length;
-
     games.push(game);
 
-    emit NewGame(gameId, deadline, startTime, endTime, maxPlayers, entranceFee, requirement);
+    emit NewGame(gameId, deadline, startTime, endTime, maxPlayers, entranceFee, qualification);
   }
 
+  /**
+   * @notice Finish game
+   * @param gameId uint256
+   * @param distribution Merkle root of prize distribution
+   */
   function finishGame(uint256 gameId, bytes32 distribution) external {
     Game storage game = games[gameId];
 
-    if (block.timestamp < game.endTime) revert();
-    if (msg.sender != game.organizer) revert();
+    // Check
+    if (block.timestamp < game.endTime) revert GameNotFinished();
+    if (msg.sender != game.organizer) revert InvalidAccess();
+    if (distribution == bytes32(0)) revert();
 
+    // Set game
     game.distribution = distribution;
+    game.state = State.ENDED;
+
+    emit Distrubute(gameId, distribution);
   }
 
   function register(
@@ -111,7 +131,8 @@ contract Tournament is ITournament, Auth {
 
     roosters[gameId][roosterId] = ranking;
 
-    usdc.transfer(msg.sender, amount);
+    usdc.transfer(msg.sender, amount / 9);
+    usdc.transfer(msg.sender, (amount * 9) / 10);
   }
 
   function _canRegister(uint256 gameId, uint256 roosterId) private returns (bool) {}
