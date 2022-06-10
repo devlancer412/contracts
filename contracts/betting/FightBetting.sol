@@ -12,22 +12,37 @@ interface IJackPot {
 
 contract FightBetting is Auth, IFightBetting {
   using SafeERC20 for IERC20;
-  //
+  // address of jackpot
   address public jackpotAddr;
-
+  // betting data array
   Betting[] public bettings;
+  // betting state array
   BettingState[] public bettingStates;
+  // seed data array
   SeedData[] private seedData;
+  // bettors array
+  // bettingId => bettor[]
   mapping(uint256 => Bettor[]) public bettors;
+  // shows lucky winner withdrawed their reward
   uint8[] public luckyWinnerStates;
+  // who has betted which betting
+  // bettingId => (bettor => true|false)
   mapping(uint256 => mapping(address => bool)) private betted;
-
+  // shows how mauch token has eaned by betting
+  // token address => amount
   mapping(address => uint256) private tokenAmounts;
-
+  // shows the minimum value for jackpot tickets
   uint256 public minBetNumForJackPot;
+  // shows how much he played this betting
+  // bettor address => betting count
   mapping(address => uint256) public betNumber;
+  // shows which token can use this betting
+  // token address => true|false
   mapping(address => bool) public allowedTokens;
 
+  // modifier: verify bettor can bet to this betting(bettingId) with this value(value)
+  // @param   bettingId:  current betting id
+  // @param   value:      betting amount
   modifier canBet(uint256 bettingId, uint256 value) {
     require(bettingId < bettings.length, "FightBetting:NOT_CREATED");
     require(block.timestamp >= bettings[bettingId].startTime, "FightBetting:NOT_STARTED_YET");
@@ -39,11 +54,22 @@ contract FightBetting is Auth, IFightBetting {
     _;
   }
 
+  // fight betting contract creates with jackpot address
   constructor(address jackpot) {
     jackpotAddr = jackpot;
     minBetNumForJackPot = 1000;
   }
 
+  // function:  creates a betting
+  // @param   fighter1: first fighter id
+  // @param   fighter2: second fighter id
+  // @param   startTime: when the bet starts
+  // @param   endTime: when the bet ends.
+  // @param   minAmount: minimum amount can bet
+  // @param   maxAmount: maximum amount can bet
+  // @param   tokenAddr: address of token can bet
+  // @param   hashedServerSeed: hash of server seed value
+  // @param   sig: signer signature for the access
   function createBetting(
     uint256 fighter1,
     uint256 fighter2,
@@ -85,6 +111,8 @@ contract FightBetting is Auth, IFightBetting {
     emit NewBetting(fighter1, fighter2, startTime, endTime, tokenAddr);
   }
 
+  // function:    validates create function variables
+  // @return    ture -> valid, false -> invalid
   function _isCreateParamValid(
     uint256 fighter1,
     uint256 fighter2,
@@ -116,6 +144,10 @@ contract FightBetting is Auth, IFightBetting {
     return hasRole("SIGNER", ecrecover(ethSignedMessageHash, sig.v, sig.r, sig.s));
   }
 
+  // function:    bet functin
+  // @param   bettingId: id of the betting
+  // @param   side: which side the bettor is betting on
+  // @param   amount: how much the bettor bets
   function bettOne(
     uint256 bettingId,
     Side side,
@@ -145,6 +177,11 @@ contract FightBetting is Auth, IFightBetting {
     emit Betted(msg.sender, fighter, value);
   }
 
+  // function:    end the bet
+  // @param   bettingId: id of betting
+  // @param   serverSeed: server seed of this betting
+  // @param   result: which side was win in this game
+  // @param   sig: signer signature for the access
   function finishBetting(
     uint256 bettingId,
     bytes32 serverSeed,
@@ -181,6 +218,8 @@ contract FightBetting is Auth, IFightBetting {
     emit Finished(bettingId, winner);
   }
 
+  // function:    validate the betting parameters
+  // @return    ture -> valid, false -> invalid
   function _isFinishParamValid(
     uint256 bettingId,
     bytes32 serverSeed,
@@ -197,18 +236,16 @@ contract FightBetting is Auth, IFightBetting {
     return hasRole("SIGNER", ecrecover(ethSignedMessageHash, sig.v, sig.r, sig.s));
   }
 
+  // function:    returns bettingstate struct of betting which id is bettingId
+  // @param   bettingId: id of betting
+  // @param   betting state
   function getBettingState(uint256 bettingId) public view returns (BettingState memory betting) {
     betting = bettingStates[bettingId];
   }
 
-  // function getBettingData(uint256 bettingId) public view returns (Betting memory betting) {
-  //   require(
-  //     bettingStates[bettingId].liveState == BettingLiveState.Alive,
-  //     "FighterBetting:ALREADY_FINISHED"
-  //   );
-  //   betting = bettings[bettingId];
-  // }
-
+  // function:    returns bettingresult of betting which id is bettingId
+  // @param   bettingId: id of betting
+  // @return  array of betting result
   function bettingResult(uint256 bettingId) public view returns (ResultData[] memory) {
     require(
       bettingStates[bettingId].liveState == BettingLiveState.Finished,
@@ -239,20 +276,10 @@ contract FightBetting is Auth, IFightBetting {
     return results;
   }
 
-  // function getAvailableBettings() public view returns (Betting[] memory) {
-  //   Betting[] memory results = new Betting[](availableBettings);
-
-  //   uint256 j = 0;
-  //   for (uint256 i = bettings.length - 1; i >= 0 && j < availableBettings; i++) {
-  //     if (bettingStates[i].liveState == BettingLiveState.Alive) {
-  //       results[j] = bettings[i];
-  //       j++;
-  //     }
-  //   }
-
-  //   return results;
-  // }
-
+  // function:    get bets from 'from' to 'from - number'
+  // @param   from: start betting id
+  // @param   number: number of betting
+  // @return  array of betting data
   function getPrevFinishedBets(uint256 from, uint256 number)
     public
     view
@@ -271,6 +298,10 @@ contract FightBetting is Auth, IFightBetting {
     return results;
   }
 
+  // function:    get bets from 'from' to 'from + number'
+  // @param   from: start betting id
+  // @param   number: number of betting
+  // @return  array of betting data
   function getNextFinishedBets(uint256 from, uint256 number)
     public
     view
@@ -289,12 +320,17 @@ contract FightBetting is Auth, IFightBetting {
     return results;
   }
 
+  // function:    withdraw earned money
+  // @param:    token: address of token
   function withdraw(address token) public onlyOwner {
     uint256 amount = tokenAmounts[token];
     tokenAmounts[token] = 0;
     IERC20(token).safeTransfer(msg.sender, amount);
   }
 
+  // function:    return bettor id in bettors array
+  // @param   bettingId: id of betting
+  // @return  index of bettor
   function getBettorIndex(uint256 bettingId) public view returns (uint256) {
     require(betted[bettingId][msg.sender] == true, "FightBetting:DID'T_BET");
     uint256 totalBettor = bettingStates[bettingId].bettorCount1 +
@@ -307,6 +343,9 @@ contract FightBetting is Auth, IFightBetting {
     return 0;
   }
 
+  // function:    reward result of betting
+  // @param   bettingId: id of betting
+  // @param   index: index of bettor in this betting
   function withdrawReward(uint256 bettingId, uint256 index) public {
     require(
       bettingStates[bettingId].liveState == BettingLiveState.Finished,
@@ -336,14 +375,24 @@ contract FightBetting is Auth, IFightBetting {
   }
 
   // For provably.
+
+  // function:    return hash of server seed
+  // @param   bettingId: id of betting
+  // @return  hashed server seed
   function getServerSeedHash(uint256 bettingId) public view returns (bytes32) {
     return seedData[bettingId].hashedServerSeed;
   }
 
+  // function:    return client seed
+  // @param   bettingId: id of betting
+  // @return  client seed
   function getClientSeed(uint256 bettingId) public view returns (bytes32) {
     return seedData[bettingId].clientSeed;
   }
 
+  // function:    return server seed
+  // @param   bettingId: id of betting
+  // @return  server seed
   function getServerSeed(uint256 bettingId) public view returns (bytes32) {
     require(
       bettingStates[bettingId].liveState == BettingLiveState.Finished,
@@ -353,10 +402,17 @@ contract FightBetting is Auth, IFightBetting {
     return seedData[bettingId].serverSeed;
   }
 
+  // function:    return bettor data
+  // @param   bettingId: id of betting
+  // @param   bettorId: id of bettor in this betting
+  // @return  bettor data
   function getBettorData(uint256 bettingId, uint256 bettorId) public view returns (Bettor memory) {
     return bettors[bettingId][bettorId];
   }
 
+  // function:    returns winner bettor ids
+  // @param   bettingId: id of betting
+  // @return  ids: array of ids who winned
   function getWinBettorIds(uint256 bettingId) public view returns (uint256[] memory ids) {
     require(
       bettingStates[bettingId].liveState == BettingLiveState.Finished,
@@ -378,6 +434,10 @@ contract FightBetting is Auth, IFightBetting {
     }
   }
 
+  // function:    return address and reward of lucky winner
+  // @param   bettingId: id of betting
+  // @retrun  winners: array of winner address
+  // @return  rewards: array of rewards
   function getLuckyWinner(uint256 bettingId)
     public
     view
@@ -422,7 +482,6 @@ contract FightBetting is Auth, IFightBetting {
     uint256 silverIndex;
     uint256 bronzeIndex;
 
-    // do {
     hashed = keccak256(
       abi.encodePacked(
         hashed,
@@ -433,9 +492,7 @@ contract FightBetting is Auth, IFightBetting {
       )
     );
     silverIndex = uint256(hashed) % winnerBettorCount;
-    // } while (goldIndex != silverIndex);
 
-    // do {
     hashed = keccak256(
       abi.encodePacked(
         hashed,
@@ -446,7 +503,6 @@ contract FightBetting is Auth, IFightBetting {
       )
     );
     bronzeIndex = uint256(hashed) % winnerBettorCount;
-    // } while (goldIndex != bronzeIndex);
 
     winners = new address[](3);
     rewards = new uint256[](3);
@@ -463,6 +519,8 @@ contract FightBetting is Auth, IFightBetting {
     rewards[2] = luckyWinnerRewardAmount - rewards[0] - rewards[1];
   }
 
+  // function:    withdraw reward of lucky winner
+  // @param   bettingId: id of betting
   function withdrawLuckyWinnerReward(uint256 bettingId) public {
     address[] memory winners;
     uint256[] memory rewards;
@@ -488,14 +546,21 @@ contract FightBetting is Auth, IFightBetting {
   }
 
   // JackPot
+
+  // function:    set jackpot address
+  // @param   jackpot: address of jackpot
   function setJackPot(address jackpot) public onlyOwner {
     jackpotAddr = jackpot;
   }
 
+  // function:    return minimum bet count for jackpot ticket
+  // @return: jackpot amount can get
   function jackPotNFTAmount() public view returns (uint256 amount) {
     amount = betNumber[msg.sender] / minBetNumForJackPot;
   }
 
+  // function:    get jackpot tickets from bet
+  // @return: jackpot ticket amount
   function getJackPotNFT() public returns (uint256 amount) {
     amount = jackPotNFTAmount();
     require(amount > 0, "FightBetting:NOT_ENOUGH");
@@ -504,11 +569,16 @@ contract FightBetting is Auth, IFightBetting {
     IJackPot(jackpotAddr).mintTo(amount, msg.sender);
   }
 
+  // function:    sets minimum bet count for jackpot ticket
+  // @param   min: minimum bet count for jackpot ticket
   function setJackPotMin(uint256 min) public onlyOwner {
     minBetNumForJackPot = min;
   }
 
-  function setTokenAllowance(address token, bool value) public onlyOwner {
-    allowedTokens[token] = value;
+  // function:    set token for create betting with this token
+  // @param:    token: address of tokenAddress
+  // @param:    value: true-allow, false-reject
+  function setTokenAllowance(address tokenAddress, bool value) public onlyOwner {
+    allowedTokens[tokenAddress] = value;
   }
 }

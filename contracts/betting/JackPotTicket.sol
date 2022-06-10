@@ -137,11 +137,15 @@ contract JackPotTicket is Auth, VRFv2Consumer, IJackPotTicket {
     return _owners[tokenId] != address(0);
   }
 
+  // function:  return true if sender has ticket
   modifier hasTicket() {
     require(balanceOf(msg.sender) > 0, "JackPotTicket:NO_TICKET");
     _;
   }
 
+  // function:  mint amount ticket to 'to' address
+  // @param:    amount: number of ticket
+  // @param:    to: address of owner
   function mintTo(uint256 amount, address to) public {
     require(hasRole("MINTER", msg.sender), "JackPotTicket:CANT_MINT");
 
@@ -154,6 +158,8 @@ contract JackPotTicket is Auth, VRFv2Consumer, IJackPotTicket {
     _tokenCounter = tokenId;
   }
 
+  // function:  validate create function params
+  // @return    true -> valid, false -> invalid
   function _validateCreateParam(address tokenAddr, Sig calldata sig)
     private
     view
@@ -168,6 +174,9 @@ contract JackPotTicket is Auth, VRFv2Consumer, IJackPotTicket {
     return hasRole("SIGNER", ecrecover(ethSignedMessageHash, sig.v, sig.r, sig.s));
   }
 
+  // function:  create new round
+  // @param:    toeknAddr: address of token to be rewarded
+  // @param:    sig: signer signature struct for creating
   function createRound(address tokenAddr, Sig calldata sig) public {
     require(allowedTokens[tokenAddr], "JackPotTicket:INVALID_TOKEN");
     require(block.timestamp >= openTime, "JackPotTicket:NOT_REWARDED");
@@ -183,6 +192,8 @@ contract JackPotTicket is Auth, VRFv2Consumer, IJackPotTicket {
     IERC20(token).transfer(_treasuryAddr, totalAmount / 20);
   }
 
+  // function:  validate finish function params
+  // @return    true -> valid, false -> invalid
   function _validateFinishParam(Sig calldata sig) private view returns (bool) {
     bytes32 messageHash = keccak256(abi.encodePacked(msg.sender));
     bytes32 ethSignedMessageHash = keccak256(
@@ -192,6 +203,8 @@ contract JackPotTicket is Auth, VRFv2Consumer, IJackPotTicket {
     return hasRole("SIGNER", ecrecover(ethSignedMessageHash, sig.v, sig.r, sig.s));
   }
 
+  // function:  finish round
+  // @param:    sig: signer signature struct to finish
   function finishRound(Sig calldata sig) public onlyRole("MAINTAINER") returns (uint256) {
     require(_validateFinishParam(sig), "JackPotTicket:NOT_SIGNER");
     require(block.timestamp > closeTime, "JackPotTicket:NOT_FINISHED");
@@ -204,6 +217,8 @@ contract JackPotTicket is Auth, VRFv2Consumer, IJackPotTicket {
     return requestIds[currentRound - 1];
   }
 
+  // function:  return reward amount
+  // @return:   amount of reward
   function getResult() public view hasTicket returns (uint256) {
     require(block.timestamp > closeTime, "JackPotTicket:NOT_FINISHED");
     require(block.timestamp < openTime, "JackPotTicket:TIME_OVER");
@@ -224,6 +239,7 @@ contract JackPotTicket is Auth, VRFv2Consumer, IJackPotTicket {
     return reward;
   }
 
+  // function:  return reward
   function withdrawReward() public {
     uint256 reward = getResult();
     require(reward > 0, "JackPotTicket:NO_REWARD");
@@ -234,18 +250,14 @@ contract JackPotTicket is Auth, VRFv2Consumer, IJackPotTicket {
     IERC20(token).transfer(msg.sender, reward);
   }
 
+  // function:  return close time
+  // @return:    close time of reward
   function getCloseTime() public view returns (uint256) {
     return closeTime;
   }
 
-  function getResultData() public view returns (uint256[] memory) {
-    return s_randomWords[requestIds[currentRound - 1]];
-  }
-
-  function getRequestId() public view returns (uint256) {
-    return requestIds[currentRound - 1];
-  }
-
+  // function:  return address list of winners
+  // @return:   list of address
   function getWinnerAddressList() public view returns (address[] memory) {
     require(s_randomWords[requestIds[currentRound - 1]].length == 2, "JackPotTicket:NOT_FINISHED");
     address[] memory addressList = new address[](11);
@@ -268,6 +280,8 @@ contract JackPotTicket is Auth, VRFv2Consumer, IJackPotTicket {
     return addressList;
   }
 
+  // function:    return address list of jackpot ticket owners
+  // @param:      array of address
   function getAddressList() public view returns (address[] memory) {
     uint256 total = _tokenCounter;
     address[] memory addressList = new address[](total);
@@ -279,37 +293,55 @@ contract JackPotTicket is Auth, VRFv2Consumer, IJackPotTicket {
     return addressList;
   }
 
+  // function:    return total reward amount and token symbol
   function getTotalReward() public view returns (string memory tokenName, uint256 amount) {
     tokenName = IERC20Metadata(token).symbol();
     amount = totalDistributeAmount;
   }
 
   // setData
+
+  // function:    set NTT metadata base url
+  // @param:      uri: uri of metadata
   function setTokenURI(string memory uri) public onlyOwner {
     _baseTokenURI = uri;
   }
 
+  // function:    set period of round
+  // @param:      period: period time of round
   function serPeriod(uint256 _period) public onlyOwner {
     period = _period;
   }
 
+  // function:    set treasury wallet address
+  // @param:      to: address of treasury wallet
   function setTreasuryWallet(address to) public onlyOwner {
     _treasuryAddr = to;
   }
 
-  // NFT functions
+  // NTT functions
+
+  // function:    return token uri
+  // @param:      id of token
   function tokenURI(uint256 _tokenId) public view override returns (string memory) {
     return _baseTokenURI;
   }
 
+  // function:    set client seed
+  // param:       seedStr: seed of client
   function setSeedString(bytes32 seedStr) public hasTicket {
     clientSeed = keccak256(abi.encodePacked(clientSeed, msg.sender, seedStr));
   }
 
+  // function:    set token for create betting with this token
+  // @param:      token: address of tokenAddress
+  // @param:      value: true-allow, false-reject
   function setTokenAllowance(address _token, bool value) public onlyOwner {
     allowedTokens[_token] = value;
   }
 
+  // function:    get server seed
+  // @return:     server seed of round
   function getServerSeed() public view returns (bytes32 serverSeed) {
     require(currentRound > 0, "JackPotTicket:NOT_YET");
     require(s_randomWords[requestIds[currentRound - 1]].length == 2, "JackPotTicket:NOT_FINISHED");
