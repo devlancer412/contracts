@@ -12,10 +12,11 @@ interface ITournament {
     uint32 minRoosters; // Minimum roosters required to start [4]
     uint32 maxRoosters; // Maximum roosters for game [4]
     uint32 roosters; // Number of rooosters [4]
-    uint256 entranceFee; // Entrance fee in USDC [32]
+    uint128 entranceFee; // Entrance fee in USDC [16]
+    uint128 balance; // Balance of tournament pool in USDC [16]
     bytes32 rankingRoot; // Merkle root of tournament ranking [32]
     uint16[] distributions; // Array of distrubution percentages in hundreds [32 + 2n]
-    bool enableScholar; // Allow scholars to join game [1]
+    // bool enableScholar; // Allow scholars to participate in tournament [1]
     uint16 fee; // Protocol fee in hundreds [4]
     bytes4 requirementId; // Requirement id [4]
     address organizer; // Organizer [20]
@@ -46,6 +47,19 @@ interface ITournament {
   event NewGame(uint256 indexed gameId, bytes8 indexed requirementId, address indexed organzier);
   event SetGame(uint256 indexed gameId, Action indexed action);
   event RegisterGame(uint256 indexed gameId, uint256[] roosterIds, address indexed sender);
+  event ClaimReward(
+    uint256 indexed gameId,
+    uint256[] roosterIds,
+    uint256 amount,
+    address indexed recipient
+  );
+  event ClaimRefund(
+    uint256 indexed gameId,
+    uint256[] roosterIds,
+    uint256 amount,
+    address indexed recipient
+  );
+  event WithdrawExpiredReward(uint256 indexed gameId, uint256 amount, address indexed recipient);
 
   error InvalidDeadline();
   error InvalidTimeWindow();

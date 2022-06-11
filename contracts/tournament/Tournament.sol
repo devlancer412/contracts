@@ -6,12 +6,15 @@ import {ITournament} from "./ITournament.sol";
 import {Scholarship} from "../scholarship/Scholarship.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 contract Tournament is ITournament, Auth {
   using SafeERC20 for IERC20;
+  using SafeCast for uint256;
+
+  uint256 private constant _BASIS_POINTS = 100_00;
 
   // Address of USDC
   IERC20 public immutable usdc;
@@ -54,6 +57,7 @@ contract Tournament is ITournament, Auth {
     require(game.gameStartTime < game.gameEndTime, "Invalid game time window");
     require(game.gameStartTime > game.checkinEndTime, "Invalid game time window");
     require(game.distributions[0] == 0, "0th index must be 0");
+    require(game.fee <= _BASIS_POINTS, "Invalid fee");
 
     // Get game id
     gameId = games.length;
@@ -91,7 +95,7 @@ contract Tournament is ITournament, Auth {
       require(block.timestamp < game.checkinStartTime, "Signup started");
       require(n > 1, "distrubutions not provided");
 
-      // TODO: pre-package `distributions` and push by batches
+      // TODO: pre-package `distributions` and push by batch
       for (uint256 i = 0; i < n; i++) {
         game.distributions.push(distributions[i]);
       }
@@ -142,7 +146,8 @@ contract Tournament is ITournament, Auth {
       require(roosters[gameId][roosterIds[i]] == 0, "Already registered");
       roosters[gameId][roosterIds[i]] = type(uint32).max;
     }
-    game.roosters += uint32(n);
+    game.roosters += n.toUint32();
+    game.balance += (game.entranceFee * n).toUint128();
 
     // Interactions
     usdc.safeTransferFrom(msg.sender, address(this), game.entranceFee * n);
@@ -151,7 +156,10 @@ contract Tournament is ITournament, Auth {
   }
 
   /**
-   * @notice Claims reward
+   * @notice Claims reward from tournament prize pool
+   * @param gameId Game id
+   * @param roosterIds List of rooster ids
+   * @param rankings List of rankings
    */
   function claimReward(
     uint256 gameId,
@@ -164,12 +172,14 @@ contract Tournament is ITournament, Auth {
     uint256 n = roosterIds.length;
 
     // Checks
+    require(n == rankings.length, "Length mismatch");
     require(game.state == State.ENDED, "Not ended");
     require(_isOwner(msg.sender, roosterIds), "Not owner");
 
     uint256 length = proofs.length / n;
     bytes32[] memory proof = new bytes32[](length);
     for (uint256 i = 0; i < n; i++) {
+      // Validate rooster ranking using Merkle proof
       for (uint256 j = 0; j < length; j++) {
         proof[j] = proofs[j + length * i];
       }
@@ -179,20 +189,34 @@ contract Tournament is ITournament, Auth {
         roosters[gameId][roosterIds[i]] == type(uint32).max,
         "Already claimed or not registered"
       );
+
+      // Set rooster ranking
       roosters[gameId][roosterIds[i]] = rankings[i];
-      amount += (game.entranceFee * game.roosters * game.distributions[rankings[i]]) / 10_000;
+      amount +=
+        (game.entranceFee * game.roosters * game.distributions[rankings[i]]) /
+        _BASIS_POINTS;
     }
+    game.balance -= amount.toUint128();
 
     // Interactions
-    usdc.safeTransfer(vault, (fee = (amount * game.fee) / 10_000));
+    usdc.safeTransfer(vault, (fee = (amount * game.fee) / _BASIS_POINTS));
     usdc.safeTransfer(recipient, amount - fee);
+
+    emit ClaimReward(gameId, roosterIds, amount, recipient);
   }
 
+  /**
+   * @notice Claims refund from cancelled tournament
+   * @param gameId Game id
+   * @param roosterIds List of roosters registered
+   * @param recipient Recipient address
+   * @return amount Amount claimed
+   */
   function claimRefund(
     uint256 gameId,
     uint256[] calldata roosterIds,
     address recipient
-  ) external {
+  ) external returns (uint256 amount) {
     Game storage game = games[gameId];
     uint256 n = roosterIds.length;
 
@@ -207,15 +231,42 @@ contract Tournament is ITournament, Auth {
     }
 
     // Interactions
-    usdc.safeTransfer(recipient, game.entranceFee * n);
+    usdc.safeTransfer(recipient, (amount = game.entranceFee * n));
+
+    emit ClaimRefund(gameId, roosterIds, amount, recipient);
   }
 
-  function withdrawExpiredRewards(uint256 gameId, address recipient) external {}
+  /**
+   * @notice Withdraws expired rewards from tournament pool
+   * @param gameId Game id
+   * @param recipient Address of recipient
+   * @return amount Amount withdrawn
+   */
+  function withdrawExpiredRewards(uint256 gameId, address recipient)
+    external
+    returns (uint256 amount)
+  {
+    Game storage game = games[gameId];
+
+    // Checks
+    require(msg.sender == game.organizer, "Not organizer");
+    require(block.timestamp > game.expirationTime, "Not expired");
+    require(game.state == State.ENDED, "Not ended");
+    require((amount = game.balance) > 0, "Nothing to withdraw");
+
+    // Effects
+    game.balance = 0;
+
+    // Interactions
+    usdc.safeTransfer(recipient, amount);
+
+    emit WithdrawExpiredReward(gameId, amount, recipient);
+  }
 
   function _isOwner(address owner, uint256[] calldata roosterIds) private view returns (bool) {
     for (uint256 i = 0; i < roosterIds.length; i++) {
       if (
-        rooster.ownerOf(roosterIds[i]) != owner || scholarship.nft_owner(roosterIds[i]) != owner
+        rooster.ownerOf(roosterIds[i]) != owner && scholarship.nft_owner(roosterIds[i]) != owner
       ) {
         return false;
       }
@@ -236,6 +287,9 @@ contract Tournament is ITournament, Auth {
     return hasRole("SIGNER", ecrecover(ethSignedMessageHash, sig.v, sig.r, sig.s));
   }
 
+  /**
+   * @notice Sets addresses
+   */
   function setProtocol(address vault_, address scholarship_) external onlyOwner {
     vault = vault_;
     scholarship = Scholarship(scholarship_);
