@@ -15,6 +15,7 @@ interface ITournament {
     uint256 entranceFee; // Entrance fee in USDC [32]
     bytes32 rankingRoot; // Merkle root of tournament ranking [32]
     uint16[] distributions; // Array of distrubution percentages in hundreds [32 + 2n]
+    bool enableScholar; // Allow scholars to join game [1]
     uint16 fee; // Protocol fee in hundreds [4]
     bytes4 requirementId; // Requirement id [4]
     address organizer; // Organizer [20]
@@ -44,6 +45,7 @@ interface ITournament {
 
   event NewGame(uint256 indexed gameId, bytes8 indexed requirementId, address indexed organzier);
   event SetGame(uint256 indexed gameId, Action indexed action);
+  event RegisterGame(uint256 indexed gameId, uint256[] roosterIds, address indexed sender);
 
   error InvalidDeadline();
   error InvalidTimeWindow();
