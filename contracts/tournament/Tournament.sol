@@ -18,6 +18,7 @@ contract Tournament is ITournament, Auth {
   uint256 private constant _BASIS_POINTS = 100_00;
   uint256 private constant _EXPIRATION_PERIOD = 1 weeks;
   string private constant _MANAGER = "MANAGER";
+  uint32 private constant _MAX_UINT32 = type(uint32).max;
 
   // Address of USDC
   IERC20 public immutable usdc;
@@ -49,6 +50,23 @@ contract Tournament is ITournament, Auth {
   }
 
   /**
+   * @notice Queries state of roosters in batch
+   * @param gameId Game id
+   * @param roosterIds List of rooster ids
+   */
+  function batchQuery(uint256 gameId, uint256[] calldata roosterIds)
+    external
+    view
+    returns (uint32[] memory)
+  {
+    uint32[] memory result = new uint32[](roosterIds.length);
+    for (uint256 i = 0; i < roosterIds.length; i++) {
+      result[i] = roosters[gameId][roosterIds[i]];
+    }
+    return result;
+  }
+
+  /**
    * @notice Creates new game
    * @param game Game info
    * @return gameId uint256
@@ -65,7 +83,7 @@ contract Tournament is ITournament, Auth {
     // Get game id
     gameId = games.length;
 
-    // Create game
+    // Initialize and create game
     game.roosters = 0;
     game.state = State.ONGOING;
     game.rankingRoot = bytes32(0);
@@ -90,16 +108,15 @@ contract Tournament is ITournament, Auth {
     Game storage game = games[gameId];
 
     if (action == Action.ADD) {
-      uint256 n = distributions.length;
+      uint256 num = distributions.length;
       require(block.timestamp < game.checkinStartTime, "Signup started");
-      require(n > 1, "distrubutions not provided");
+      require(num > 1, "distrubutions not provided");
 
       // TODO: pre-package `distributions` and push by batch
-      for (uint256 i = 0; i < n; i++) {
+      for (uint256 i = 0; i < num; i++) {
         game.distributions.push(distributions[i]);
       }
-    }
-    if (action == Action.END) {
+    } else if (action == Action.END) {
       require(block.timestamp >= game.gameEndTime, "Game ongoing");
       require(rankingRoot != bytes32(0), "rankingRoot not provided");
       game.rankingRoot = rankingRoot;
@@ -143,7 +160,7 @@ contract Tournament is ITournament, Auth {
     // Effects
     for (uint256 i = 0; i < n; i++) {
       require(roosters[gameId][roosterIds[i]] == 0, "Already registered");
-      roosters[gameId][roosterIds[i]] = type(uint32).max;
+      roosters[gameId][roosterIds[i]] = _MAX_UINT32;
     }
     game.roosters += n.toUint32();
     game.balance += (game.entranceFee * n).toUint128();
@@ -177,10 +194,7 @@ contract Tournament is ITournament, Auth {
     for (uint256 i = 0; i < roosterIds.length; i++) {
       bytes32 node = keccak256(abi.encodePacked(gameId, roosterIds[i], rankings[i]));
       require(MerkleProof.verify(proofs[i], game.rankingRoot, node), "Invalid proof");
-      require(
-        roosters[gameId][roosterIds[i]] == type(uint32).max,
-        "Already claimed or not registered"
-      );
+      require(roosters[gameId][roosterIds[i]] == _MAX_UINT32, "Already claimed or not registered");
 
       // Set rooster ranking
       roosters[gameId][roosterIds[i]] = rankings[i];
@@ -210,20 +224,22 @@ contract Tournament is ITournament, Auth {
     address recipient
   ) external returns (uint256 amount) {
     Game storage game = games[gameId];
-    uint256 n = roosterIds.length;
+    uint256 num = roosterIds.length;
 
     // Checks
     require(game.state == State.CANCELLED, "Not cancelled");
     require(_isOwner(msg.sender, roosterIds), "Not owner");
 
     // Effects
-    for (uint256 i = 0; i < n; i++) {
-      require(roosters[gameId][roosterIds[i]] == type(uint32).max, "Already withdrawn");
-      roosters[gameId][roosterIds[i]] = 0;
+    for (uint256 i = 0; i < num; i++) {
+      require(roosters[gameId][roosterIds[i]] == _MAX_UINT32, "Already withdrawn");
+      roosters[gameId][roosterIds[i]] = _MAX_UINT32 - 1;
     }
+    amount = game.entranceFee * num;
+    game.balance -= amount.toUint128();
 
     // Interactions
-    usdc.safeTransfer(recipient, (amount = game.entranceFee * n));
+    usdc.safeTransfer(recipient, amount);
 
     emit ClaimRefund(gameId, roosterIds, amount, recipient);
   }
@@ -281,9 +297,15 @@ contract Tournament is ITournament, Auth {
 
   /**
    * @notice Sets addresses
+   * @param vault_ Vault address
+   * @param scholarship_ Scholarship contract address
    */
   function setProtocol(address vault_, address scholarship_) external onlyOwner {
-    vault = vault_;
-    scholarship = Scholarship(scholarship_);
+    if (vault_ != address(0)) {
+      vault = vault_;
+    }
+    if (scholarship_ != address(0)) {
+      scholarship = Scholarship(scholarship_);
+    }
   }
 }
