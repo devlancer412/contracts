@@ -16,6 +16,7 @@ jobs:
 
     env:
       AUTO_MINING_ENABLED: true
+      OPTIMIZER_ENABLED: true
       MINING_INTERVAL: 0
 
     steps:

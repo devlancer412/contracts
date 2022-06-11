@@ -14,7 +14,10 @@ contract Tournament is ITournament, Auth {
   using SafeERC20 for IERC20;
   using SafeCast for uint256;
 
+  // Constants
   uint256 private constant _BASIS_POINTS = 100_00;
+  uint256 private constant _EXPIRATION_PERIOD = 1 weeks;
+  string private constant _MANAGER = "MANAGER";
 
   // Address of USDC
   IERC20 public immutable usdc;
@@ -50,7 +53,7 @@ contract Tournament is ITournament, Auth {
    * @param game Game info
    * @return gameId uint256
    */
-  function createGame(Game memory game) external onlyRole("MANAGER") returns (uint256 gameId) {
+  function createGame(Game memory game) external onlyRole(_MANAGER) returns (uint256 gameId) {
     // Param check
     require(game.checkinStartTime < game.checkinEndTime, "Invalid checkin time window");
     require(game.checkinStartTime >= block.timestamp, "Invalid checkin start time");
@@ -65,7 +68,6 @@ contract Tournament is ITournament, Auth {
     // Create game
     game.roosters = 0;
     game.state = State.ONGOING;
-    game.organizer = msg.sender;
     game.rankingRoot = bytes32(0);
     games.push(game);
 
@@ -84,11 +86,8 @@ contract Tournament is ITournament, Auth {
     uint256 gameId,
     bytes32 rankingRoot,
     uint16[] calldata distributions
-  ) external {
+  ) external onlyRole(_MANAGER) {
     Game storage game = games[gameId];
-
-    // Access check
-    require(msg.sender == game.organizer, "Not organizer");
 
     if (action == Action.ADD) {
       uint256 n = distributions.length;
@@ -165,26 +164,19 @@ contract Tournament is ITournament, Auth {
     uint256 gameId,
     uint256[] calldata roosterIds,
     uint32[] calldata rankings,
-    bytes32[] calldata proofs,
+    bytes32[][] calldata proofs,
     address recipient
   ) external returns (uint256 amount, uint256 fee) {
     Game storage game = games[gameId];
-    uint256 n = roosterIds.length;
 
     // Checks
-    require(n == rankings.length, "Length mismatch");
+    require(roosterIds.length == rankings.length, "Length mismatch");
     require(game.state == State.ENDED, "Not ended");
     require(_isOwner(msg.sender, roosterIds), "Not owner");
 
-    uint256 length = proofs.length / n;
-    bytes32[] memory proof = new bytes32[](length);
-    for (uint256 i = 0; i < n; i++) {
-      // Validate rooster ranking using Merkle proof
-      for (uint256 j = 0; j < length; j++) {
-        proof[j] = proofs[j + length * i];
-      }
+    for (uint256 i = 0; i < roosterIds.length; i++) {
       bytes32 node = keccak256(abi.encodePacked(gameId, roosterIds[i], rankings[i]));
-      require(MerkleProof.verify(proof, game.rankingRoot, node), "Invalid proof");
+      require(MerkleProof.verify(proofs[i], game.rankingRoot, node), "Invalid proof");
       require(
         roosters[gameId][roosterIds[i]] == type(uint32).max,
         "Already claimed or not registered"
@@ -244,13 +236,13 @@ contract Tournament is ITournament, Auth {
    */
   function withdrawExpiredRewards(uint256 gameId, address recipient)
     external
+    onlyRole(_MANAGER)
     returns (uint256 amount)
   {
     Game storage game = games[gameId];
 
     // Checks
-    require(msg.sender == game.organizer, "Not organizer");
-    require(block.timestamp > game.expirationTime, "Not expired");
+    require(block.timestamp > game.gameEndTime + _EXPIRATION_PERIOD, "Not expired");
     require(game.state == State.ENDED, "Not ended");
     require((amount = game.balance) > 0, "Nothing to withdraw");
 

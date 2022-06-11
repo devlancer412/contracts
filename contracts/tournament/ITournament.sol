@@ -8,7 +8,6 @@ interface ITournament {
     uint32 checkinEndTime; // Registeration end date in block.timestamp [4]
     uint32 gameStartTime; // Tournament start date in block.timestamp [4]
     uint32 gameEndTime; // Tournament end date in block.timestamp [4]
-    uint32 expirationTime; // Expiration date to claim in block.timestamp [4]
     uint32 minRoosters; // Minimum roosters required to start [4]
     uint32 maxRoosters; // Maximum roosters for game [4]
     uint32 roosters; // Number of rooosters [4]
@@ -16,10 +15,8 @@ interface ITournament {
     uint128 balance; // Balance of tournament pool in USDC [16]
     bytes32 rankingRoot; // Merkle root of tournament ranking [32]
     uint16[] distributions; // Array of distrubution percentages in hundreds [32 + 2n]
-    // bool enableScholar; // Allow scholars to participate in tournament [1]
     uint16 fee; // Protocol fee in hundreds [4]
     bytes4 requirementId; // Requirement id [4]
-    address organizer; // Organizer [20]
     State state; // Event state [1]
   }
 
