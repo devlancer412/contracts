@@ -37,3 +37,4 @@ const func: DeployFunction = async (hre) => {
 
 export default func;
 func.tags = ["hatching"];
+func.dependencies = ["nfts"];

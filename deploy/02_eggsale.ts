@@ -28,3 +28,4 @@ const func: DeployFunction = async (hre) => {
 
 export default func;
 func.tags = ["eggsale"];
+func.tags = ["egg"];

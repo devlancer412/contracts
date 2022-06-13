@@ -18,3 +18,4 @@ const func: DeployFunction = async (hre) => {
 
 export default func;
 func.tags = ["egg"];
+func.dependencies = ["mocks"];
