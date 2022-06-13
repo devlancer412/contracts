@@ -7,7 +7,6 @@ import { Ship } from "../utils";
 const func: DeployFunction = async (hre) => {
   const { deploy, connect } = await Ship.init(hre);
 
-  await deployments.fixture(["mocks"]);
   let coordiatorAddress;
   let subscriptionId;
 
@@ -31,3 +30,4 @@ const func: DeployFunction = async (hre) => {
 
 export default func;
 func.tags = ["jackpot_ticket"];
+func.dependencies = ["mocks"];
