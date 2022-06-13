@@ -3,7 +3,7 @@ pragma solidity ^0.8.9;
 
 import {RoosterEgg} from "contracts/egg/Egg.sol";
 import {RoosterEggSale} from "contracts/egg/EggSale.sol";
-import {MockUsdc} from "contracts/mocks/Usdc.sol";
+import {MockUsdc} from "contracts/mocks/MockUsdc.sol";
 import "./BasicSetup.sol";
 
 contract EggSaleSetup is BasicSetup {

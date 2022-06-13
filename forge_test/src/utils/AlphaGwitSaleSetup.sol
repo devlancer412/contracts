@@ -5,7 +5,7 @@ import {BasicSetup} from "./BasicSetup.sol";
 import {AlphaGwitSale} from "contracts/gwit/AlphaGwitSale.sol";
 import {AlphaGwit} from "contracts/gwit/AlphaGwit.sol";
 import {Auth} from "contracts/utils/Auth.sol";
-import {MockUsdc} from "contracts/mocks/Usdc.sol";
+import {MockUsdc} from "contracts/mocks/MockUsdc.sol";
 
 contract AlphaGwitSaleSetup is BasicSetup {
   AlphaGwitSale aGwitSale;
