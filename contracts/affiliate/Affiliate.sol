@@ -5,8 +5,11 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Auth} from "../utils/Auth.sol";
 
 contract Affiliate is Auth {
+  // redeem token address
   address public erc20token;
+  // shows redeemed if true => redeemed else not redeemed
   mapping(uint64 => bool) public rewards_redeem;
+  // reward distributor
   address public rewards_distributor;
 
   event Redeem(address redeemer, uint64[] redeem_codes, uint256 redeemed_value);
@@ -17,11 +20,13 @@ contract Affiliate is Auth {
     uint8 v;
   }
 
+  // constructor
   constructor(address _erc20token, address _rewards_distributor) {
     erc20token = _erc20token;
     rewards_distributor = _rewards_distributor;
   }
 
+  // redeem parameter validate function
   function _validRedeemParam(
     address redeemer,
     uint64[] calldata redeem_codes,
@@ -40,6 +45,11 @@ contract Affiliate is Auth {
       );
   }
 
+  // funciton
+  // @param   redeemer: affiliates receiving rewards.
+  // @param   redeem_codes: array of redeem code
+  // @param   values: array of reward value
+  // @param   signature: signature of distributor
   function redeemCode(
     address redeemer,
     uint64[] calldata redeem_codes,
