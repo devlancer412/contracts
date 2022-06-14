@@ -7,8 +7,8 @@ import {Scholarship} from "../scholarship/Scholarship.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 contract Tournament is ITournament, Auth {
   using SafeERC20 for IERC20;
@@ -67,6 +67,26 @@ contract Tournament is ITournament, Auth {
   }
 
   /**
+   * @notice Returns total `games` created
+   * @return uint256
+   */
+  function totalGames() external view returns (uint256) {
+    return games.length;
+  }
+
+  /**
+   * @notice Gets sum of distribution percentages
+   * @param gameId Game id
+   * @return sum uint32
+   */
+  function getDistributionsSum(uint256 gameId) external view returns (uint32 sum) {
+    Game storage game = games[gameId];
+    for (uint256 i = 0; i < game.distributions.length; i++) {
+      sum += game.distributions[i];
+    }
+  }
+
+  /**
    * @notice Creates new game
    * @param game Game info
    * @return gameId uint256
@@ -89,7 +109,7 @@ contract Tournament is ITournament, Auth {
     game.rankingRoot = bytes32(0);
     games.push(game);
 
-    emit NewGame(gameId, game.requirementId, msg.sender);
+    emit CreateGame(gameId, game.requirementId, msg.sender);
   }
 
   /**
@@ -119,6 +139,7 @@ contract Tournament is ITournament, Auth {
     } else if (action == Action.END) {
       require(block.timestamp >= game.gameEndTime, "Game ongoing");
       require(rankingRoot != bytes32(0), "rankingRoot not provided");
+      require(game.roosters >= game.minRoosters, "Not enough roosters");
       game.rankingRoot = rankingRoot;
       game.state = State.ENDED;
     } else if (action == Action.CANCEL) {
@@ -128,7 +149,7 @@ contract Tournament is ITournament, Auth {
       require(game.state == State.ONGOING, "Game ended");
       game.state = State.PAUSED;
     } else if (action == Action.UNPAUSE) {
-      require(game.state != State.PAUSED, "Not paused");
+      require(game.state == State.PAUSED, "Not paused");
       game.state = State.ONGOING;
     }
 
@@ -145,28 +166,28 @@ contract Tournament is ITournament, Auth {
     uint256 gameId,
     uint256[] calldata roosterIds,
     Sig calldata sig
-  ) external {
+  ) external whenNotPaused {
     Game storage game = games[gameId];
-    uint256 n = roosterIds.length;
+    uint256 num = roosterIds.length;
 
     // Checks
     require(block.timestamp >= game.checkinStartTime, "Not started");
     require(block.timestamp < game.checkinEndTime, "Ended");
     require(game.state == State.ONGOING, "Paused or Cancelled");
-    require(n > game.maxRoosters - game.roosters, "Reached limit");
+    require(num < game.maxRoosters - game.roosters, "Reached limit");
     require(_isOwner(msg.sender, roosterIds), "Not owner");
     require(_isQualified(gameId, game.requirementId, roosterIds, sig), "Not qualified");
 
     // Effects
-    for (uint256 i = 0; i < n; i++) {
+    for (uint256 i = 0; i < num; i++) {
       require(roosters[gameId][roosterIds[i]] == 0, "Already registered");
       roosters[gameId][roosterIds[i]] = _MAX_UINT32;
     }
-    game.roosters += n.toUint32();
-    game.balance += (game.entranceFee * n).toUint128();
+    game.roosters += num.toUint32();
+    game.balance += (game.entranceFee * num).toUint128();
 
     // Interactions
-    usdc.safeTransferFrom(msg.sender, address(this), game.entranceFee * n);
+    usdc.safeTransferFrom(msg.sender, address(this), game.entranceFee * num);
 
     emit RegisterGame(gameId, roosterIds, msg.sender);
   }
@@ -181,26 +202,27 @@ contract Tournament is ITournament, Auth {
     uint256 gameId,
     uint256[] calldata roosterIds,
     uint32[] calldata rankings,
-    bytes32[][] calldata proofs,
+    bytes32[][] memory proofs,
     address recipient
-  ) external returns (uint256 amount, uint256 fee) {
+  ) external whenNotPaused returns (uint256 amount, uint256 fee) {
     Game storage game = games[gameId];
 
     // Checks
     require(roosterIds.length == rankings.length, "Length mismatch");
     require(game.state == State.ENDED, "Not ended");
+    require(block.timestamp < game.gameEndTime + _EXPIRATION_PERIOD, "Expired");
     require(_isOwner(msg.sender, roosterIds), "Not owner");
 
+    // Todo: Prove multiple nodes in one go
+    uint256 totalAmount = game.entranceFee * game.roosters;
     for (uint256 i = 0; i < roosterIds.length; i++) {
       bytes32 node = keccak256(abi.encodePacked(gameId, roosterIds[i], rankings[i]));
       require(MerkleProof.verify(proofs[i], game.rankingRoot, node), "Invalid proof");
-      require(roosters[gameId][roosterIds[i]] == _MAX_UINT32, "Already claimed or not registered");
+      require(roosters[gameId][roosterIds[i]] == _MAX_UINT32, "Already claimed or not eligible");
 
       // Set rooster ranking
       roosters[gameId][roosterIds[i]] = rankings[i];
-      amount +=
-        (game.entranceFee * game.roosters * game.distributions[rankings[i]]) /
-        _BASIS_POINTS;
+      amount += (totalAmount * game.distributions[rankings[i]]) / _BASIS_POINTS;
     }
     game.balance -= amount.toUint128();
 
@@ -222,7 +244,7 @@ contract Tournament is ITournament, Auth {
     uint256 gameId,
     uint256[] calldata roosterIds,
     address recipient
-  ) external returns (uint256 amount) {
+  ) external whenNotPaused returns (uint256 amount) {
     Game storage game = games[gameId];
     uint256 num = roosterIds.length;
 
@@ -247,10 +269,9 @@ contract Tournament is ITournament, Auth {
   /**
    * @notice Withdraws expired rewards from tournament pool
    * @param gameId Game id
-   * @param recipient Address of recipient
    * @return amount Amount withdrawn
    */
-  function withdrawExpiredRewards(uint256 gameId, address recipient)
+  function withdrawExpiredRewards(uint256 gameId)
     external
     onlyRole(_MANAGER)
     returns (uint256 amount)
@@ -258,7 +279,7 @@ contract Tournament is ITournament, Auth {
     Game storage game = games[gameId];
 
     // Checks
-    require(block.timestamp > game.gameEndTime + _EXPIRATION_PERIOD, "Not expired");
+    require(block.timestamp >= game.gameEndTime + _EXPIRATION_PERIOD, "Not expired");
     require(game.state == State.ENDED, "Not ended");
     require((amount = game.balance) > 0, "Nothing to withdraw");
 
@@ -266,9 +287,9 @@ contract Tournament is ITournament, Auth {
     game.balance = 0;
 
     // Interactions
-    usdc.safeTransfer(recipient, amount);
+    usdc.safeTransfer(vault, amount);
 
-    emit WithdrawExpiredReward(gameId, amount, recipient);
+    emit WithdrawExpiredRewards(gameId, amount);
   }
 
   function _isOwner(address owner, uint256[] calldata roosterIds) private view returns (bool) {
@@ -284,7 +305,7 @@ contract Tournament is ITournament, Auth {
 
   function _isQualified(
     uint256 gameId,
-    bytes8 requirementId,
+    uint16 requirementId,
     uint256[] calldata roosterIds,
     Sig calldata sig
   ) private view returns (bool) {

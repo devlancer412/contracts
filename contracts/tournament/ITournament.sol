@@ -16,7 +16,7 @@ interface ITournament {
     bytes32 rankingRoot; // Merkle root of tournament ranking [32]
     uint16[] distributions; // Array of distrubution percentages in hundreds [32 + 2n]
     uint16 fee; // Protocol fee in hundreds [4]
-    bytes4 requirementId; // Requirement id [4]
+    uint16 requirementId; // Requirement id [4]
     State state; // Event state [1]
   }
 
@@ -41,7 +41,7 @@ interface ITournament {
     CANCEL
   }
 
-  event NewGame(uint256 indexed gameId, bytes8 indexed requirementId, address indexed organzier);
+  event CreateGame(uint256 indexed gameId, uint16 indexed requirementId, address indexed organzier);
   event SetGame(uint256 indexed gameId, Action indexed action);
   event RegisterGame(uint256 indexed gameId, uint256[] roosterIds, address indexed sender);
   event ClaimReward(
@@ -56,7 +56,7 @@ interface ITournament {
     uint256 amount,
     address indexed recipient
   );
-  event WithdrawExpiredReward(uint256 indexed gameId, uint256 amount, address indexed recipient);
+  event WithdrawExpiredRewards(uint256 indexed gameId, uint256 amount);
 
   error InvalidDeadline();
   error InvalidTimeWindow();
