@@ -1,9 +1,8 @@
 import chai from "chai";
 import { solidity } from "ethereum-waffle";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { fromBN, Ship, toBN } from "../utils";
+import { Ship } from "../utils";
 import {
-  ERC721,
   Gem,
   Gem__factory,
   GWITToken,
@@ -13,16 +12,13 @@ import {
   Store,
   Store__factory,
 } from "../types";
-import { generate_claim, SignedClaim } from "../utils/claims";
+import { generate_claim } from "../utils/claims";
 import { BigNumber, BigNumberish, ContractReceipt, Wallet } from "ethers";
 import { deployments, network } from "hardhat";
-import { parseSpecial } from "../utils/parseSpecial";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import exp from "constants";
 import { mkdirSync, writeFile } from "fs";
 import { resolve } from "path";
 import { homedir } from "os";
-import { signERC2612Permit } from "eth-permit";
 
 chai.use(solidity);
 const { expect } = chai;

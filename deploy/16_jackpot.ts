@@ -1,6 +1,5 @@
 import { BigNumber, BigNumberish } from "ethers";
 import { JackPotTicket__factory, MockVRFCoordinatorV2__factory } from "../types";
-import { deployments } from "hardhat";
 import { DeployFunction } from "hardhat-deploy/types";
 import { Ship } from "../utils";
 

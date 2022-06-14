@@ -1,4 +1,3 @@
-import { deployments } from "hardhat";
 import { DeployFunction } from "hardhat-deploy/types";
 import { FightBetting__factory, JackPotTicket__factory, JackPotTicket } from "../types";
 import { Ship } from "../utils";

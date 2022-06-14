@@ -1,4 +1,3 @@
-import { deployments } from "hardhat";
 import { DeployFunction } from "hardhat-deploy/types";
 import { Rooster__factory, Scholarship__factory } from "../types";
 import { Ship } from "../utils";
