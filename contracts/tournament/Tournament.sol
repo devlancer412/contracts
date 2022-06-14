@@ -130,23 +130,24 @@ contract Tournament is ITournament, Auth {
     if (action == Action.ADD) {
       uint256 num = distributions.length;
       require(block.timestamp < game.checkinStartTime, "Signup started");
-      require(num > 1, "distrubutions not provided");
+      require(num > 0, "distrubutions not provided");
 
       // TODO: pre-package `distributions` and push by batch
       for (uint256 i = 0; i < num; i++) {
         game.distributions.push(distributions[i]);
       }
     } else if (action == Action.END) {
-      require(block.timestamp >= game.gameEndTime, "Game ongoing");
+      require(game.state == State.ONGOING, "Not ongoing");
+      require(block.timestamp >= game.gameEndTime, "Not ended");
       require(rankingRoot != bytes32(0), "rankingRoot not provided");
       require(game.roosters >= game.minRoosters, "Not enough roosters");
       game.rankingRoot = rankingRoot;
       game.state = State.ENDED;
     } else if (action == Action.CANCEL) {
-      require(game.state == State.ONGOING, "Game ended");
+      require(game.state == State.ONGOING, "Not ongoing");
       game.state = State.CANCELLED;
     } else if (action == Action.PAUSE) {
-      require(game.state == State.ONGOING, "Game ended");
+      require(game.state == State.ONGOING, "Not ongoing");
       game.state = State.PAUSED;
     } else if (action == Action.UNPAUSE) {
       require(game.state == State.PAUSED, "Not paused");
@@ -174,7 +175,7 @@ contract Tournament is ITournament, Auth {
     require(block.timestamp >= game.checkinStartTime, "Not started");
     require(block.timestamp < game.checkinEndTime, "Ended");
     require(game.state == State.ONGOING, "Paused or Cancelled");
-    require(num < game.maxRoosters - game.roosters, "Reached limit");
+    require(num <= game.maxRoosters - game.roosters, "Reached limit");
     require(_isOwner(msg.sender, roosterIds), "Not owner");
     require(_isQualified(gameId, game.requirementId, roosterIds, sig), "Not qualified");
 
@@ -227,7 +228,7 @@ contract Tournament is ITournament, Auth {
     game.balance -= amount.toUint128();
 
     // Interactions
-    usdc.safeTransfer(vault, (fee = (amount * game.fee) / _BASIS_POINTS));
+    usdc.safeTransfer(vault, (fee = ((amount * game.fee) / _BASIS_POINTS)));
     usdc.safeTransfer(recipient, amount - fee);
 
     emit ClaimReward(gameId, roosterIds, amount, recipient);
@@ -254,7 +255,7 @@ contract Tournament is ITournament, Auth {
 
     // Effects
     for (uint256 i = 0; i < num; i++) {
-      require(roosters[gameId][roosterIds[i]] == _MAX_UINT32, "Already withdrawn");
+      require(roosters[gameId][roosterIds[i]] == _MAX_UINT32, "Already claimed");
       roosters[gameId][roosterIds[i]] = _MAX_UINT32 - 1;
     }
     amount = game.entranceFee * num;
@@ -266,11 +267,6 @@ contract Tournament is ITournament, Auth {
     emit ClaimRefund(gameId, roosterIds, amount, recipient);
   }
 
-  /**
-   * @notice Withdraws expired rewards from tournament pool
-   * @param gameId Game id
-   * @return amount Amount withdrawn
-   */
   function withdrawExpiredRewards(uint256 gameId)
     external
     onlyRole(_MANAGER)

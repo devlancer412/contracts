@@ -57,10 +57,4 @@ interface ITournament {
     address indexed recipient
   );
   event WithdrawExpiredRewards(uint256 indexed gameId, uint256 amount);
-
-  error InvalidDeadline();
-  error InvalidTimeWindow();
-  error InvalidStartTime();
-  error GameNotFinished();
-  error InvalidAccess();
 }
