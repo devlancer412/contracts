@@ -81,7 +81,7 @@ contract Tournament is ITournament, Auth {
    */
   function getDistributionsSum(uint256 gameId) external view returns (uint32 sum) {
     Game storage game = games[gameId];
-    for (uint256 i = 0; i < game.distributions.length; i++) {
+    for (uint256 i = 1; i < game.distributions.length; i++) {
       sum += game.distributions[i];
     }
   }
@@ -96,7 +96,7 @@ contract Tournament is ITournament, Auth {
     require(game.checkinStartTime < game.checkinEndTime, "Invalid checkin time window");
     require(game.checkinStartTime >= block.timestamp, "Invalid checkin start time");
     require(game.gameStartTime < game.gameEndTime, "Invalid game time window");
-    require(game.gameStartTime > game.checkinEndTime, "Invalid game time window");
+    require(game.gameStartTime > game.checkinEndTime, "Invalid game start time");
     require(game.distributions[0] == 0, "0th index must be 0");
     require(game.fee <= _BASIS_POINTS, "Invalid fee");
 
@@ -214,12 +214,12 @@ contract Tournament is ITournament, Auth {
     require(block.timestamp < game.gameEndTime + _EXPIRATION_PERIOD, "Expired");
     require(_isOwner(msg.sender, roosterIds), "Not owner");
 
-    // Todo: Prove multiple nodes in one go
+    // Todo: Verify multiple nodes in one go
     uint256 totalAmount = game.entranceFee * game.roosters;
     for (uint256 i = 0; i < roosterIds.length; i++) {
       bytes32 node = keccak256(abi.encodePacked(gameId, roosterIds[i], rankings[i]));
       require(MerkleProof.verify(proofs[i], game.rankingRoot, node), "Invalid proof");
-      require(roosters[gameId][roosterIds[i]] == _MAX_UINT32, "Already claimed or not eligible");
+      require(roosters[gameId][roosterIds[i]] == _MAX_UINT32, "Already claimed or not registered");
 
       // Set rooster ranking
       roosters[gameId][roosterIds[i]] = rankings[i];
