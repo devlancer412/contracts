@@ -50,7 +50,7 @@ const setup = deployments.createFixture(async (hre) => {
   };
 });
 
-describe("Store test", () => {
+describe.skip("Store test", () => {
   before(async () => {
     const scaffold = await setup();
     signer = scaffold.users[0];
@@ -108,7 +108,9 @@ describe("Store test", () => {
       const price = 100; // each mint costs 100 of the operating token
       const maxval = 10; // the maximum value to pass to the unique parameter, leave to 0 to send a random uint256 value [0x00_00...00, 0xFF_FF...FF];
       const rx = await (
-        await store.connect(seller).makeListing(tokenType, tokenAddress, tokenId, amount, price, maxval)
+        await store
+          .connect(seller)
+          .makeListing(tokenType, tokenAddress, tokenId, amount, price, maxval)
       ).wait();
 
       const ev = rx.events?.find((event) => event.event === "Listed");
@@ -133,7 +135,9 @@ describe("Store test", () => {
         const last = await store.last_purchase(buyer.address);
         const claim = await generate_claim(signer, buyer.address, last, nonce);
 
-        const purchaseTx = await store.connect(buyer).purchase(buyer.address, [listingId], [amount], claim);
+        const purchaseTx = await store
+          .connect(buyer)
+          .purchase(buyer.address, [listingId], [amount], claim);
         await expect(purchaseTx).to.emit(store, "Sold").withArgs(listingId, buyer.address, amount);
 
         await expect(await rooster.balanceOf(buyer.address)).to.eq(old_balance.add(1));
