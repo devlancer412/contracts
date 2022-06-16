@@ -93,10 +93,19 @@ contract Tournament is ITournament, Auth {
    */
   function createGame(Game memory game) external onlyRole(_MANAGER) returns (uint256 gameId) {
     // Param check
-    require(game.checkinStartTime < game.checkinEndTime, "Invalid checkin time window");
-    require(game.checkinStartTime >= block.timestamp, "Invalid checkin start time");
-    require(game.gameStartTime < game.gameEndTime, "Invalid game time window");
-    require(game.gameStartTime > game.checkinEndTime, "Invalid game start time");
+    require(
+      game.registrationStartTimestamp < game.registrationEndTimestamp,
+      "Invalid registeration time window"
+    );
+    require(game.registrationStartTimestamp >= block.timestamp, "Invalid registeration start time");
+    require(
+      game.tournamentStartTimestamp < game.tournamentEndTimestamp,
+      "Invalid tournament time window"
+    );
+    require(
+      game.tournamentStartTimestamp > game.registrationEndTimestamp,
+      "Invalid tournament start time"
+    );
     require(game.distributions[0] == 0, "0th index must be 0");
     require(game.fee <= _BASIS_POINTS, "Invalid fee");
 
@@ -129,7 +138,7 @@ contract Tournament is ITournament, Auth {
 
     if (action == Action.ADD) {
       uint256 num = distributions.length;
-      require(block.timestamp < game.checkinStartTime, "Signup started");
+      require(block.timestamp < game.registrationStartTimestamp, "Registeration started");
       require(num > 0, "distrubutions not provided");
 
       // TODO: pre-package `distributions` and push by batch
@@ -138,7 +147,7 @@ contract Tournament is ITournament, Auth {
       }
     } else if (action == Action.END) {
       require(game.state == State.ONGOING, "Not ongoing");
-      require(block.timestamp >= game.gameEndTime, "Not ended");
+      require(block.timestamp >= game.tournamentEndTimestamp, "Not ended");
       require(rankingRoot != bytes32(0), "rankingRoot not provided");
       require(game.roosters >= game.minRoosters, "Not enough roosters");
       game.rankingRoot = rankingRoot;
@@ -172,8 +181,8 @@ contract Tournament is ITournament, Auth {
     uint256 num = roosterIds.length;
 
     // Checks
-    require(block.timestamp >= game.checkinStartTime, "Not started");
-    require(block.timestamp < game.checkinEndTime, "Ended");
+    require(block.timestamp >= game.registrationStartTimestamp, "Not started");
+    require(block.timestamp < game.registrationEndTimestamp, "Ended");
     require(game.state == State.ONGOING, "Paused or Cancelled");
     require(num <= game.maxRoosters - game.roosters, "Reached limit");
     require(_isOwner(msg.sender, roosterIds), "Not owner");
@@ -211,7 +220,7 @@ contract Tournament is ITournament, Auth {
     // Checks
     require(roosterIds.length == rankings.length, "Length mismatch");
     require(game.state == State.ENDED, "Not ended");
-    require(block.timestamp < game.gameEndTime + _EXPIRATION_PERIOD, "Expired");
+    require(block.timestamp < game.tournamentEndTimestamp + _EXPIRATION_PERIOD, "Expired");
     require(_isOwner(msg.sender, roosterIds), "Not owner");
 
     // Todo: Verify multiple nodes in one go
@@ -275,7 +284,7 @@ contract Tournament is ITournament, Auth {
     Game storage game = games[gameId];
 
     // Checks
-    require(block.timestamp >= game.gameEndTime + _EXPIRATION_PERIOD, "Not expired");
+    require(block.timestamp >= game.tournamentEndTimestamp + _EXPIRATION_PERIOD, "Not expired");
     require(game.state == State.ENDED, "Not ended");
     require((amount = game.balance) > 0, "Nothing to withdraw");
 

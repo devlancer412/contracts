@@ -37,10 +37,10 @@ describe("Tournament test 🏆", () => {
       const time = await getTime();
 
       const promi = tournament.createGame({
-        checkinStartTime: time + 1000,
-        checkinEndTime: time + 2000,
-        gameStartTime: time + 3000,
-        gameEndTime: time + 4000,
+        registrationStartTimestamp: time + 1000,
+        registrationEndTimestamp: time + 2000,
+        tournamentStartTimestamp: time + 3000,
+        tournamentEndTimestamp: time + 4000,
         minRoosters: 10,
         maxRoosters: 110,
         roosters: 0,
@@ -294,10 +294,10 @@ describe("Tournament test 🏆", () => {
       const time = await getTime();
 
       await tournament.createGame({
-        checkinStartTime: time + 1000,
-        checkinEndTime: time + 2000,
-        gameStartTime: time + 3000,
-        gameEndTime: time + 4000,
+        registrationStartTimestamp: time + 1000,
+        registrationEndTimestamp: time + 2000,
+        tournamentStartTimestamp: time + 3000,
+        tournamentEndTimestamp: time + 4000,
         minRoosters: 10,
         maxRoosters: 100,
         roosters: 0,
@@ -409,10 +409,10 @@ describe("Tournament test 🏆", () => {
           const time = await getTime();
           await expect(
             tournament.createGame({
-              checkinStartTime: time + 1000,
-              checkinEndTime: time + 2000,
-              gameStartTime: time + 3000,
-              gameEndTime: time + 4000,
+              registrationStartTimestamp: time + 1000,
+              registrationEndTimestamp: time + 2000,
+              tournamentStartTimestamp: time + 3000,
+              tournamentEndTimestamp: time + 4000,
               minRoosters: 10,
               maxRoosters: 100,
               roosters: 0,
@@ -445,10 +445,10 @@ describe("Tournament test 🏆", () => {
 
         await expect(
           tournament.createGame({
-            checkinStartTime: time + 1000,
-            checkinEndTime: time + 2000,
-            gameStartTime: time + 3000,
-            gameEndTime: time + 4000,
+            registrationStartTimestamp: time + 1000,
+            registrationEndTimestamp: time + 2000,
+            tournamentStartTimestamp: time + 3000,
+            tournamentEndTimestamp: time + 4000,
             minRoosters: 10,
             maxRoosters: 110,
             roosters: 0,
@@ -472,10 +472,10 @@ describe("Tournament test 🏆", () => {
       it("Reverts if invalid param is passed", async () => {
         const time = await getTime();
         const baseParam = {
-          checkinStartTime: time + 1000,
-          checkinEndTime: time + 2000,
-          gameStartTime: time + 3000,
-          gameEndTime: time + 4000,
+          registrationStartTimestamp: time + 1000,
+          registrationEndTimestamp: time + 2000,
+          tournamentStartTimestamp: time + 3000,
+          tournamentEndTimestamp: time + 4000,
           minRoosters: 10,
           maxRoosters: 100,
           roosters: 0,
@@ -490,18 +490,24 @@ describe("Tournament test 🏆", () => {
         await expect(
           scaffold.tournament.createGame({
             ...baseParam,
-            checkinStartTime: baseParam.checkinEndTime,
+            registrationStartTimestamp: baseParam.registrationEndTimestamp,
           }),
-        ).to.be.revertedWith("Invalid checkin time window");
+        ).to.be.revertedWith("Invalid registeration time window");
         await expect(
-          scaffold.tournament.createGame({ ...baseParam, checkinStartTime: time - 1 }),
-        ).to.be.revertedWith("Invalid checkin start time");
+          scaffold.tournament.createGame({ ...baseParam, registrationStartTimestamp: time - 1 }),
+        ).to.be.revertedWith("Invalid registeration start time");
         await expect(
-          scaffold.tournament.createGame({ ...baseParam, gameStartTime: baseParam.gameEndTime }),
-        ).to.be.revertedWith("Invalid game time window");
+          scaffold.tournament.createGame({
+            ...baseParam,
+            tournamentStartTimestamp: baseParam.tournamentEndTimestamp,
+          }),
+        ).to.be.revertedWith("Invalid tournament time window");
         await expect(
-          scaffold.tournament.createGame({ ...baseParam, gameStartTime: baseParam.checkinEndTime }),
-        ).to.be.revertedWith("Invalid game start time");
+          scaffold.tournament.createGame({
+            ...baseParam,
+            tournamentStartTimestamp: baseParam.registrationEndTimestamp,
+          }),
+        ).to.be.revertedWith("Invalid tournament start time");
         await expect(scaffold.tournament.createGame({ ...baseParam, distributions: [1] })).to.be.revertedWith(
           "0th index must be 0",
         );
@@ -519,10 +525,10 @@ describe("Tournament test 🏆", () => {
           await advanceTimeAndBlock(getRandomNumberBetween(0, 1000));
           const time = await getTime();
           await tournament.createGame({
-            checkinStartTime: time + 10,
-            checkinEndTime: time + 2000,
-            gameStartTime: time + 3000,
-            gameEndTime: time + 4000,
+            registrationStartTimestamp: time + 10,
+            registrationEndTimestamp: time + 2000,
+            tournamentStartTimestamp: time + 3000,
+            tournamentEndTimestamp: time + 4000,
             minRoosters: 10,
             maxRoosters: 100,
             roosters: 0,
@@ -650,19 +656,19 @@ const mintRoosters = async (to: string, amount: number) => {
 const warpTo = async (gameId: number, dst: "CS" | "CE" | "GS" | "GE" | "ET", offset = 0) => {
   switch (dst) {
     case "CS":
-      await setTime((await scaffold.tournament.games(gameId)).checkinStartTime + offset);
+      await setTime((await scaffold.tournament.games(gameId)).registrationStartTimestamp + offset);
       break;
     case "CE":
-      await setTime((await scaffold.tournament.games(gameId)).checkinEndTime + offset);
+      await setTime((await scaffold.tournament.games(gameId)).registrationEndTimestamp + offset);
       break;
     case "GS":
-      await setTime((await scaffold.tournament.games(gameId)).gameStartTime + offset);
+      await setTime((await scaffold.tournament.games(gameId)).tournamentStartTimestamp + offset);
       break;
     case "GE":
-      await setTime((await scaffold.tournament.games(gameId)).gameEndTime + offset);
+      await setTime((await scaffold.tournament.games(gameId)).tournamentEndTimestamp + offset);
       break;
     case "ET":
-      await setTime((await scaffold.tournament.games(gameId)).gameEndTime + 604800 + offset);
+      await setTime((await scaffold.tournament.games(gameId)).tournamentEndTimestamp + 604800 + offset);
       break;
   }
 };

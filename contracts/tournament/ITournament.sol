@@ -4,10 +4,10 @@ pragma solidity >=0.8.4;
 interface ITournament {
   // 5slots
   struct Game {
-    uint32 checkinStartTime; // Registration start date in block.timestamp [4]
-    uint32 checkinEndTime; // Registeration end date in block.timestamp [4]
-    uint32 gameStartTime; // Tournament start date in block.timestamp [4]
-    uint32 gameEndTime; // Tournament end date in block.timestamp [4]
+    uint32 registrationStartTimestamp; // Registration start date in block.timestamp [4]
+    uint32 registrationEndTimestamp; // Registeration end date in block.timestamp [4]
+    uint32 tournamentStartTimestamp; // Tournament start date in block.timestamp [4]
+    uint32 tournamentEndTimestamp; // Tournament end date in block.timestamp [4]
     uint32 minRoosters; // Minimum roosters required to start [4]
     uint32 maxRoosters; // Maximum roosters for game [4]
     uint32 roosters; // Number of rooosters [4]
