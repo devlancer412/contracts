@@ -572,7 +572,7 @@ describe("Tournament test 🏆", () => {
 /** Utility functions **/
 
 const setup = deployments.createFixture(async (hre) => {
-  await deployments.fixture(["tournament"]);
+  await deployments.fixture(["mocks", "nfts", "scholarship", "tournament"]);
   const { connect, accounts } = await Ship.init(hre);
 
   const tournament = await connect(Tournament__factory);
