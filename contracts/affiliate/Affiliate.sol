@@ -8,11 +8,11 @@ contract Affiliate is Auth {
   // redeem token address
   address public erc20token;
   // shows redeemed if true => redeemed else not redeemed
-  mapping(uint64 => bool) public rewards_redeem;
+  mapping(uint64 => uint256) public rewards_redeem;
   // reward distributor
   address public rewards_distributor;
 
-  event Redeem(address redeemer, uint64[] redeem_codes, uint256 redeemed_value);
+  event Redeem(address indexed redeemer, uint64[] redeem_codes, uint256 redeemed_value);
 
   struct Sig {
     bytes32 r;
@@ -30,10 +30,10 @@ contract Affiliate is Auth {
   function _validRedeemParam(
     address redeemer,
     uint64[] calldata redeem_codes,
-    uint256[] calldata values,
+    uint256 totalValue,
     Sig calldata signature
   ) private view returns (bool) {
-    bytes32 messageHash = keccak256(abi.encodePacked(redeemer, redeem_codes, values));
+    bytes32 messageHash = keccak256(abi.encodePacked(redeemer, redeem_codes, totalValue));
     bytes32 ethSignedMessageHash = keccak256(
       abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash)
     );
@@ -53,24 +53,24 @@ contract Affiliate is Auth {
   function redeemCode(
     address redeemer,
     uint64[] calldata redeem_codes,
-    uint256[] calldata values,
+    uint256 totalValue,
     Sig calldata signature
   ) public {
-    require(redeem_codes.length == values.length, "Affiliate:INVALID_PARAM");
     //  keccak256(abi.encodePacked(address, redeem_codes, values)) and make sure that the result of ECRECOVER is rewards_distributor
     require(
-      _validRedeemParam(redeemer, redeem_codes, values, signature),
+      _validRedeemParam(redeemer, redeem_codes, totalValue, signature),
       "Affiliate:SIGNER_NOT_VALID"
     );
 
-    uint256 total_value;
     for (uint256 i = 0; i < redeem_codes.length; i++) {
-      require(!rewards_redeem[redeem_codes[i]], "Affiliate:ALREADY_REDEEMED");
-      rewards_redeem[redeem_codes[i]] = true;
-      total_value += values[i];
+      require(
+        (rewards_redeem[redeem_codes[i] / 256] & (1 << (redeem_codes[i] % 256))) == 0,
+        "Affiliate:ALREADY_REDEEMED"
+      );
+      rewards_redeem[redeem_codes[i] / 256] += (1 << (redeem_codes[i] % 256));
     }
 
-    IERC20(erc20token).transferFrom(rewards_distributor, redeemer, total_value);
-    emit Redeem(redeemer, redeem_codes, total_value);
+    IERC20(erc20token).transferFrom(rewards_distributor, redeemer, totalValue);
+    emit Redeem(redeemer, redeem_codes, totalValue);
   }
 }

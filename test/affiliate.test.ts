@@ -27,8 +27,8 @@ const setup = deployments.createFixture(async (hre) => {
   };
 });
 
-const sign = async (to: string, redeem_codes: number[], values: number[]) => {
-  const hash = solidityKeccak256(["address", "uint64[]", "uint256[]"], [to, redeem_codes, values]);
+const sign = async (to: string, redeem_codes: number[], value: number) => {
+  const hash = solidityKeccak256(["address", "uint64[]", "uint256"], [to, redeem_codes, value]);
   const sig = await signer.signMessage(arrayify(hash));
   const { r, s, v } = splitSignature(sig);
   return {
@@ -56,22 +56,22 @@ describe("Affiliate test", () => {
 
   it("alice call reward", async () => {
     const codes = [0, 1, 2, 3];
-    const values = [100, 200, 100, 250];
+    const value = 650;
 
     const aliceAmount = await usdc.balanceOf(alice.address);
 
-    const signature = await sign(alice.address, codes, values);
-    await affiliate.redeemCode(alice.address, codes, values, signature);
+    const signature = await sign(alice.address, codes, value);
+    await affiliate.redeemCode(alice.address, codes, value, signature);
 
     expect(await usdc.balanceOf(alice.address)).to.eq(aliceAmount.add(650));
   });
 
   it("alice can't redeem again with same code", async () => {
     const codes = [0, 1, 2, 3];
-    const values = [100, 200, 100, 250];
+    const value = 650;
 
-    const signature = await sign(alice.address, codes, values);
-    await expect(affiliate.redeemCode(alice.address, codes, values, signature)).to.be.revertedWith(
+    const signature = await sign(alice.address, codes, value);
+    await expect(affiliate.redeemCode(alice.address, codes, value, signature)).to.be.revertedWith(
       "Affiliate:ALREADY_REDEEMED",
     );
   });

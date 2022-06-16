@@ -16,7 +16,7 @@ contract AffiliateTest is BasicSetup {
   function sign(
     address to,
     uint64[] memory codes,
-    uint256[] memory values
+    uint256 value
   )
     public
     virtual
@@ -26,7 +26,7 @@ contract AffiliateTest is BasicSetup {
       uint8
     )
   {
-    bytes32 messageHash = keccak256(abi.encodePacked(to, codes, values));
+    bytes32 messageHash = keccak256(abi.encodePacked(to, codes, value));
 
     bytes32 digest = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
     (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerSecretKey, digest);
@@ -51,15 +51,11 @@ contract AffiliateTest is BasicSetup {
     codes[2] = 3;
     codes[3] = 4;
 
-    uint256[] memory values = new uint256[](4);
-    values[0] = 100;
-    values[1] = 200;
-    values[2] = 250;
-    values[3] = 100;
+    uint256 value = 650;
 
-    (bytes32 r, bytes32 s, uint8 v) = sign(alice, codes, values);
+    (bytes32 r, bytes32 s, uint8 v) = sign(alice, codes, value);
 
-    affiliate.redeemCode(alice, codes, values, Affiliate.Sig(r, s, v));
+    affiliate.redeemCode(alice, codes, value, Affiliate.Sig(r, s, v));
     assertEq(usdc.balanceOf(signer), 9350);
     assertEq(usdc.balanceOf(alice), 650);
   }
@@ -72,15 +68,11 @@ contract AffiliateTest is BasicSetup {
     codes[2] = 3;
     codes[3] = 4;
 
-    uint256[] memory values = new uint256[](4);
-    values[0] = 100;
-    values[1] = 200;
-    values[2] = 250;
-    values[3] = 100;
+    uint256 value = 650;
 
-    (bytes32 r, bytes32 s, uint8 v) = sign(alice, codes, values);
+    (bytes32 r, bytes32 s, uint8 v) = sign(alice, codes, value);
 
     vm.expectRevert(bytes("Affiliate:ALREADY_REDEEMED"));
-    affiliate.redeemCode(alice, codes, values, Affiliate.Sig(r, s, v));
+    affiliate.redeemCode(alice, codes, value, Affiliate.Sig(r, s, v));
   }
 }
