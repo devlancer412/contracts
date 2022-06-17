@@ -2,16 +2,7 @@ import { expect } from "./chai-setup";
 import { BigNumber, constants, utils, Wallet } from "ethers";
 import hre, { deployments } from "hardhat";
 import { MockUsdc__factory, Rooster__factory, Scholarship__factory, Tournament__factory } from "../types";
-import {
-  advanceTime,
-  advanceTimeAndBlock,
-  fromBN,
-  getRandomNumberBetween,
-  getTime,
-  setTime,
-  Ship,
-  toWei,
-} from "../utils";
+import { advanceTimeAndBlock, fromBN, getRandomNumberBetween, getTime, setTime, Ship, toWei } from "../utils";
 import { arrayify, keccak256, solidityKeccak256, splitSignature } from "ethers/lib/utils";
 import MerkleTree from "merkletreejs";
 
@@ -74,7 +65,7 @@ describe("Tournament test 🏆", () => {
       } = scaffold;
 
       // Warp to check in time
-      await warpTo(gameId, "CS");
+      await warpTo(gameId, "RS");
 
       // Mint roosters and usdc
       const roosterIds = await mintRoosters(alice.address, 3);
@@ -260,7 +251,7 @@ describe("Tournament test 🏆", () => {
       const gameBalanceBefore = game.balance;
       const vaultBalanceBefore = await usdc.balanceOf(accounts.vault.address);
 
-      await warpTo(gameId, "ET");
+      await warpTo(gameId, "EX");
 
       const promi = tournament.connect(accounts.deployer).withdrawExpiredRewards(gameId);
       await expect(promi).to.emit(tournament, "WithdrawExpiredRewards").withArgs(gameId, gameBalanceBefore);
@@ -290,28 +281,8 @@ describe("Tournament test 🏆", () => {
     });
 
     before(async () => {
-      const { tournament } = scaffold;
-      const time = await getTime();
-
-      await tournament.createGame({
-        registrationStartTimestamp: time + 1000,
-        registrationEndTimestamp: time + 2000,
-        tournamentStartTimestamp: time + 3000,
-        tournamentEndTimestamp: time + 4000,
-        minRoosters: 10,
-        maxRoosters: 100,
-        roosters: 0,
-        entranceFee: toWei(100, 6),
-        balance: 0,
-        rankingRoot: constants.HashZero,
-        distributions: [0, 5000, 3000, 1000, 1000],
-        fee: 1000,
-        requirementId: 0,
-        state: 0,
-      });
-      gameId = await currentGameId();
-
-      await warpTo(gameId, "CS", 10);
+      gameId = await createBasicGame();
+      await warpTo(gameId, "RS", 10);
     });
 
     it("Registers 100 roosters", async () => {
@@ -404,7 +375,7 @@ describe("Tournament test 🏆", () => {
         const { tournament } = scaffold;
         const count = 10;
         for (let i = 0; i < count; i++) {
-          await advanceTime(getRandomNumberBetween(0, 1000));
+          await advanceTimeAndBlock(getRandomNumberBetween(0, 1000));
 
           const time = await getTime();
           await expect(
@@ -523,30 +494,13 @@ describe("Tournament test 🏆", () => {
         const { tournament, usdc } = scaffold;
         for (let i = 0; i < 5; i++) {
           await advanceTimeAndBlock(getRandomNumberBetween(0, 1000));
-          const time = await getTime();
-          await tournament.createGame({
-            registrationStartTimestamp: time + 10,
-            registrationEndTimestamp: time + 2000,
-            tournamentStartTimestamp: time + 3000,
-            tournamentEndTimestamp: time + 4000,
-            minRoosters: 10,
-            maxRoosters: 100,
-            roosters: 0,
-            entranceFee: toWei(100, 6),
-            balance: 0,
-            rankingRoot: constants.HashZero,
-            distributions: [0, 5000, 3000, 1000, 1000],
-            fee: 1000,
-            requirementId: 0,
-            state: 0,
-          });
+          const gameId = await createBasicGame();
+          const users = await User.createRandomUsers(5);
 
           const allRoosterIds: number[] = [];
           const amountPerUser = 7;
-          const gameId = await currentGameId();
-          const users = await User.createRandomUsers(5);
 
-          await warpTo(gameId, "CS");
+          await warpTo(gameId, "RS");
 
           {
             const game = await tournament.games(gameId);
@@ -571,7 +525,67 @@ describe("Tournament test 🏆", () => {
           }
         }
       });
+
+      it("Reverts if registered before/after registeration time", async () => {
+        const id = await createBasicGame();
+        await expect(scaffold.tournament.register(id, [], emptySig)).to.be.revertedWith("Not started");
+        await warpTo(id, "RE", 1);
+        await expect(scaffold.tournament.register(id, [], emptySig)).to.be.revertedWith("Ended");
+      });
+
+      it("Reverts if number of roosters exceeds limit", async () => {
+        const id = await createBasicGame();
+        await warpTo(id, "RS");
+
+        const [user] = await User.createRandomUsers(1);
+        await scaffold.usdc.set(user.address, toWei(100, 6).mul(1000));
+        await scaffold.usdc.connect(user.wallet).approve(scaffold.tournament.address, constants.MaxUint256);
+
+        const roosterIds = await user.getRoosters(100);
+        const sig = await sign(id, roosterIds);
+        await expect(scaffold.tournament.connect(user.wallet).register(id, roosterIds, sig)).not.to.be
+          .reverted;
+        await expect(
+          scaffold.tournament.connect(user.wallet).register(id, roosterIds, sig),
+        ).to.be.revertedWith("Reached limit");
+      });
+
+      it("Reverts if non-owner registers game", async () => {
+        const id = await createBasicGame();
+        await warpTo(id, "RS");
+
+        const [user1, user2] = await User.createRandomUsers(2);
+        await scaffold.usdc.set(user1.address, toWei(100, 6).mul(1000));
+        await scaffold.usdc.connect(user1.wallet).approve(scaffold.tournament.address, constants.MaxUint256);
+
+        const roosterIds = await user2.getRoosters(10);
+        const sig = await sign(id, roosterIds);
+        await expect(
+          scaffold.tournament.connect(user1.wallet).register(id, roosterIds, sig),
+        ).to.be.revertedWith("Not owner");
+      });
+
+      it("Reverts if registered multiple times", async () => {
+        const id = await createBasicGame();
+        await warpTo(id, "RS");
+
+        const [user] = await User.createRandomUsers(1);
+        await scaffold.usdc.set(user.address, toWei(100, 6).mul(1000));
+        await scaffold.usdc.connect(user.wallet).approve(scaffold.tournament.address, constants.MaxUint256);
+
+        const roosterIds = await user.getRoosters(50);
+        const sig = await sign(id, roosterIds);
+        await expect(scaffold.tournament.connect(user.wallet).register(id, roosterIds, sig)).not.to.be
+          .reverted;
+        await expect(
+          scaffold.tournament.connect(user.wallet).register(id, roosterIds, sig),
+        ).to.be.revertedWith("Already registered");
+      });
     });
+
+    describe("claimReward", () => {});
+
+    describe("claimRefund", () => {});
   });
 });
 
@@ -600,6 +614,27 @@ const setup = deployments.createFixture(async (hre) => {
     tournament,
   };
 });
+
+const createBasicGame = async () => {
+  const time = await getTime();
+  await scaffold.tournament.createGame({
+    registrationStartTimestamp: time + 1000,
+    registrationEndTimestamp: time + 2000,
+    tournamentStartTimestamp: time + 3000,
+    tournamentEndTimestamp: time + 4000,
+    minRoosters: 10,
+    maxRoosters: 100,
+    roosters: 0,
+    entranceFee: toWei(100, 6),
+    balance: 0,
+    rankingRoot: constants.HashZero,
+    distributions: [0, 5000, 3000, 1000, 1000],
+    fee: 1000,
+    requirementId: 0,
+    state: 0,
+  });
+  return await currentGameId();
+};
 
 const currentGameId = async () => {
   const gameId = (await scaffold.tournament.totalGames()).toNumber() - 1;
@@ -653,12 +688,12 @@ const mintRoosters = async (to: string, amount: number) => {
   return Array.from({ length: amount }, (_, i) => firstRoosterId + i);
 };
 
-const warpTo = async (gameId: number, dst: "CS" | "CE" | "GS" | "GE" | "ET", offset = 0) => {
+const warpTo = async (gameId: number, dst: "RS" | "RE" | "GS" | "GE" | "EX", offset = 0) => {
   switch (dst) {
-    case "CS":
+    case "RS":
       await setTime((await scaffold.tournament.games(gameId)).registrationStartTimestamp + offset);
       break;
-    case "CE":
+    case "RE":
       await setTime((await scaffold.tournament.games(gameId)).registrationEndTimestamp + offset);
       break;
     case "GS":
@@ -667,7 +702,7 @@ const warpTo = async (gameId: number, dst: "CS" | "CE" | "GS" | "GE" | "ET", off
     case "GE":
       await setTime((await scaffold.tournament.games(gameId)).tournamentEndTimestamp + offset);
       break;
-    case "ET":
+    case "EX":
       await setTime((await scaffold.tournament.games(gameId)).tournamentEndTimestamp + 604800 + offset);
       break;
   }
