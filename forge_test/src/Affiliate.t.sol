@@ -14,6 +14,7 @@ contract AffiliateTest is BasicSetup {
 
   //  utils
   function sign(
+    address sender,
     address to,
     uint64[] memory codes,
     uint256 value
@@ -26,7 +27,7 @@ contract AffiliateTest is BasicSetup {
       uint8
     )
   {
-    bytes32 messageHash = keccak256(abi.encodePacked(to, codes, value));
+    bytes32 messageHash = keccak256(abi.encodePacked(sender, to, codes, value));
 
     bytes32 digest = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
     (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerSecretKey, digest);
@@ -53,8 +54,9 @@ contract AffiliateTest is BasicSetup {
 
     uint256 value = 650;
 
-    (bytes32 r, bytes32 s, uint8 v) = sign(alice, codes, value);
+    (bytes32 r, bytes32 s, uint8 v) = sign(alice, alice, codes, value);
 
+    vm.prank(alice);
     affiliate.redeemCode(alice, codes, value, Affiliate.Sig(r, s, v));
     assertEq(usdc.balanceOf(signer), 9350);
     assertEq(usdc.balanceOf(alice), 650);
@@ -70,8 +72,9 @@ contract AffiliateTest is BasicSetup {
 
     uint256 value = 650;
 
-    (bytes32 r, bytes32 s, uint8 v) = sign(alice, codes, value);
+    (bytes32 r, bytes32 s, uint8 v) = sign(alice, alice, codes, value);
 
+    vm.prank(alice);
     vm.expectRevert(bytes("Affiliate:ALREADY_REDEEMED"));
     affiliate.redeemCode(alice, codes, value, Affiliate.Sig(r, s, v));
   }

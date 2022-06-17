@@ -33,7 +33,9 @@ contract Affiliate is Auth {
     uint256 totalValue,
     Sig calldata signature
   ) private view returns (bool) {
-    bytes32 messageHash = keccak256(abi.encodePacked(redeemer, redeem_codes, totalValue));
+    bytes32 messageHash = keccak256(
+      abi.encodePacked(msg.sender, redeemer, redeem_codes, totalValue)
+    );
     bytes32 ethSignedMessageHash = keccak256(
       abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash)
     );
@@ -72,5 +74,9 @@ contract Affiliate is Auth {
 
     IERC20(erc20token).transferFrom(rewards_distributor, redeemer, totalValue);
     emit Redeem(redeemer, redeem_codes, totalValue);
+  }
+
+  function redeemed(uint64 code) public view returns (bool) {
+    return (rewards_redeem[code / 256] & (1 << (code % 256))) != 0;
   }
 }
