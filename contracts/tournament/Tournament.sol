@@ -146,14 +146,14 @@ contract Tournament is ITournament, Auth {
         game.distributions.push(distributions[i]);
       }
     } else if (action == Action.END) {
-      require(game.state == State.ONGOING, "Not ongoing");
+      // require(game.state == State.ONGOING || game.state == State.ENDED, "Not ongoing");
       require(block.timestamp >= game.tournamentEndTimestamp, "Not ended");
       require(rankingRoot != bytes32(0), "rankingRoot not provided");
       require(game.roosters >= game.minRoosters, "Not enough roosters");
       game.rankingRoot = rankingRoot;
       game.state = State.ENDED;
     } else if (action == Action.CANCEL) {
-      require(game.state == State.ONGOING, "Not ongoing");
+      // require(game.state == State.ONGOING, "Not ongoing");
       game.state = State.CANCELLED;
     } else if (action == Action.PAUSE) {
       require(game.state == State.ONGOING, "Not ongoing");
