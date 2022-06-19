@@ -110,13 +110,13 @@ describe("Tournament test 🏆", () => {
       expect(game.state).to.eq(State.PAUSED);
     });
 
-    it("Reverts if paused again", async () => {
+    it("Cannot pause if paused", async () => {
       await expect(scaffold.tournament.setGame(Action.PAUSE, gameId, 0, zeroBytes32, [])).to.be.revertedWith(
         "Not ongoing",
       );
     });
 
-    it("Reverts on register when paused", async () => {
+    it("Cannot register if paused", async () => {
       await expect(scaffold.tournament.register(gameId, [1], emptySig)).to.be.revertedWith(
         "Paused or Cancelled",
       );
@@ -199,7 +199,7 @@ describe("Tournament test 🏆", () => {
       expect(await tournament.roosters(gameId, 1)).to.eq(1);
     });
 
-    it("Fails to claim if already claimed", async () => {
+    it("Cannot claim prize if already claimed", async () => {
       await expect(
         scaffold.tournament
           .connect(scaffold.accounts.alice)
@@ -207,7 +207,7 @@ describe("Tournament test 🏆", () => {
       ).to.be.revertedWith("Already claimed or not registered");
     });
 
-    it("Fails to claim without valid proof", async () => {
+    it("Cannot claim prize if valid proof is not provided", async () => {
       await expect(
         scaffold.tournament
           .connect(scaffold.accounts.alice)
@@ -220,7 +220,7 @@ describe("Tournament test 🏆", () => {
       ).to.be.revertedWith("Invalid proof");
     });
 
-    it("Fails to claim if non-owner claims", async () => {
+    it("Cannot claim prize by non-rooster owner", async () => {
       await expect(
         scaffold.tournament
           .connect(scaffold.accounts.bob)
@@ -259,11 +259,11 @@ describe("Tournament test 🏆", () => {
       expect(await tournament.batchQuery(gameId, [3, 4])).to.eql([2, 3]);
     });
 
-    it("Reverts to collect expired reward before expiration", async () => {
+    it("Cannot withdraw expired rewards if not expired", async () => {
       await expect(scaffold.tournament.withdrawExpiredRewards(gameId)).to.be.revertedWith("Not expired");
     });
 
-    it("Collects expired rewards", async () => {
+    it("Withdraws expired rewards", async () => {
       const { tournament, usdc, accounts } = scaffold;
       let game = await tournament.games(gameId);
       const gameBalanceBefore = game.balance;
@@ -280,7 +280,7 @@ describe("Tournament test 🏆", () => {
       expect(await usdc.balanceOf(accounts.vault.address)).to.eq(vaultBalanceBefore.add(gameBalanceBefore));
     });
 
-    it("Fails to claim after expiration", async () => {
+    it("Cannot claim reward if expired", async () => {
       await expect(
         scaffold.tournament
           .connect(users[1].wallet)
@@ -397,7 +397,7 @@ describe("Tournament test 🏆", () => {
       expect(await tournament.batchQuery(gameId, allRoosters)).to.eql(new Array(100).fill(maxUint32 - 1));
     });
 
-    it("Reverts if refund is already claimed", async () => {
+    it("Cannot claim refund if already claimed", async () => {
       const user = users[0];
       await expect(
         scaffold.tournament.connect(user.wallet).claimRefund(gameId, user.roosters, user.address),
@@ -481,7 +481,7 @@ describe("Tournament test 🏆", () => {
         expect(await tournament.totalGames()).to.eq(1);
       });
 
-      it("Reverts if invalid param is passed", async () => {
+      it("Cannot create game if invalid param is passed", async () => {
         const time = await getTime();
         const baseParam: ITournament.GameStruct = {
           registrationStartTimestamp: time + 1000,
@@ -567,14 +567,14 @@ describe("Tournament test 🏆", () => {
         }
       });
 
-      it("Reverts if registered before/after registeration time", async () => {
+      it("Cannot register after/before registeration time", async () => {
         const id = await createBasicGame();
         await expect(scaffold.tournament.register(id, [], emptySig)).to.be.revertedWith("Not started");
         await warpTo(id, "RE", 1);
         await expect(scaffold.tournament.register(id, [], emptySig)).to.be.revertedWith("Ended");
       });
 
-      it("Reverts if number of roosters exceeds limit", async () => {
+      it("Cannot register if number of roosters exceeds limit", async () => {
         const id = await createBasicGame();
         await warpTo(id, "RS");
 
@@ -591,7 +591,7 @@ describe("Tournament test 🏆", () => {
         ).to.be.revertedWith("Reached limit");
       });
 
-      it("Reverts if non-owner registers game", async () => {
+      it("Cannot register by non-rooster owner", async () => {
         const id = await createBasicGame();
         await warpTo(id, "RS");
 
@@ -606,7 +606,7 @@ describe("Tournament test 🏆", () => {
         ).to.be.revertedWith("Not owner");
       });
 
-      it("Reverts if registered multiple times", async () => {
+      it("Cannot register same roosters", async () => {
         const id = await createBasicGame();
         await warpTo(id, "RS");
 
@@ -624,9 +624,64 @@ describe("Tournament test 🏆", () => {
       });
     });
 
-    describe("claimReward", () => {});
+    describe("claimReward", () => {
+      it("Cannot claim if roosterIds and rankings array length mismatch", async () => {
+        const gameId = await createBasicGame();
+        await expect(
+          scaffold.tournament.claimReward(gameId, [1], [], [[]], constants.AddressZero),
+        ).to.be.revertedWith("Length mismatch");
+      });
 
-    describe("claimRefund", () => {});
+      it("Cannot claim if not ended", async () => {
+        const gameId = await createBasicGame();
+        await expect(
+          scaffold.tournament.claimReward(gameId, [], [], [[]], constants.AddressZero),
+        ).to.be.revertedWith("Not ended");
+      });
+
+      it("Cannot claim if expired", async () => {
+        const gameId = await createBasicGame({ minRoosters: 0 });
+        await warpTo(gameId, "GE");
+        await scaffold.tournament.setGame(Action.END, gameId, 0, oneBytes32, []);
+        await warpTo(gameId, "EX");
+
+        await expect(
+          scaffold.tournament.claimReward(gameId, [], [], [[]], constants.AddressZero),
+        ).to.be.revertedWith("Expired");
+      });
+
+      it("Cannot claim by non-owner", async () => {
+        const gameId = await createBasicGame({ minRoosters: 0 });
+        await warpTo(gameId, "GE");
+        await scaffold.tournament.setGame(Action.END, gameId, 0, oneBytes32, []);
+        const [user1, user2] = await User.createRandomUsers(2);
+        const roosterIds = await user1.getRoosters(2);
+        await expect(
+          scaffold.tournament
+            .connect(user2.wallet)
+            .claimReward(gameId, roosterIds, [1, 2], [[]], constants.AddressZero),
+        ).to.be.revertedWith("Not owner");
+      });
+    });
+
+    describe("claimRefund", () => {
+      it("Cannot claim if not cancelled", async () => {
+        const gameId = await createBasicGame();
+        await expect(scaffold.tournament.claimRefund(gameId, [1], constants.AddressZero)).to.be.revertedWith(
+          "Not cancelled",
+        );
+      });
+
+      it("Cannot claim by non-owner", async () => {
+        const gameId = await createBasicGame({ minRoosters: 0 });
+        await scaffold.tournament.setGame(Action.CANCEL, gameId, 0, oneBytes32, []);
+        const [user1, user2] = await User.createRandomUsers(2);
+        const roosterIds = await user1.getRoosters(2);
+        await expect(
+          scaffold.tournament.connect(user2.wallet).claimRefund(gameId, roosterIds, constants.AddressZero),
+        ).to.be.revertedWith("Not owner");
+      });
+    });
   });
 });
 
@@ -656,7 +711,7 @@ const setup = deployments.createFixture(async (hre) => {
   };
 });
 
-const createBasicGame = async () => {
+const createBasicGame = async (override?: Partial<ITournament.GameStruct>) => {
   const time = await getTime();
   await scaffold.tournament.createGame({
     registrationStartTimestamp: time + 1000,
@@ -673,6 +728,7 @@ const createBasicGame = async () => {
     state: 0,
     rankingRoot: constants.HashZero,
     distributions: [0, 5000, 3000, 1000, 1000],
+    ...override,
   });
   return await currentGameId();
 };
@@ -817,6 +873,7 @@ enum Action {
 
 const maxUint32 = 2 ** 32 - 1;
 const zeroBytes32 = constants.HashZero;
+const oneBytes32 = "0x0000000000000000000000000000000000000000000000000000000000000001";
 const emptySig = {
   r: zeroBytes32,
   s: zeroBytes32,
