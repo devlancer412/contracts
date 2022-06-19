@@ -2,7 +2,7 @@
 pragma solidity >=0.8.4;
 
 interface ITournament {
-  // 5slots
+  // 4slots
   struct Game {
     uint32 registrationStartTimestamp; // Registration start date in block.timestamp [4]
     uint32 registrationEndTimestamp; // Registeration end date in block.timestamp [4]
@@ -11,13 +11,13 @@ interface ITournament {
     uint32 minRoosters; // Minimum roosters required to start [4]
     uint32 maxRoosters; // Maximum roosters for game [4]
     uint32 roosters; // Number of rooosters [4]
-    uint128 entranceFee; // Entrance fee in USDC [16]
-    uint128 balance; // Balance of tournament pool in USDC [16]
+    uint64 entranceFee; // Entrance fee in USDC [8]
+    uint64 balance; // Balance of tournament pool in USDC [8]
+    uint64 prizePool; // Prize pool in USDC [8]
+    uint16 fee; // Protocol fee in hundreds [2]
+    State state; // Event state [1]
     bytes32 rankingRoot; // Merkle root of tournament ranking [32]
     uint16[] distributions; // Array of distrubution percentages in hundreds [32 + 2n]
-    uint16 fee; // Protocol fee in hundreds [4]
-    uint16 requirementId; // Requirement id [4]
-    State state; // Event state [1]
   }
 
   struct Sig {
@@ -35,13 +35,14 @@ interface ITournament {
 
   enum Action {
     ADD,
+    FUND,
     END,
     PAUSE,
     UNPAUSE,
     CANCEL
   }
 
-  event CreateGame(uint256 indexed gameId, uint16 indexed requirementId, address indexed organzier);
+  event CreateGame(uint256 indexed gameId, address indexed organzier);
   event SetGame(uint256 indexed gameId, Action indexed action);
   event RegisterGame(uint256 indexed gameId, uint256[] roosterIds, address indexed sender);
   event ClaimReward(

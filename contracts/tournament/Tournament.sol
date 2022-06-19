@@ -77,9 +77,9 @@ contract Tournament is ITournament, Auth {
   /**
    * @notice Gets sum of distribution percentages
    * @param gameId Game id
-   * @return sum uint32
+   * @return sum uint16
    */
-  function getDistributionsSum(uint256 gameId) external view returns (uint32 sum) {
+  function getDistributionsSum(uint256 gameId) external view returns (uint16 sum) {
     Game storage game = games[gameId];
     for (uint256 i = 1; i < game.distributions.length; i++) {
       sum += game.distributions[i];
@@ -114,29 +114,34 @@ contract Tournament is ITournament, Auth {
 
     // Initialize and create game
     game.roosters = 0;
+    game.balance = 0;
+    game.prizePool = 0;
     game.state = State.ONGOING;
     game.rankingRoot = bytes32(0);
     games.push(game);
 
-    emit CreateGame(gameId, game.requirementId, msg.sender);
+    emit CreateGame(gameId, msg.sender);
   }
 
   /**
    * @notice Sets state of game
    * @param action Action enum
    * @param gameId Game id
+   * @param fundAmount Amount to fund in USDC
    * @param rankingRoot Merkle root of ranking
    * @param distributions Distrubtion percentages to add.
    */
   function setGame(
     Action action,
     uint256 gameId,
+    uint256 fundAmount,
     bytes32 rankingRoot,
     uint16[] calldata distributions
   ) external onlyRole(_MANAGER) {
     Game storage game = games[gameId];
 
     if (action == Action.ADD) {
+      // Add distributions percentages
       uint256 num = distributions.length;
       require(block.timestamp < game.registrationStartTimestamp, "Registeration started");
       require(num > 0, "distrubutions not provided");
@@ -145,20 +150,35 @@ contract Tournament is ITournament, Auth {
       for (uint256 i = 0; i < num; i++) {
         game.distributions.push(distributions[i]);
       }
+    } else if (action == Action.FUND) {
+      // Fund to prize pool
+      require(game.state != State.ENDED, "Ended");
+      require(fundAmount > 0, "Amount not provided");
+      game.balance += fundAmount.toUint64();
+      game.prizePool += fundAmount.toUint64();
+      usdc.safeTransferFrom(msg.sender, address(this), fundAmount);
     } else if (action == Action.END) {
-      // require(game.state == State.ONGOING || game.state == State.ENDED, "Not ongoing");
+      // End game
       require(block.timestamp >= game.tournamentEndTimestamp, "Not ended");
       require(rankingRoot != bytes32(0), "rankingRoot not provided");
       require(game.roosters >= game.minRoosters, "Not enough roosters");
       game.rankingRoot = rankingRoot;
       game.state = State.ENDED;
     } else if (action == Action.CANCEL) {
-      // require(game.state == State.ONGOING, "Not ongoing");
+      // Cancel game and withdraw funded rewards
+      require(game.state == State.ONGOING, "Not ongoing");
+      uint256 fundedAmount = game.prizePool - game.roosters * game.entranceFee;
       game.state = State.CANCELLED;
+      if (fundedAmount > 0) {
+        game.balance -= fundedAmount.toUint64();
+        usdc.safeTransfer(vault, fundedAmount);
+      }
     } else if (action == Action.PAUSE) {
+      // Pause game
       require(game.state == State.ONGOING, "Not ongoing");
       game.state = State.PAUSED;
     } else if (action == Action.UNPAUSE) {
+      // Unpause game
       require(game.state == State.PAUSED, "Not paused");
       game.state = State.ONGOING;
     }
@@ -171,12 +191,13 @@ contract Tournament is ITournament, Auth {
    * @param gameId Game id
    * @param roosterIds List of roosters to register
    * @param sig Signature for tournament qualification
+   * @return amount Total USDC paid
    */
   function register(
     uint256 gameId,
     uint256[] calldata roosterIds,
     Sig calldata sig
-  ) external whenNotPaused {
+  ) external whenNotPaused returns (uint256 amount) {
     Game storage game = games[gameId];
     uint256 num = roosterIds.length;
 
@@ -186,7 +207,7 @@ contract Tournament is ITournament, Auth {
     require(game.state == State.ONGOING, "Paused or Cancelled");
     require(num <= game.maxRoosters - game.roosters, "Reached limit");
     require(_isOwner(msg.sender, roosterIds), "Not owner");
-    require(_isQualified(gameId, game.requirementId, roosterIds, sig), "Not qualified");
+    require(_isQualified(gameId, roosterIds, sig), "Not qualified");
 
     // Effects
     for (uint256 i = 0; i < num; i++) {
@@ -194,10 +215,11 @@ contract Tournament is ITournament, Auth {
       roosters[gameId][roosterIds[i]] = _MAX_UINT32;
     }
     game.roosters += num.toUint32();
-    game.balance += (game.entranceFee * num).toUint128();
+    game.balance += ((amount = game.entranceFee * num)).toUint64();
+    game.prizePool += amount.toUint64();
 
     // Interactions
-    usdc.safeTransferFrom(msg.sender, address(this), game.entranceFee * num);
+    usdc.safeTransferFrom(msg.sender, address(this), amount);
 
     emit RegisterGame(gameId, roosterIds, msg.sender);
   }
@@ -207,6 +229,8 @@ contract Tournament is ITournament, Auth {
    * @param gameId Game id
    * @param roosterIds List of rooster ids
    * @param rankings List of rankings
+   * @return amount Total USDC rewarded
+   * @return fee Fee in USDC
    */
   function claimReward(
     uint256 gameId,
@@ -223,8 +247,7 @@ contract Tournament is ITournament, Auth {
     require(block.timestamp < game.tournamentEndTimestamp + _EXPIRATION_PERIOD, "Expired");
     require(_isOwner(msg.sender, roosterIds), "Not owner");
 
-    // Todo: Verify multiple nodes in one go
-    uint256 totalAmount = game.entranceFee * game.roosters;
+    // Individual Checks & Effects
     for (uint256 i = 0; i < roosterIds.length; i++) {
       bytes32 node = keccak256(abi.encodePacked(gameId, roosterIds[i], rankings[i]));
       require(MerkleProof.verify(proofs[i], game.rankingRoot, node), "Invalid proof");
@@ -232,12 +255,15 @@ contract Tournament is ITournament, Auth {
 
       // Set rooster ranking
       roosters[gameId][roosterIds[i]] = rankings[i];
-      amount += (totalAmount * game.distributions[rankings[i]]) / _BASIS_POINTS;
+      // Sum up distribution percentages
+      amount += game.distributions[rankings[i]];
     }
-    game.balance -= amount.toUint128();
+    amount = (game.prizePool * amount) / _BASIS_POINTS;
+    fee = (amount * game.fee) / _BASIS_POINTS;
+    game.balance -= amount.toUint64();
 
     // Interactions
-    usdc.safeTransfer(vault, (fee = ((amount * game.fee) / _BASIS_POINTS)));
+    usdc.safeTransfer(vault, fee);
     usdc.safeTransfer(recipient, amount - fee);
 
     emit ClaimReward(gameId, roosterIds, amount, recipient);
@@ -262,13 +288,13 @@ contract Tournament is ITournament, Auth {
     require(game.state == State.CANCELLED, "Not cancelled");
     require(_isOwner(msg.sender, roosterIds), "Not owner");
 
-    // Effects
+    // Individual Checks & Effects
     for (uint256 i = 0; i < num; i++) {
       require(roosters[gameId][roosterIds[i]] == _MAX_UINT32, "Already claimed");
       roosters[gameId][roosterIds[i]] = _MAX_UINT32 - 1;
     }
     amount = game.entranceFee * num;
-    game.balance -= amount.toUint128();
+    game.balance -= amount.toUint64();
 
     // Interactions
     usdc.safeTransfer(recipient, amount);
@@ -310,11 +336,10 @@ contract Tournament is ITournament, Auth {
 
   function _isQualified(
     uint256 gameId,
-    uint16 requirementId,
     uint256[] calldata roosterIds,
     Sig calldata sig
   ) private view returns (bool) {
-    bytes32 messageHash = keccak256(abi.encodePacked(gameId, requirementId, roosterIds));
+    bytes32 messageHash = keccak256(abi.encodePacked(gameId, roosterIds));
     bytes32 ethSignedMessageHash = keccak256(
       abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash)
     );

@@ -1,6 +1,7 @@
 import { expect } from "./chai-setup";
 import { BigNumber, constants, utils, Wallet } from "ethers";
 import hre, { deployments } from "hardhat";
+import { ITournament } from "../types/contracts/tournament/Tournament";
 import { MockUsdc__factory, Rooster__factory, Scholarship__factory, Tournament__factory } from "../types";
 import { advanceTimeAndBlock, fromBN, getRandomNumberBetween, getTime, setTime, Ship, toWei } from "../utils";
 import { arrayify, keccak256, solidityKeccak256, splitSignature } from "ethers/lib/utils";
@@ -37,15 +38,13 @@ describe("Tournament test 🏆", () => {
         roosters: 0,
         entranceFee: toWei(100, 6),
         balance: 0,
+        prizePool: 0,
+        fee: 1000,
+        state: 0,
         rankingRoot: constants.HashZero,
         distributions: [0, 5000, 3000, 1000, 1000],
-        fee: 1000,
-        requirementId: 0,
-        state: 0,
       });
-      await expect(promi)
-        .to.emit(tournament, "CreateGame")
-        .withArgs(0, 0, scaffold.accounts.deployer.address);
+      await expect(promi).to.emit(tournament, "CreateGame").withArgs(0, scaffold.accounts.deployer.address);
 
       gameId = await currentGameId();
       const game = await tournament.games(gameId);
@@ -88,7 +87,7 @@ describe("Tournament test 🏆", () => {
     it("Pauses game", async () => {
       const { tournament, accounts } = scaffold;
 
-      const promi = tournament.connect(accounts.deployer).setGame(Action.PAUSE, gameId, zeroBytes32, []);
+      const promi = tournament.connect(accounts.deployer).setGame(Action.PAUSE, gameId, 0, zeroBytes32, []);
       await expect(promi).to.emit(tournament, "SetGame").withArgs(gameId, Action.PAUSE);
 
       const game = await tournament.games(gameId);
@@ -96,7 +95,7 @@ describe("Tournament test 🏆", () => {
     });
 
     it("Reverts if paused again", async () => {
-      await expect(scaffold.tournament.setGame(Action.PAUSE, gameId, zeroBytes32, [])).to.be.revertedWith(
+      await expect(scaffold.tournament.setGame(Action.PAUSE, gameId, 0, zeroBytes32, [])).to.be.revertedWith(
         "Not ongoing",
       );
     });
@@ -109,7 +108,7 @@ describe("Tournament test 🏆", () => {
 
     it("Unpauses game", async () => {
       const { tournament } = scaffold;
-      const promi = tournament.setGame(Action.UNPAUSE, gameId, zeroBytes32, []);
+      const promi = tournament.setGame(Action.UNPAUSE, gameId, 0, zeroBytes32, []);
       await expect(promi).to.emit(tournament, "SetGame").withArgs(gameId, Action.UNPAUSE);
 
       const game = await tournament.games(gameId);
@@ -153,7 +152,7 @@ describe("Tournament test 🏆", () => {
       const winners = [1, 3, 4, 5];
       rankingTree = new RankingTree(gameId, winners);
 
-      const promi = tournament.setGame(Action.END, gameId, rankingTree.root, []);
+      const promi = tournament.setGame(Action.END, gameId, 0, rankingTree.root, []);
       await expect(promi).to.emit(tournament, "SetGame").withArgs(gameId, Action.END);
 
       const game = await tournament.games(gameId);
@@ -326,7 +325,7 @@ describe("Tournament test 🏆", () => {
 
     it("Cancels game", async () => {
       const { tournament } = scaffold;
-      const promi = tournament.setGame(Action.CANCEL, gameId, zeroBytes32, []);
+      const promi = tournament.setGame(Action.CANCEL, gameId, 0, zeroBytes32, []);
       await expect(promi).to.emit(tournament, "SetGame").withArgs(gameId, Action.CANCEL);
 
       const game = await tournament.games(gameId);
@@ -389,15 +388,15 @@ describe("Tournament test 🏆", () => {
               roosters: 0,
               entranceFee: toWei(100, 6),
               balance: 0,
+              prizePool: 0,
+              fee: 1000,
+              state: 0,
               rankingRoot: constants.HashZero,
               distributions: [0, 5000, 3000, 1000, 1000],
-              fee: 1000,
-              requirementId: 0,
-              state: 0,
             }),
           )
             .to.emit(tournament, "CreateGame")
-            .withArgs(i, 0, scaffold.accounts.deployer.address);
+            .withArgs(i, scaffold.accounts.deployer.address);
 
           const gameId = await currentGameId();
           const game = await tournament.games(gameId);
@@ -425,15 +424,15 @@ describe("Tournament test 🏆", () => {
             roosters: 0,
             entranceFee: toWei(100, 6),
             balance: 0,
+            prizePool: 0,
+            fee: 1000,
+            state: 0,
             rankingRoot: constants.HashZero,
             distributions: [0, ...new Array(1000).fill(10)],
-            fee: 1000,
-            requirementId: 0,
-            state: 0,
           }),
         )
           .to.emit(tournament, "CreateGame")
-          .withArgs(0, 0, scaffold.accounts.deployer.address);
+          .withArgs(0, scaffold.accounts.deployer.address);
 
         const gameId = await currentGameId();
         expect(await tournament.getDistributionsSum(gameId)).to.eq(10000);
@@ -442,7 +441,7 @@ describe("Tournament test 🏆", () => {
 
       it("Reverts if invalid param is passed", async () => {
         const time = await getTime();
-        const baseParam = {
+        const baseParam: ITournament.GameStruct = {
           registrationStartTimestamp: time + 1000,
           registrationEndTimestamp: time + 2000,
           tournamentStartTimestamp: time + 3000,
@@ -452,11 +451,11 @@ describe("Tournament test 🏆", () => {
           roosters: 0,
           entranceFee: toWei(100, 6),
           balance: 0,
+          prizePool: 0,
+          fee: 1000,
+          state: 0,
           rankingRoot: constants.HashZero,
           distributions: [0, 5000, 3000, 1000, 1000],
-          fee: 1000,
-          requirementId: 0,
-          state: 0,
         };
         await expect(
           scaffold.tournament.createGame({
@@ -627,11 +626,11 @@ const createBasicGame = async () => {
     roosters: 0,
     entranceFee: toWei(100, 6),
     balance: 0,
+    prizePool: 0,
+    fee: 1000,
+    state: 0,
     rankingRoot: constants.HashZero,
     distributions: [0, 5000, 3000, 1000, 1000],
-    fee: 1000,
-    requirementId: 0,
-    state: 0,
   });
   return await currentGameId();
 };
@@ -709,8 +708,7 @@ const warpTo = async (gameId: number, dst: "RS" | "RE" | "GS" | "GE" | "EX", off
 };
 
 const sign = async (gameId: number, roosterIds: number[]) => {
-  const requirementId = (await scaffold.tournament.games(gameId)).requirementId;
-  const hash = solidityKeccak256(["uint256", "uint16", "uint256[]"], [gameId, requirementId, roosterIds]);
+  const hash = solidityKeccak256(["uint256", "uint256[]"], [gameId, roosterIds]);
   const sig = await scaffold.accounts.signer.signMessage(arrayify(hash));
   const { r, s, v } = splitSignature(sig);
   return {
@@ -768,6 +766,7 @@ enum State {
 
 enum Action {
   ADD,
+  FUND,
   END,
   PAUSE,
   UNPAUSE,
