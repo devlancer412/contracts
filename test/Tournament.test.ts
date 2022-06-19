@@ -51,9 +51,24 @@ describe("Tournament test 🏆", () => {
       expect(gameId).to.eq(0);
       expect(game.rankingRoot).to.eq(constants.HashZero);
       expect(game.balance).to.eq(0);
+      expect(game.prizePool).to.eq(0);
       expect(game.state).to.eq(State.ONGOING);
       expect(await tournament.getDistributionsSum(gameId)).to.eq(10000);
       expect(await tournament.totalGames()).to.eq(1);
+    });
+
+    it("Adds sponsor funds", async () => {
+      const fundAmount = toWei(100, 6);
+      await scaffold.usdc.set(scaffold.accounts.deployer.address, fundAmount);
+      await scaffold.usdc.approve(scaffold.tournament.address, constants.MaxUint256);
+      await expect(scaffold.tournament.setGame(Action.FUND, gameId, fundAmount, zeroBytes32, []))
+        .to.emit(scaffold.tournament, "SetGame")
+        .withArgs(0, Action.FUND);
+
+      const game = await scaffold.tournament.games(gameId);
+      expect(game.prizePool).to.eq(fundAmount);
+      expect(game.balance).to.eq(fundAmount);
+      expect(await scaffold.usdc.balanceOf(scaffold.tournament.address)).to.eq(fundAmount);
     });
 
     it("Registers 3 roosters", async () => {
@@ -79,8 +94,9 @@ describe("Tournament test 🏆", () => {
       // Assert
       const game = await tournament.games(gameId);
       expect(game.roosters).to.eq(3);
-      expect(game.balance).to.eq(toWei(100, 6).mul(3));
-      expect(await usdc.balanceOf(tournament.address)).to.eq(toWei(100, 6).mul(3));
+      expect(game.balance).to.eq(game.entranceFee.mul(3).add(toWei(100, 6)));
+      expect(game.prizePool).to.eq(game.entranceFee.mul(3).add(toWei(100, 6)));
+      expect(await usdc.balanceOf(tournament.address)).to.eq(game.entranceFee.mul(3).add(toWei(100, 6)));
       expect(await tournament.batchQuery(gameId, roosterIds)).to.eql(new Array(3).fill(maxUint32));
     });
 
@@ -126,7 +142,6 @@ describe("Tournament test 🏆", () => {
         // Mint roosters and usdc
         const roosterIds = await user.getRoosters(amountPerUser);
         const sig = await sign(gameId, roosterIds);
-        await scaffold.rooster.connect(user.wallet).setApprovalForAll(tournament.address, true);
         await usdc.set(user.address, toWei(100, 6).mul(amountPerUser));
         await usdc.connect(user.wallet).approve(tournament.address, constants.MaxUint256);
         allRoosterIds.push(...roosterIds);
@@ -139,8 +154,11 @@ describe("Tournament test 🏆", () => {
       // Assert
       const game = await tournament.games(gameId);
       expect(game.roosters).to.eq(103);
-      expect(game.balance).to.eq(toWei(100, 6).mul(game.roosters));
-      expect(await usdc.balanceOf(tournament.address)).to.eq(toWei(100, 6).mul(game.roosters));
+      expect(game.balance).to.eq(game.entranceFee.mul(game.roosters).add(toWei(100, 6)));
+      expect(game.prizePool).to.eq(game.entranceFee.mul(game.roosters).add(toWei(100, 6)));
+      expect(await usdc.balanceOf(tournament.address)).to.eq(
+        game.entranceFee.mul(game.roosters).add(toWei(100, 6)),
+      );
       expect(await tournament.batchQuery(gameId, allRoosterIds)).to.eql(new Array(100).fill(maxUint32));
     });
 
@@ -174,6 +192,7 @@ describe("Tournament test 🏆", () => {
 
       const game = await tournament.games(gameId);
       expect(game.balance).to.eq(amount);
+      expect(game.prizePool).to.eq(game.entranceFee.mul(game.roosters).add(toWei(100, 6)));
       expect(await usdc.balanceOf(accounts.alice.address)).to.eq(amount.sub(fee));
       expect(await usdc.balanceOf(accounts.vault.address)).to.eq(fee);
       expect(await usdc.balanceOf(tournament.address)).to.eq(amount);
@@ -213,7 +232,7 @@ describe("Tournament test 🏆", () => {
       const { tournament, usdc, accounts } = scaffold;
       let game = await tournament.games(gameId);
 
-      const totalAmount = game.entranceFee.mul(game.roosters);
+      const totalAmount = game.prizePool;
       const amount = totalAmount.mul(3).div(10).add(totalAmount.mul(1).div(10)); // 30% + 10%
       const fee = amount.div(10); // 10%
 
@@ -284,6 +303,20 @@ describe("Tournament test 🏆", () => {
       await warpTo(gameId, "RS", 10);
     });
 
+    it("Adds million dollar sponsor funds", async () => {
+      const fundAmount = toWei(1_000_000, 6);
+      await scaffold.usdc.set(scaffold.accounts.deployer.address, fundAmount);
+      await scaffold.usdc.approve(scaffold.tournament.address, constants.MaxUint256);
+      await expect(scaffold.tournament.setGame(Action.FUND, gameId, fundAmount, zeroBytes32, []))
+        .to.emit(scaffold.tournament, "SetGame")
+        .withArgs(0, Action.FUND);
+
+      const game = await scaffold.tournament.games(gameId);
+      expect(game.prizePool).to.eq(fundAmount);
+      expect(game.balance).to.eq(fundAmount);
+      expect(await scaffold.usdc.balanceOf(scaffold.tournament.address)).to.eq(fundAmount);
+    });
+
     it("Registers 100 roosters", async () => {
       const { tournament, usdc } = scaffold;
       const allRoosterIds: number[] = [];
@@ -317,19 +350,28 @@ describe("Tournament test 🏆", () => {
       {
         const game = await tournament.games(gameId);
         expect(game.roosters).to.eq(100);
-        expect(game.balance).to.eq(game.entranceFee.mul(game.roosters));
-        expect(await usdc.balanceOf(tournament.address)).to.eq(game.entranceFee.mul(game.roosters));
+        expect(game.balance).to.eq(game.entranceFee.mul(game.roosters).add(toWei(1_000_000, 6)));
+        expect(game.prizePool).to.eq(game.entranceFee.mul(game.roosters).add(toWei(1_000_000, 6)));
+        expect(await usdc.balanceOf(tournament.address)).to.eq(
+          game.entranceFee.mul(game.roosters).add(toWei(1_000_000, 6)),
+        );
         expect(await tournament.batchQuery(gameId, allRoosterIds)).to.eql(new Array(100).fill(maxUint32));
       }
     });
 
     it("Cancels game", async () => {
-      const { tournament } = scaffold;
+      const { tournament, usdc, accounts } = scaffold;
+      await usdc.set(accounts.vault.address, 0);
+
       const promi = tournament.setGame(Action.CANCEL, gameId, 0, zeroBytes32, []);
       await expect(promi).to.emit(tournament, "SetGame").withArgs(gameId, Action.CANCEL);
 
       const game = await tournament.games(gameId);
       expect(game.state).to.eq(State.CANCELLED);
+      expect(game.balance).to.eq(game.entranceFee.mul(game.roosters));
+      expect(game.prizePool).to.eq(game.entranceFee.mul(game.roosters).add(toWei(1_000_000, 6)));
+      expect(await usdc.balanceOf(tournament.address)).to.eq(game.entranceFee.mul(game.roosters));
+      expect(await usdc.balanceOf(accounts.vault.address)).to.eq(toWei(1_000_000, 6));
     });
 
     it("Claims refund", async () => {
