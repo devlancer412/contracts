@@ -20,6 +20,18 @@ interface ITournament {
     uint16[] distributions; // Array of distrubution percentages in hundreds [32 + 2n]
   }
 
+  struct CreateGameParam {
+    uint32 registrationStartTimestamp;
+    uint32 registrationEndTimestamp;
+    uint32 tournamentStartTimestamp;
+    uint32 tournamentEndTimestamp;
+    uint32 minRoosters;
+    uint32 maxRoosters;
+    uint64 entranceFee;
+    uint16 fee;
+    uint16[] distributions;
+  }
+
   struct Sig {
     bytes32 r;
     bytes32 s;

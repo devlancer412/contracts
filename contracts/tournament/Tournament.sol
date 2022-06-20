@@ -88,10 +88,14 @@ contract Tournament is ITournament, Auth {
 
   /**
    * @notice Creates new game
-   * @param game Game info
+   * @param game CreateGameParam new game info
    * @return gameId uint256
    */
-  function createGame(Game memory game) external onlyRole(_MANAGER) returns (uint256 gameId) {
+  function createGame(CreateGameParam calldata game)
+    external
+    onlyRole(_MANAGER)
+    returns (uint256 gameId)
+  {
     // Param check
     require(
       game.registrationStartTimestamp < game.registrationEndTimestamp,
@@ -113,12 +117,23 @@ contract Tournament is ITournament, Auth {
     gameId = games.length;
 
     // Initialize and create game
-    game.roosters = 0;
-    game.balance = 0;
-    game.prizePool = 0;
-    game.state = State.ONGOING;
-    game.rankingRoot = bytes32(0);
-    games.push(game);
+    Game memory newGame = Game({
+      registrationStartTimestamp: game.registrationStartTimestamp,
+      registrationEndTimestamp: game.registrationEndTimestamp,
+      tournamentStartTimestamp: game.tournamentStartTimestamp,
+      tournamentEndTimestamp: game.tournamentEndTimestamp,
+      minRoosters: game.minRoosters,
+      maxRoosters: game.maxRoosters,
+      roosters: 0,
+      entranceFee: game.entranceFee,
+      balance: 0,
+      prizePool: 0,
+      fee: game.fee,
+      state: State.ONGOING,
+      rankingRoot: bytes32(0),
+      distributions: game.distributions
+    });
+    games.push(newGame);
 
     emit CreateGame(gameId, msg.sender);
   }
@@ -152,7 +167,7 @@ contract Tournament is ITournament, Auth {
       }
     } else if (action == Action.FUND) {
       // Fund to prize pool
-      require(game.state != State.ENDED, "Ended");
+      require(game.state != State.ENDED && game.state != State.CANCELLED, "Ended or cancelled");
       require(fundAmount > 0, "Amount not provided");
       game.balance += fundAmount.toUint64();
       game.prizePool += fundAmount.toUint64();
