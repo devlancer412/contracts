@@ -35,13 +35,8 @@ describe("Tournament test 🏆", () => {
         tournamentEndTimestamp: time + 4000,
         minRoosters: 10,
         maxRoosters: 110,
-        roosters: 0,
         entranceFee: toWei(100, 6),
-        balance: 0,
-        prizePool: 0,
         fee: 1000,
-        state: 0,
-        rankingRoot: constants.HashZero,
         distributions: [0, 5000, 3000, 1000, 1000],
       });
       await expect(promi).to.emit(tournament, "CreateGame").withArgs(0, scaffold.accounts.deployer.address);
@@ -220,7 +215,7 @@ describe("Tournament test 🏆", () => {
       ).to.be.revertedWith("Invalid proof");
     });
 
-    it("Cannot claim prize by non-rooster owner", async () => {
+    it("Cannot be claimed by non-owner", async () => {
       await expect(
         scaffold.tournament
           .connect(scaffold.accounts.bob)
@@ -427,13 +422,8 @@ describe("Tournament test 🏆", () => {
               tournamentEndTimestamp: time + 4000,
               minRoosters: 10,
               maxRoosters: 100,
-              roosters: 0,
               entranceFee: toWei(100, 6),
-              balance: 0,
-              prizePool: 0,
               fee: 1000,
-              state: 0,
-              rankingRoot: constants.HashZero,
               distributions: [0, 5000, 3000, 1000, 1000],
             }),
           )
@@ -463,13 +453,8 @@ describe("Tournament test 🏆", () => {
             tournamentEndTimestamp: time + 4000,
             minRoosters: 10,
             maxRoosters: 110,
-            roosters: 0,
             entranceFee: toWei(100, 6),
-            balance: 0,
-            prizePool: 0,
             fee: 1000,
-            state: 0,
-            rankingRoot: constants.HashZero,
             distributions: [0, ...new Array(1000).fill(10)],
           }),
         )
@@ -481,22 +466,33 @@ describe("Tournament test 🏆", () => {
         expect(await tournament.totalGames()).to.eq(1);
       });
 
+      it("Cannot be executed by non manager", async () => {
+        await expect(
+          scaffold.tournament.connect(scaffold.accounts.alice).createGame({
+            registrationStartTimestamp: 0,
+            registrationEndTimestamp: 0,
+            tournamentStartTimestamp: 0,
+            tournamentEndTimestamp: 0,
+            minRoosters: 10,
+            maxRoosters: 110,
+            entranceFee: toWei(100, 6),
+            fee: 1000,
+            distributions: [0, ...new Array(1000).fill(10)],
+          }),
+        ).to.be.reverted;
+      });
+
       it("Cannot create game if invalid param is passed", async () => {
         const time = await getTime();
-        const baseParam: ITournament.GameStruct = {
+        const baseParam: ITournament.CreateGameParamStruct = {
           registrationStartTimestamp: time + 1000,
           registrationEndTimestamp: time + 2000,
           tournamentStartTimestamp: time + 3000,
           tournamentEndTimestamp: time + 4000,
           minRoosters: 10,
           maxRoosters: 100,
-          roosters: 0,
           entranceFee: toWei(100, 6),
-          balance: 0,
-          prizePool: 0,
           fee: 1000,
-          state: 0,
-          rankingRoot: constants.HashZero,
           distributions: [0, 5000, 3000, 1000, 1000],
         };
         await expect(
@@ -567,7 +563,7 @@ describe("Tournament test 🏆", () => {
         }
       });
 
-      it("Cannot register after/before registeration time", async () => {
+      it("Cannot register before/after registeration time", async () => {
         const id = await createBasicGame();
         await expect(scaffold.tournament.register(id, [], emptySig)).to.be.revertedWith("Not started");
         await warpTo(id, "RE", 1);
@@ -591,7 +587,7 @@ describe("Tournament test 🏆", () => {
         ).to.be.revertedWith("Reached limit");
       });
 
-      it("Cannot register by non-rooster owner", async () => {
+      it("Cannot be registered by non-owner ", async () => {
         const id = await createBasicGame();
         await warpTo(id, "RS");
 
@@ -625,7 +621,7 @@ describe("Tournament test 🏆", () => {
     });
 
     describe("claimReward", () => {
-      it("Cannot claim if roosterIds and rankings array length mismatch", async () => {
+      it("Cannot claim if roosterIds and rankings array length does not match", async () => {
         const gameId = await createBasicGame();
         await expect(
           scaffold.tournament.claimReward(gameId, [1], [], [[]], constants.AddressZero),
@@ -650,7 +646,7 @@ describe("Tournament test 🏆", () => {
         ).to.be.revertedWith("Expired");
       });
 
-      it("Cannot claim by non-owner", async () => {
+      it("Cannot be claimed by non owner", async () => {
         const gameId = await createBasicGame({ minRoosters: 0 });
         await warpTo(gameId, "GE");
         await scaffold.tournament.setGame(Action.END, gameId, 0, oneBytes32, []);
@@ -672,14 +668,154 @@ describe("Tournament test 🏆", () => {
         );
       });
 
-      it("Cannot claim by non-owner", async () => {
-        const gameId = await createBasicGame({ minRoosters: 0 });
+      it("Cannot be claimed by non owner", async () => {
+        const gameId = await createBasicGame();
         await scaffold.tournament.setGame(Action.CANCEL, gameId, 0, oneBytes32, []);
         const [user1, user2] = await User.createRandomUsers(2);
         const roosterIds = await user1.getRoosters(2);
         await expect(
           scaffold.tournament.connect(user2.wallet).claimRefund(gameId, roosterIds, constants.AddressZero),
         ).to.be.revertedWith("Not owner");
+      });
+    });
+
+    describe("withdrawExpiredReward", () => {
+      it("Cannot be executed by non manager", async () => {
+        await expect(scaffold.tournament.connect(scaffold.accounts.alice).withdrawExpiredRewards(0)).to.be
+          .reverted;
+      });
+
+      it("Cannot withdraw before expiration time", async () => {
+        const gameId = await createBasicGame();
+        await expect(scaffold.tournament.withdrawExpiredRewards(gameId)).to.be.revertedWith("Not expired");
+      });
+
+      it("Cannot withdraw if not ended", async () => {
+        const gameId = await createBasicGame({ minRoosters: 0 });
+        await warpTo(gameId, "EX");
+        await expect(scaffold.tournament.withdrawExpiredRewards(gameId)).to.be.revertedWith("Not ended");
+      });
+
+      it("Cannot withdraw if there is nothing to withdraw", async () => {
+        const gameId = await createBasicGame({ minRoosters: 0 });
+        await warpTo(gameId, "GE");
+        await scaffold.tournament.setGame(Action.END, gameId, 0, oneBytes32, []);
+        await warpTo(gameId, "EX");
+        await expect(scaffold.tournament.withdrawExpiredRewards(gameId)).to.be.revertedWith(
+          "Nothing to withdraw",
+        );
+      });
+    });
+
+    describe("setGame", () => {
+      it("Adds distribution percentages", async () => {
+        const gameId = await createBasicGame({ distributions: [0, 1000] });
+        const toAdd = new Array(9).fill(1000);
+        await expect(scaffold.tournament.setGame(Action.ADD, gameId, 0, zeroBytes32, toAdd))
+          .to.emit(scaffold.tournament, "SetGame")
+          .withArgs(gameId, Action.ADD);
+        expect(await scaffold.tournament.getDistributionsSum(gameId)).to.eq(10000);
+      });
+
+      it("Adds 1000 distribution percentages", async () => {
+        const gameId = await createBasicGame({ distributions: [0] });
+        const toAdd = new Array(1000).fill(10);
+        await expect(scaffold.tournament.setGame(Action.ADD, gameId, 0, zeroBytes32, toAdd))
+          .to.emit(scaffold.tournament, "SetGame")
+          .withArgs(gameId, Action.ADD);
+        expect(await scaffold.tournament.getDistributionsSum(gameId)).to.eq(10000);
+      });
+
+      it("Cannot add distribtion pecentages after registeration begins", async () => {
+        const gameId = await createBasicGame({ distributions: [0, 1000] });
+        await warpTo(gameId, "RS");
+        const toAdd = new Array(9).fill(1000);
+        await expect(
+          scaffold.tournament.setGame(Action.ADD, gameId, 0, zeroBytes32, toAdd),
+        ).to.be.revertedWith("Registeration started");
+      });
+
+      it("Funds prize", async () => {
+        const gameId = await createBasicGame();
+        const amount = toWei(1_000_000, 6);
+        await scaffold.usdc.set(scaffold.accounts.deployer.address, amount);
+        await scaffold.usdc.approve(scaffold.tournament.address, constants.MaxUint256);
+        await expect(scaffold.tournament.setGame(Action.FUND, gameId, amount, zeroBytes32, []))
+          .to.emit(scaffold.tournament, "SetGame")
+          .withArgs(gameId, Action.FUND);
+
+        const game = await scaffold.tournament.games(gameId);
+        expect(game.balance).to.eq(amount);
+        expect(game.prizePool).to.eq(amount);
+        expect(await scaffold.usdc.balanceOf(scaffold.tournament.address)).to.eq(amount);
+      });
+
+      it("Cannot fund prize if game is ended", async () => {
+        const gameId = await createBasicGame({ minRoosters: 0 });
+        await warpTo(gameId, "GE");
+        await scaffold.tournament.setGame(Action.END, gameId, 0, oneBytes32, []);
+        await expect(scaffold.tournament.setGame(Action.FUND, gameId, 1, zeroBytes32, [])).to.be.revertedWith(
+          "Ended or cancelled",
+        );
+      });
+
+      it("Cannot fund prize if game is cancelled", async () => {
+        const gameId = await createBasicGame({ minRoosters: 0 });
+        await scaffold.tournament.setGame(Action.CANCEL, gameId, 0, oneBytes32, []);
+        await expect(scaffold.tournament.setGame(Action.FUND, gameId, 1, zeroBytes32, [])).to.be.revertedWith(
+          "Ended or cancelled",
+        );
+      });
+
+      it("Can only cancel if not enough roooster participated", async () => {
+        const gameId = await createBasicGame({ minRoosters: 10 });
+        await scaffold.usdc.set(scaffold.accounts.vault.address, 0);
+        await warpTo(gameId, "RS");
+
+        // Register
+        {
+          const [user] = await User.createRandomUsers(1);
+          const roosterIds = await user.getRoosters(5);
+          const sig = await sign(gameId, roosterIds);
+          await scaffold.usdc.set(user.address, toWei(99999999, 6));
+          await scaffold.usdc.connect(user.wallet).approve(scaffold.tournament.address, constants.MaxUint256);
+          await scaffold.tournament.connect(user.wallet).register(gameId, roosterIds, sig);
+        }
+
+        // Fund
+        {
+          const amount = toWei(1_000_000, 6);
+          await scaffold.usdc.set(scaffold.accounts.deployer.address, amount);
+          await scaffold.usdc.approve(scaffold.tournament.address, constants.MaxUint256);
+          await scaffold.tournament.setGame(Action.FUND, gameId, amount, zeroBytes32, []);
+        }
+
+        await warpTo(gameId, "GE");
+
+        // Try end
+        {
+          await expect(scaffold.tournament.setGame(Action.END, gameId, 0, oneBytes32, [])).to.be.revertedWith(
+            "Not enough roosters",
+          );
+        }
+
+        // Cancel
+        {
+          await expect(scaffold.tournament.setGame(Action.CANCEL, gameId, 0, zeroBytes32, []))
+            .to.emit(scaffold.tournament, "SetGame")
+            .withArgs(gameId, Action.CANCEL);
+
+          const game = await scaffold.tournament.games(gameId);
+          expect(game.balance).to.eq(game.entranceFee.mul(game.roosters));
+          expect(game.state).to.eq(State.CANCELLED);
+          expect(await scaffold.usdc.balanceOf(scaffold.accounts.vault.address)).to.eq(toWei(1_000_000, 6));
+        }
+      });
+
+      it("Cannot be executed by non-manager", async () => {
+        await expect(
+          scaffold.tournament.connect(scaffold.accounts.alice).setGame(Action.ADD, 0, 0, zeroBytes32, []),
+        ).to.be.reverted;
       });
     });
   });
@@ -711,7 +847,7 @@ const setup = deployments.createFixture(async (hre) => {
   };
 });
 
-const createBasicGame = async (override?: Partial<ITournament.GameStruct>) => {
+const createBasicGame = async (override?: Partial<ITournament.CreateGameParamStruct>) => {
   const time = await getTime();
   await scaffold.tournament.createGame({
     registrationStartTimestamp: time + 1000,
@@ -720,13 +856,8 @@ const createBasicGame = async (override?: Partial<ITournament.GameStruct>) => {
     tournamentEndTimestamp: time + 4000,
     minRoosters: 10,
     maxRoosters: 100,
-    roosters: 0,
     entranceFee: toWei(100, 6),
-    balance: 0,
-    prizePool: 0,
     fee: 1000,
-    state: 0,
-    rankingRoot: constants.HashZero,
     distributions: [0, 5000, 3000, 1000, 1000],
     ...override,
   });
