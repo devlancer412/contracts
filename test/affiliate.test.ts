@@ -3,7 +3,16 @@ import chai from "chai";
 import { solidity } from "ethereum-waffle";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { Ship } from "../utils";
-import { MockUsdc, MockUsdc__factory, Affiliate, Affiliate__factory } from "../types";
+import {
+  MockUsdc,
+  MockUsdc__factory,
+  Affiliate,
+  Affiliate__factory,
+  RoosterEggSale,
+  RoosterEggSale__factory,
+  RoosterEgg,
+  RoosterEgg__factory,
+} from "../types";
 import { deployments } from "hardhat";
 
 chai.use(solidity);
@@ -11,6 +20,8 @@ const { expect } = chai;
 
 let usdc: MockUsdc;
 let affiliate: Affiliate;
+let eggSale: RoosterEggSale;
+let egg: RoosterEgg;
 let signer: SignerWithAddress;
 let alice: SignerWithAddress;
 let bob: SignerWithAddress;
@@ -18,7 +29,7 @@ let bob: SignerWithAddress;
 const setup = deployments.createFixture(async (hre) => {
   const ship = await Ship.init(hre);
   const { accounts, users } = ship;
-  await deployments.fixture(["mocks", "affiliate"]);
+  await deployments.fixture(["mocks", "affiliate", "eggsale", "egg"]);
 
   return {
     ship,
@@ -47,6 +58,8 @@ describe("Affiliate test", () => {
 
     usdc = await scaffold.ship.connect(MockUsdc__factory);
     affiliate = await scaffold.ship.connect(Affiliate__factory);
+    eggSale = await scaffold.ship.connect(RoosterEggSale__factory);
+    egg = await scaffold.ship.connect(RoosterEgg__factory);
 
     bob = scaffold.accounts.bob;
     alice = scaffold.accounts.alice;
@@ -77,5 +90,19 @@ describe("Affiliate test", () => {
     await expect(
       affiliate.connect(signer).redeemCode(alice.address, codes, value, signature),
     ).to.be.revertedWith("Affiliate:ALREADY_REDEEMED");
+  });
+
+  it("Eggsale test", async () => {
+    const aliceUsdcAmount = await usdc.balanceOf(alice.address);
+    const aliceEggAmount = await egg.balanceOf(alice.address);
+    const distributorUsdcAmount = await usdc.balanceOf(signer.address);
+
+    await usdc.connect(alice).approve(affiliate.address, 500);
+    const tx = await affiliate.connect(alice).buyEggWithAffiliate(alice.address, 10, bob.address);
+    await tx.wait();
+
+    expect(await usdc.balanceOf(alice.address)).to.eq(aliceUsdcAmount.sub(500));
+    expect(await usdc.balanceOf(signer.address)).to.eq(distributorUsdcAmount.add(500));
+    expect(await egg.balanceOf(alice.address)).to.eq(aliceEggAmount.add(10));
   });
 });

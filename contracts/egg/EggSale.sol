@@ -44,6 +44,10 @@ contract RoosterEggSale is AccessControl {
   //Check if nonce is used (nonce => boolean)
   mapping(bytes32 => bool) private _nonceUsed;
 
+  // for affiliate sale
+  // address of affiliate contract
+  address private affiliateAddress;
+
   event Purchase(address indexed purchaser, uint256 amount, uint256 value);
   event EggSaleSet(
     uint256 supply,
@@ -204,5 +208,25 @@ contract RoosterEggSale is AccessControl {
 
   function transferEggContractOwnership(address newOwner) external onlyOwner {
     egg.transferOwnership(newOwner);
+  }
+
+  // for affiliate sell
+  function setAffiliateContract(address _address) public onlyOwner {
+    affiliateAddress = _address;
+  }
+
+  modifier onlyAffiliate() {
+    // console.log(msg.sender, affiliateAddress);
+    require(msg.sender == affiliateAddress, "EggSale:NOT_AFFILIATE");
+    _;
+  }
+
+  function affiliateSale(uint256 amount, address to) public onlyAffiliate {
+    //Interactions
+    // usdc.transferFrom(from, usdcDistination, affiliatePrice * amount);
+    bytes memory callData = abi.encodeWithSelector(egg.mintEggs.selector, to, amount);
+    (bool success, ) = address(egg).call(callData);
+
+    if (!success) revert("mint reverted");
   }
 }

@@ -3,16 +3,22 @@ pragma solidity ^0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Auth} from "../utils/Auth.sol";
+import {RoosterEggSale} from "../egg/EggSale.sol";
 
 contract Affiliate is Auth {
   // redeem token address
   address public erc20token;
   // shows redeemed if true => redeemed else not redeemed
-  mapping(uint64 => uint256) public rewards_redeem;
+  mapping(uint64 => uint256) public rewardsRedeem;
   // reward distributor
-  address public rewards_distributor;
+  address public rewardsDistributor;
+  // address eggcontract
+  address private eggSaleContract;
+  // price of egg in affiliate sale
+  uint256 private eggPrice;
 
   event Redeem(address indexed redeemer, uint64[] redeem_codes, uint256 redeemed_value);
+  event EggPurcharsed(address indexed affiliate, uint256 amount);
 
   struct Sig {
     bytes32 r;
@@ -21,9 +27,9 @@ contract Affiliate is Auth {
   }
 
   // constructor
-  constructor(address _erc20token, address _rewards_distributor) {
+  constructor(address _erc20token, address _rewardsDistributor) {
     erc20token = _erc20token;
-    rewards_distributor = _rewards_distributor;
+    rewardsDistributor = _rewardsDistributor;
   }
 
   // redeem parameter validate function
@@ -58,7 +64,7 @@ contract Affiliate is Auth {
     uint256 totalValue,
     Sig calldata signature
   ) public {
-    //  keccak256(abi.encodePacked(address, redeem_codes, values)) and make sure that the result of ECRECOVER is rewards_distributor
+    //  keccak256(abi.encodePacked(address, redeem_codes, values)) and make sure that the result of ECRECOVER is rewardsDistributor
     require(
       _validRedeemParam(redeemer, redeem_codes, totalValue, signature),
       "Affiliate:SIGNER_NOT_VALID"
@@ -66,17 +72,53 @@ contract Affiliate is Auth {
 
     for (uint256 i = 0; i < redeem_codes.length; i++) {
       require(
-        (rewards_redeem[redeem_codes[i] / 256] & (1 << (redeem_codes[i] % 256))) == 0,
+        (rewardsRedeem[redeem_codes[i] / 256] & (1 << (redeem_codes[i] % 256))) == 0,
         "Affiliate:ALREADY_REDEEMED"
       );
-      rewards_redeem[redeem_codes[i] / 256] += (1 << (redeem_codes[i] % 256));
+      rewardsRedeem[redeem_codes[i] / 256] += (1 << (redeem_codes[i] % 256));
     }
 
-    IERC20(erc20token).transferFrom(rewards_distributor, redeemer, totalValue);
+    IERC20(erc20token).transferFrom(rewardsDistributor, redeemer, totalValue);
     emit Redeem(redeemer, redeem_codes, totalValue);
   }
 
+  // function
+  // @param   code: redeem code
+  // @return  if redeemed return true else return false
   function redeemed(uint64 code) public view returns (bool) {
-    return (rewards_redeem[code / 256] & (1 << (code % 256))) != 0;
+    return (rewardsRedeem[code / 256] & (1 << (code % 256))) != 0;
+  }
+
+  // function
+  // @param   to: distination that eggs go
+  // @param   amount: amount of egg
+  // @param   affiliate: affiliate of this transaction
+  function buyEggWithAffiliate(
+    address to,
+    uint256 amount,
+    address affiliate
+  ) public {
+    require(eggSaleContract != address(0), "Affiliate:NOT_SETTED");
+    RoosterEggSale eggSale;
+    bytes memory callReq = abi.encodeWithSelector(eggSale.affiliateSale.selector, amount, to);
+
+    (bool success, bytes memory result) = eggSaleContract.call(callReq);
+
+    if (!success) {
+      revert("Call reverted");
+    }
+
+    IERC20(erc20token).transferFrom(msg.sender, rewardsDistributor, amount * eggPrice);
+    emit EggPurcharsed(affiliate, amount);
+  }
+
+  // change contract states
+  function setEggSaleData(address _address, uint256 _price) public onlyOwner {
+    eggSaleContract = _address;
+    eggPrice = _price;
+  }
+
+  function setDistributor(address _address) public onlyOwner {
+    rewardsDistributor = _address;
   }
 }

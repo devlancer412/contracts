@@ -23,8 +23,11 @@ const func: DeployFunction = async (hre) => {
     await deploy(RoosterEggSale__factory, {
       args: [usdc.address, egg.address, wallet, signer, minted],
     });
+    const eggSale = await connect(RoosterEggSale__factory);
+    await egg.connect(accounts.deployer).transferOwnership(eggSale.address);
   }
 };
 
 export default func;
 func.tags = ["eggsale"];
+func.dependencies = ["egg"];
