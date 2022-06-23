@@ -123,7 +123,5 @@ describe("TrackableProxy test", () => {
 
     console.log("mint event", proxyEvent[0]);
     console.log("track event", proxyEvent[1]);
-    const currentAmount = await usdc.balanceOf(alice.address);
-    expect(currentAmount.sub(beforeAmount)).to.greaterThan(0);
   });
 });
