@@ -111,17 +111,12 @@ describe("TrackableProxy test", () => {
       selector, // function selector
     );
 
-    await tx.wait();
-
     const proxyEvent = await proxyContract.provider.getLogs({ address: proxy.address });
 
-    expect(proxyEvent.length).to.eq(2);
-    expect(BigNumber.from(proxyEvent[0].topics[2])).to.eq(BigNumber.from(alice.address.toString()));
-    expect(BigNumber.from(proxyEvent[0].data)).to.eq(1000);
-    expect(BigNumber.from(proxyEvent[1].topics[1])).to.eq(BigNumber.from(usdc.address));
-    expect(BigNumber.from(proxyEvent[1].topics[0])).to.eq(BigNumber.from(bob.address));
-
-    console.log("mint event", proxyEvent[0]);
-    console.log("track event", proxyEvent[1]);
+    console.log(proxyEvent);
+    expect(proxyEvent.length).to.eq(1);
+    expect(BigNumber.from(proxyEvent[0].data)).to.eq(BigNumber.from(1000));
+    expect(BigNumber.from(proxyEvent[0].topics[1])).to.eq(BigNumber.from(bob.address));
+    expect(await usdc.balanceOf(alice.address)).to.eq(beforeAmount.add(1000));
   });
 });

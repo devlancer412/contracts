@@ -6,13 +6,14 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract TrackableProxy is Ownable {
-  event FunctionCalled(address indexed to, address indexed affiliate, uint32[] data);
+  event Purchase(address indexed affiliate, uint256 amount);
 
   // event Test(address indexed implement, address indexed , uint256 len)
 
   constructor() {}
 
   function _fallback() internal {
+    bytes32 _id = keccak256(abi.encode("Purchase(address indexed, uint256)"));
     assembly {
       // Copy msg.data. We take full control of memory in this inline assembly
       // block because it will not return to Solidity code. We overwrite the
@@ -30,9 +31,9 @@ contract TrackableProxy is Ownable {
 
       // Call the implementation.
       // out and outsize are 0 because we don't know the size yet.
-      let result := delegatecall(gas(), to, add(dataPtr, 0x20), len, 0, 0)
+      let result := call(gas(), to, callvalue(), add(dataPtr, 0x20), len, 0, 0)
 
-      log2(dataPtr, add(len, 0x20), affiliate, to)
+      log2(add(dataPtr, len), 0x20, _id, affiliate)
       // Copy the returned data.
       returndatacopy(0, 0, returndatasize())
 
