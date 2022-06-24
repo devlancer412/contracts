@@ -47,6 +47,8 @@ contract RoosterEggSale is AccessControl {
   // for affiliate sale
   // address of affiliate contract
   address private affiliateAddress;
+  // price of affiliate sale
+  uint256 public affiliatePrice;
 
   event Purchase(address indexed purchaser, uint256 amount, uint256 value);
   event EggSaleSet(
@@ -211,8 +213,9 @@ contract RoosterEggSale is AccessControl {
   }
 
   // for affiliate sell
-  function setAffiliateContract(address _address) public onlyOwner {
+  function setAffiliateData(address _address, uint256 _price) public onlyOwner {
     affiliateAddress = _address;
+    affiliatePrice = _price;
   }
 
   modifier onlyAffiliate() {
@@ -221,9 +224,13 @@ contract RoosterEggSale is AccessControl {
     _;
   }
 
-  function buyEggFromAffiliate(uint256 amount, address to) public onlyAffiliate {
+  function buyEggWithAffiliate(
+    address from,
+    address to,
+    uint256 amount
+  ) public onlyAffiliate {
     //Interactions
-    // usdc.transferFrom(from, usdcDistination, affiliatePrice * amount);
+    usdc.transferFrom(from, vault, affiliatePrice * amount);
     bytes memory callData = abi.encodeWithSelector(egg.mintEggs.selector, to, amount);
     (bool success, ) = address(egg).call(callData);
 

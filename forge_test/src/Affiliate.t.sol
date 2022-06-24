@@ -9,6 +9,16 @@ import {MockUsdc} from "contracts/mocks/Usdc.sol";
 import {Auth} from "contracts/utils/Auth.sol";
 import "./utils/BasicSetup.sol";
 
+interface IAffiliate {
+  function buyEggWithAffiliate(
+    address,
+    uint256,
+    address,
+    address,
+    uint32
+  ) external;
+}
+
 contract AffiliateTest is BasicSetup {
   Affiliate affiliate;
   MockUsdc usdc;
@@ -46,8 +56,7 @@ contract AffiliateTest is BasicSetup {
     egg = new RoosterEgg(IERC20(address(usdc)), vault, 0, "asdf");
     eggSale = new RoosterEggSale(address(usdc), address(egg), vault, signer, 0);
     egg.transferOwnership(address(eggSale));
-    eggSale.setAffiliateContract(address(affiliate));
-    affiliate.setEggSaleData(address(eggSale), 50);
+    eggSale.setAffiliateData(address(affiliate), 50);
 
     affiliate.grantRole("DISTRIBUTOR", signer);
     usdc.mint(signer, 10000);
@@ -93,9 +102,15 @@ contract AffiliateTest is BasicSetup {
     affiliate.setDistributor(vault);
     usdc.mint(alice, 500);
     vm.prank(alice);
-    usdc.approve(address(affiliate), 500);
+    usdc.approve(address(eggSale), 500);
     vm.prank(alice);
-    affiliate.buyEggWithAffiliate(alice, 10, bob);
+    IAffiliate(address(affiliate)).buyEggWithAffiliate(
+      alice,
+      10,
+      address(eggSale),
+      bob,
+      uint32(RoosterEggSale.buyEggWithAffiliate.selector)
+    );
 
     assertEq(usdc.balanceOf(alice), 0);
     assertEq(egg.balanceOf(alice), 10);

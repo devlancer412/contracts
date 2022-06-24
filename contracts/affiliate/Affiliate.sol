@@ -3,19 +3,15 @@ pragma solidity ^0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Auth} from "../utils/Auth.sol";
-import {RoosterEggSale} from "../egg/EggSale.sol";
+import {TrackableProxy} from "../utils/proxy/TrackableProxy.sol";
 
-contract Affiliate is Auth {
+contract Affiliate is TrackableProxy, Auth {
   // redeem token address
   address public erc20token;
   // shows redeemed if true => redeemed else not redeemed
   mapping(uint64 => uint256) public rewardsRedeem;
   // reward distributor
   address public rewardsDistributor;
-  // address eggcontract
-  address private eggSaleContract;
-  // price of egg in affiliate sale
-  uint256 private eggPrice;
 
   event Redeem(address indexed redeemer, uint64[] redeem_codes, uint256 redeemed_value);
   event EggPurcharsed(address indexed affiliate, uint256 amount);
@@ -87,35 +83,6 @@ contract Affiliate is Auth {
   // @return  if redeemed return true else return false
   function redeemed(uint64 code) public view returns (bool) {
     return (rewardsRedeem[code / 256] & (1 << (code % 256))) != 0;
-  }
-
-  // function
-  // @param   to: distination that eggs go
-  // @param   amount: amount of egg
-  // @param   affiliate: affiliate of this transaction
-  function buyEggWithAffiliate(
-    address to,
-    uint256 amount,
-    address affiliate
-  ) public {
-    require(eggSaleContract != address(0), "Affiliate:NOT_SETTED");
-    RoosterEggSale eggSale;
-    bytes memory callReq = abi.encodeWithSelector(eggSale.buyEggFromAffiliate.selector, amount, to);
-
-    (bool success, bytes memory result) = eggSaleContract.call(callReq);
-
-    if (!success) {
-      revert("Call reverted");
-    }
-
-    IERC20(erc20token).transferFrom(msg.sender, rewardsDistributor, amount * eggPrice);
-    emit EggPurcharsed(affiliate, amount);
-  }
-
-  // change contract states
-  function setEggSaleData(address _address, uint256 _price) public onlyOwner {
-    eggSaleContract = _address;
-    eggPrice = _price;
   }
 
   function setDistributor(address _address) public onlyOwner {

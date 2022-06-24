@@ -13,8 +13,7 @@ const func: DeployFunction = async (hre) => {
   });
   const affiliate = await connect(Affiliate__factory);
 
-  await affiliate.setEggSaleData(eggSale.address, 50);
-  await eggSale.setAffiliateContract(affiliate.address);
+  await eggSale.setAffiliateData(affiliate.address, 50);
 };
 
 export default func;
