@@ -221,7 +221,7 @@ contract RoosterEggSale is AccessControl {
     _;
   }
 
-  function affiliateSale(uint256 amount, address to) public onlyAffiliate {
+  function buyEggFromAffiliate(uint256 amount, address to) public onlyAffiliate {
     //Interactions
     // usdc.transferFrom(from, usdcDistination, affiliatePrice * amount);
     bytes memory callData = abi.encodeWithSelector(egg.mintEggs.selector, to, amount);

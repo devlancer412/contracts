@@ -100,7 +100,7 @@ contract Affiliate is Auth {
   ) public {
     require(eggSaleContract != address(0), "Affiliate:NOT_SETTED");
     RoosterEggSale eggSale;
-    bytes memory callReq = abi.encodeWithSelector(eggSale.affiliateSale.selector, amount, to);
+    bytes memory callReq = abi.encodeWithSelector(eggSale.buyEggFromAffiliate.selector, amount, to);
 
     (bool success, bytes memory result) = eggSaleContract.call(callReq);
 
