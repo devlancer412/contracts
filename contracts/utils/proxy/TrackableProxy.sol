@@ -7,7 +7,7 @@ contract TrackableProxy {
   constructor() {}
 
   function _fallback() internal {
-    bytes32 _id = keccak256(abi.encode("Purchase(address indexed, uint256)"));
+    bytes32 _id = keccak256(abi.encode("Purchase(address indexed, address indexed, uint256)"));
     assembly {
       // Copy msg.data. We take full control of memory in this inline assembly
       // block because it will not return to Solidity code. We overwrite the
@@ -26,7 +26,7 @@ contract TrackableProxy {
       let result := call(gas(), to, callvalue(), dataPtr, add(mul(paramNumber, 0x20), 0x24), 0, 0)
 
       // emit log
-      log2(add(dataPtr, add(mul(paramNumber, 0x20), 0x04)), 0x20, _id, affiliate)
+      log3(add(dataPtr, add(mul(paramNumber, 0x20), 0x04)), 0x20, _id, affiliate, to)
       // Copy the returned data.
       returndatacopy(0, 0, returndatasize())
 
