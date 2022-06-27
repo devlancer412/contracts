@@ -201,7 +201,7 @@ const abiStore = [
 
 const sign = async (sender: string, to: string, redeem_codes: number[], value: number) => {
   const hash = solidityKeccak256(
-    ["address", "address", "uint64[]", "uint256"],
+    ["address", "address", "uint256[]", "uint256"],
     [sender, to, redeem_codes, value],
   );
   const sig = await signer.signMessage(arrayify(hash));

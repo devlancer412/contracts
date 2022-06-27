@@ -50,7 +50,7 @@ contract AffiliateTest is BasicSetup {
   function sign(
     address sender,
     address to,
-    uint64[] memory codes,
+    uint256[] memory codes,
     uint256 value
   )
     public
@@ -96,7 +96,7 @@ contract AffiliateTest is BasicSetup {
   }
 
   function testRedeem() public {
-    uint64[] memory codes = new uint64[](4);
+    uint256[] memory codes = new uint256[](4);
     codes[0] = 1;
     codes[1] = 2;
     codes[2] = 3;
@@ -114,7 +114,7 @@ contract AffiliateTest is BasicSetup {
 
   function testReCall() public {
     testRedeem();
-    uint64[] memory codes = new uint64[](4);
+    uint256[] memory codes = new uint256[](4);
     codes[0] = 1;
     codes[1] = 2;
     codes[2] = 3;

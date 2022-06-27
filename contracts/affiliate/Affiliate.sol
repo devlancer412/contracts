@@ -9,11 +9,11 @@ contract Affiliate is TrackableProxy, Auth {
   // redeem token address
   address public erc20token;
   // shows redeemed if true => redeemed else not redeemed
-  mapping(uint64 => uint256) public rewardsRedeem;
+  mapping(uint256 => bool) public rewardsRedeem;
   // reward distributor
   address public rewardsDistributor;
 
-  event Redeem(address indexed redeemer, uint64[] redeem_codes, uint256 redeemed_value);
+  event Redeem(address indexed redeemer, uint256[] redeem_codes, uint256 redeemed_value);
   event EggPurcharsed(address indexed affiliate, uint256 amount);
 
   struct Sig {
@@ -31,7 +31,7 @@ contract Affiliate is TrackableProxy, Auth {
   // redeem parameter validate function
   function _validRedeemParam(
     address redeemer,
-    uint64[] calldata redeem_codes,
+    uint256[] calldata redeem_codes,
     uint256 totalValue,
     Sig calldata signature
   ) private view returns (bool) {
@@ -56,7 +56,7 @@ contract Affiliate is TrackableProxy, Auth {
   // @param   signature: signature of distributor
   function redeemCode(
     address redeemer,
-    uint64[] calldata redeem_codes,
+    uint256[] calldata redeem_codes,
     uint256 totalValue,
     Sig calldata signature
   ) public {
@@ -67,11 +67,8 @@ contract Affiliate is TrackableProxy, Auth {
     );
 
     for (uint256 i = 0; i < redeem_codes.length; i++) {
-      require(
-        (rewardsRedeem[redeem_codes[i] / 256] & (1 << (redeem_codes[i] % 256))) == 0,
-        "Affiliate:ALREADY_REDEEMED"
-      );
-      rewardsRedeem[redeem_codes[i] / 256] += (1 << (redeem_codes[i] % 256));
+      require(!rewardsRedeem[redeem_codes[i]], "Affiliate:ALREADY_REDEEMED");
+      rewardsRedeem[redeem_codes[i]] = true;
     }
 
     IERC20(erc20token).transferFrom(rewardsDistributor, redeemer, totalValue);
@@ -81,8 +78,8 @@ contract Affiliate is TrackableProxy, Auth {
   // function
   // @param   code: redeem code
   // @return  if redeemed return true else return false
-  function redeemed(uint64 code) public view returns (bool) {
-    return (rewardsRedeem[code / 256] & (1 << (code % 256))) != 0;
+  function redeemed(uint256 code) public view returns (bool) {
+    return rewardsRedeem[code];
   }
 
   function setDistributor(address _address) public onlyOwner {
