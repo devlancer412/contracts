@@ -22,6 +22,8 @@ import {
 } from "../types";
 import { deployments } from "hardhat";
 
+import { abiEgg, abiStore, realAbiEgg, realAbiStore } from "./AffiliateAbis.json";
+
 chai.use(solidity);
 const { expect } = chai;
 
@@ -64,140 +66,6 @@ const setup = deployments.createFixture(async (hre) => {
     users,
   };
 });
-
-const realAbiEgg = [
-  {
-    inputs: [
-      {
-        internalType: "address",
-        name: "from",
-        type: "address",
-      },
-      {
-        internalType: "address",
-        name: "to",
-        type: "address",
-      },
-      {
-        internalType: "uint256",
-        name: "amount",
-        type: "uint256",
-      },
-    ],
-    name: "buyEggWithAffiliate",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-];
-
-const abiEgg = [
-  {
-    inputs: [
-      {
-        internalType: "address",
-        name: "to",
-        type: "address",
-      },
-      {
-        internalType: "uint256",
-        name: "amount",
-        type: "uint256",
-      },
-      {
-        internalType: "address",
-        name: "implementTo",
-        type: "address",
-      },
-      {
-        internalType: "address",
-        name: "affiliate",
-        type: "address",
-      },
-      {
-        internalType: "uint32",
-        name: "selector",
-        type: "uint32",
-      },
-    ],
-    name: "buyEggWithAffiliate",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-];
-
-const realAbiStore = [
-  {
-    inputs: [
-      {
-        internalType: "address",
-        name: "from",
-        type: "address",
-      },
-      {
-        internalType: "address",
-        name: "to",
-        type: "address",
-      },
-      {
-        internalType: "uint256",
-        name: "listingId",
-        type: "uint256",
-      },
-      {
-        internalType: "uint256",
-        name: "amount",
-        type: "uint256",
-      },
-    ],
-    name: "buyItemWithAffiliate",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-];
-
-const abiStore = [
-  {
-    inputs: [
-      {
-        internalType: "address",
-        name: "to",
-        type: "address",
-      },
-      {
-        internalType: "uint256",
-        name: "listingId",
-        type: "uint256",
-      },
-      {
-        internalType: "uint256",
-        name: "amount",
-        type: "uint256",
-      },
-      {
-        internalType: "address",
-        name: "implementTo",
-        type: "address",
-      },
-      {
-        internalType: "address",
-        name: "affiliate",
-        type: "address",
-      },
-      {
-        internalType: "uint32",
-        name: "selector",
-        type: "uint32",
-      },
-    ],
-    name: "buyItemWithAffiliate",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-];
 
 const sign = async (sender: string, to: string, redeem_codes: number[], value: number) => {
   const hash = solidityKeccak256(
