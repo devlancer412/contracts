@@ -5,7 +5,6 @@ import { Ship } from "../utils";
 
 const func: DeployFunction = async (hre) => {
   const { deploy, connect, users, accounts } = await Ship.init(hre);
-  await deployments.fixture(["grp", "gwit", "gwit_init", "nfts"]);
 
   const gwit = await connect(GWITToken__factory);
   await deploy(Store__factory, {
@@ -15,3 +14,4 @@ const func: DeployFunction = async (hre) => {
 
 export default func;
 func.tags = ["store"];
+func.dependencies = ["mocks", "grp", "gwit", "gwit_init", "nfts"];

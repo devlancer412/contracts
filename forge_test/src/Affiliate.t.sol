@@ -5,6 +5,9 @@ import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {Affiliate} from "contracts/affiliate/Affiliate.sol";
 import {RoosterEgg} from "contracts/egg/Egg.sol";
 import {RoosterEggSale} from "contracts/egg/EggSale.sol";
+import {GWITToken} from "contracts/gwit/gwit.sol";
+import {Rooster} from "contracts/rooster/Rooster.sol";
+import {Store} from "contracts/store/Store.sol";
 import {MockUsdc} from "contracts/mocks/Usdc.sol";
 import {Auth} from "contracts/utils/Auth.sol";
 import "./utils/BasicSetup.sol";
@@ -17,6 +20,15 @@ interface IAffiliate {
     address,
     uint32
   ) external;
+
+  function buyItemWithAffiliate(
+    address,
+    uint256,
+    uint256,
+    address,
+    address,
+    uint32
+  ) external;
 }
 
 contract AffiliateTest is BasicSetup {
@@ -24,6 +36,13 @@ contract AffiliateTest is BasicSetup {
   MockUsdc usdc;
   RoosterEgg egg;
   RoosterEggSale eggSale;
+  GWITToken gwit;
+  Rooster rooster;
+  Store store;
+
+  address constant grp = address(101);
+  address constant farmPool = address(102);
+  address constant taxRecipient = address(201);
 
   // utils
 
@@ -57,6 +76,18 @@ contract AffiliateTest is BasicSetup {
     eggSale = new RoosterEggSale(address(usdc), address(egg), vault, signer, 0);
     egg.transferOwnership(address(eggSale));
     eggSale.setAffiliateData(address(affiliate), 50);
+
+    gwit = new GWITToken(1_000_000);
+    gwit.init(grp, farmPool);
+    gwit.setTaxAddress(taxRecipient);
+
+    gwit.transfer(alice, 500);
+    store = new Store(IERC20(address(gwit)), vault);
+    store.setAffiliateAddress(address(affiliate));
+    store.setAllowedLister(bob, true);
+
+    rooster = new Rooster("");
+    rooster.grantRole("MINTER", address(store));
 
     affiliate.grantRole("DISTRIBUTOR", signer);
     usdc.mint(signer, 10000);
@@ -115,5 +146,34 @@ contract AffiliateTest is BasicSetup {
     assertEq(usdc.balanceOf(alice), 0);
     assertEq(egg.balanceOf(alice), 10);
     assertEq(usdc.balanceOf(vault), 500);
+  }
+
+  function testBuyItemWithAffiliate() public {
+    Store.TokenType tokenType = Store.TokenType.ERC721EXT; // ERC721EX
+    address tokenAddress = address(rooster);
+    uint256 tokenId = 0; // Only for ERC1155 use
+    uint256 amount = 1; // Only mint 1 egg
+    uint256 price = 500; // each mint costs 100 of the operating token
+    uint256 maxval = 10; // the maximum value to pass to the unique parameter, leave to 0 to send a random uint256 value [0x00_00...00, 0xFF_FF...FF];
+    vm.prank(bob);
+    store.makeListing(tokenType, tokenAddress, tokenId, amount, price, maxval);
+
+    uint256 listingId = 1;
+
+    vm.prank(alice);
+    gwit.approve(address(store), 500);
+    vm.prank(alice);
+    IAffiliate(address(affiliate)).buyItemWithAffiliate(
+      alice,
+      listingId,
+      1,
+      address(store),
+      bob,
+      uint32(Store.buyItemWithAffiliate.selector)
+    );
+
+    assertEq(gwit.balanceOf(alice), 0);
+    assertEq(rooster.balanceOf(alice), 1);
+    assertEq(gwit.balanceOf(bob), 500);
   }
 }

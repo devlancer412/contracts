@@ -15,6 +15,10 @@ import {
   RoosterEgg__factory,
   Store,
   Store__factory,
+  Rooster,
+  Rooster__factory,
+  GWITToken,
+  GWITToken__factory,
 } from "../types";
 import { deployments } from "hardhat";
 
@@ -27,11 +31,16 @@ let affiliate: Affiliate;
 let eggSale: RoosterEggSale;
 let store: Store;
 let egg: RoosterEgg;
+let rooster: Rooster;
+let gwit: GWITToken;
 let signer: SignerWithAddress;
 let alice: SignerWithAddress;
 let bob: SignerWithAddress;
 let vault: SignerWithAddress;
 let deployer: SignerWithAddress;
+
+let seller: SignerWithAddress;
+let buyer: SignerWithAddress;
 
 const setup = deployments.createFixture(async (hre) => {
   const ship = await Ship.init(hre);
@@ -40,12 +49,12 @@ const setup = deployments.createFixture(async (hre) => {
     "mocks",
     "eggsale",
     "egg",
-    // "grp",
-    // "gwit",
-    // "marketplace",
-    // "nfts",
-    // "gwit_init",
-    // "store",
+    "grp",
+    "gwit",
+    "marketplace",
+    "nfts",
+    "gwit_init",
+    "store",
     "affiliate",
   ]);
 
@@ -154,11 +163,6 @@ const abiStore = [
     inputs: [
       {
         internalType: "address",
-        name: "from",
-        type: "address",
-      },
-      {
-        internalType: "address",
         name: "to",
         type: "address",
       },
@@ -217,7 +221,9 @@ describe("Affiliate test", () => {
     usdc = await ship.connect(MockUsdc__factory);
     affiliate = await ship.connect(Affiliate__factory);
     eggSale = await ship.connect(RoosterEggSale__factory);
-    // store = await ship.connect(Store__factory);
+    rooster = await ship.connect(Rooster__factory);
+    gwit = await ship.connect(GWITToken__factory);
+    store = await ship.connect(Store__factory);
     egg = await ship.connect(RoosterEgg__factory);
 
     bob = scaffold.accounts.bob;
@@ -226,9 +232,17 @@ describe("Affiliate test", () => {
     vault = scaffold.accounts.vault;
     deployer = scaffold.accounts.deployer;
 
+    seller = scaffold.users[1];
+    buyer = scaffold.users[2];
+
     await usdc.mint(signer.address, 100000);
     await affiliate.grantRole("DISTRIBUTOR", signer.address);
     await usdc.connect(signer).approve(affiliate.address, 10000);
+
+    await rooster.grantRole("MINTER", seller.address);
+    await gwit.transfer(seller.address, 10_000_000);
+    await gwit.transfer(buyer.address, 10_000_000);
+    await rooster.grantRole("MINTER", store.address);
   });
 
   it("alice call reward", async () => {
@@ -282,40 +296,42 @@ describe("Affiliate test", () => {
     expect(await usdc.balanceOf(vault.address)).to.eq(distributorUsdcAmount.add(500));
     expect(await egg.balanceOf(alice.address)).to.eq(aliceEggAmount.add(10));
   });
-  /*
+
   describe("Store test", () => {
     let listingId: number;
     before(async () => {
       await store.setAffiliateAddress(affiliate.address);
+      await store.setAllowedLister(seller.address, true);
     });
 
     it("Add list to store", async () => {
       const tokenType = 3; // ERC721EX
-      const tokenAddress = egg.address;
+      const tokenAddress = rooster.address;
       const tokenId = 0; // Only for ERC1155 use
-      const amount = 1; // Only mint 1 rooster
+      const amount = 1; // Only mint 1 egg
       const price = 500; // each mint costs 100 of the operating token
       const maxval = 10; // the maximum value to pass to the unique parameter, leave to 0 to send a random uint256 value [0x00_00...00, 0xFF_FF...FF];
       const rx = await (
-        await store.connect(bob).makeListing(tokenType, tokenAddress, tokenId, amount, price, maxval)
+        await store.connect(seller).makeListing(tokenType, tokenAddress, tokenId, amount, price, maxval)
       ).wait();
 
       const ev = rx.events?.find((event) => event.event === "Listed");
       listingId = ev?.args?.listingId;
-      await expect(listingId).to.not.eql(-1);
+      expect(listingId).to.not.eql(-1);
     });
 
     it("Store test", async () => {
-      const aliceUsdcAmount = await usdc.balanceOf(alice.address);
-      const aliceItemAmount = await egg.balanceOf(alice.address);
-      const distributorUsdcAmount = await usdc.balanceOf(vault.address);
+      const buyerGwitAmount = await gwit.balanceOf(buyer.address);
+      const buyerItemAmount = await rooster.balanceOf(buyer.address);
+      const distributorGwitAmount = await gwit.balanceOf(vault.address);
 
       const proxyContract = new Contract(affiliate.address, abiStore, ship.provider);
       const iRealFace = new Interface(realAbiStore);
 
-      await usdc.connect(alice).approve(eggSale.address, 500);
-      const tx = await proxyContract.connect(alice).buyItemWithAffiliate(
-        alice.address, // to address to send egg
+      await gwit.connect(buyer).approve(store.address, 600);
+      const tx = await proxyContract.connect(buyer).buyItemWithAffiliate(
+        buyer.address, // to address to send egg
+        listingId, // list id
         1, // amount of egg
         store.address, // eggsale contract address
         bob.address, // affiliate address
@@ -329,9 +345,9 @@ describe("Affiliate test", () => {
       expect(BigNumber.from(proxyEvent[0].data)).to.eq(BigNumber.from(1));
       expect(BigNumber.from(proxyEvent[0].topics[1])).to.eq(BigNumber.from(bob.address));
 
-      expect(await usdc.balanceOf(alice.address)).to.eq(aliceUsdcAmount.sub(500));
-      expect(await usdc.balanceOf(vault.address)).to.eq(distributorUsdcAmount.add(500));
-      expect(await egg.balanceOf(alice.address)).to.eq(aliceItemAmount.add(1));
+      expect(await gwit.balanceOf(buyer.address)).to.eq(buyerGwitAmount.sub(500));
+      expect(await gwit.balanceOf(seller.address)).to.eq(distributorGwitAmount.add(500));
+      expect(await rooster.balanceOf(buyer.address)).to.eq(buyerItemAmount.add(1));
     });
-  });*/
+  });
 });
