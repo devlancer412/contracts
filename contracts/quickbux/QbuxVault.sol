@@ -66,7 +66,7 @@ contract QBuxVault is Ownable {
         vaultUSD -= converted;
         last_signed_nonce[account] = timestamp;
 
-        erc20token.transferFrom(address(this), account, converted);
+        erc20token.transfer(account, converted);
         emit Withdraw(account, timestamp, converted, value_qbux);
     }
 
