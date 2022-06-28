@@ -52,11 +52,15 @@ contract QBuxVault is Ownable {
   constructor(
     address _erc20token,
     address _authorizer,
+    address _router,
     uint256 _exchange_rate
   ) {
     erc20token = _erc20token;
     authorizer = _authorizer;
+    router = IUniswapV2Router01(_router);
     exchange_rate = _exchange_rate;
+
+    IERC20(_erc20token).approve(address(_router), _MAX_UINT256);
   }
 
   function setAuthorizer(address new_authorizer) public onlyOwner {
