@@ -3,38 +3,11 @@ pragma solidity >=0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-
-interface IUniswapV2Router02 {
-  function swapExactTokensForTokens(
-    uint256 amountIn,
-    uint256 amountOutMin,
-    address[] calldata path,
-    address to,
-    uint256 deadline
-  ) external returns (uint256[] memory amounts);
-
-  function swapTokensForExactTokens(
-    uint256 amountOut,
-    uint256 amountInMax,
-    address[] calldata path,
-    address to,
-    uint256 deadline
-  ) external returns (uint256[] memory amounts);
-
-  function getAmountsOut(uint256 amountIn, address[] calldata path)
-    external
-    view
-    returns (uint256[] memory amounts);
-
-  function getAmountsIn(uint256 amountOut, address[] calldata path)
-    external
-    view
-    returns (uint256[] memory amounts);
-}
+import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router01.sol";
 
 contract QBuxVault is Ownable {
   address public erc20token;
-  IUniswapV2Router02 public router;
+  IUniswapV2Router01 public router;
   address public authorizer;
   uint256 exchange_rate;
   mapping(address => uint256) public last_signed_nonce;
