@@ -61,6 +61,7 @@ contract QBuxVault is Ownable {
     function withdraw(address account, uint256 value_qbux, uint256 timestamp, Sig calldata signature) public {
         require(block.timestamp - timestamp < 600, "QBuxVault:OLD_SIGNATURE");
         require(_validRedeemParam(account, value_qbux, timestamp, signature), "QBuxVault:INVALID_SIGNATURE");
+        require(last_signed_nonce[account] != timestamp, "QBuxVault:NONCE_USED");
 
         uint256 converted = value_qbux / exchange_rate;
         vaultUSD -= converted;
