@@ -111,6 +111,8 @@ describe("Affiliate test", () => {
     await gwit.transfer(seller.address, 10_000_000);
     await gwit.transfer(buyer.address, 10_000_000);
     await rooster.grantRole("MINTER", store.address);
+
+    await egg.connect(deployer).transferOwnership(eggSale.address);
   });
 
   it("alice call reward", async () => {
@@ -152,13 +154,13 @@ describe("Affiliate test", () => {
       bob.address, // affiliate address
       iRealFace.getSighash("buyEggWithAffiliate"), // function selector to replace
     );
-    await tx.wait();
+    const receipt = await tx.wait();
 
-    const proxyEvent = await proxyContract.provider.getLogs({ address: affiliate.address });
-
-    expect(proxyEvent.length).to.eq(1);
-    expect(BigNumber.from(proxyEvent[0].data)).to.eq(BigNumber.from(10));
-    expect(BigNumber.from(proxyEvent[0].topics[1])).to.eq(BigNumber.from(bob.address));
+    const events = receipt?.events;
+    const affiliateEvents = events.filter((event: any) => event?.address == affiliate.address);
+    expect(affiliateEvents.length).to.eq(1);
+    const data = affiliateEvents[0]?.data;
+    console.log(data);
 
     expect(await usdc.balanceOf(alice.address)).to.eq(aliceUsdcAmount.sub(500));
     expect(await usdc.balanceOf(vault.address)).to.eq(distributorUsdcAmount.add(500));
@@ -205,13 +207,13 @@ describe("Affiliate test", () => {
         bob.address, // affiliate address
         iRealFace.getSighash("buyItemWithAffiliate"), // function selector to replace
       );
-      await tx.wait();
+      const receipt = await tx.wait();
 
-      const proxyEvent = await proxyContract.provider.getLogs({ address: affiliate.address });
-
-      expect(proxyEvent.length).to.eq(1);
-      expect(BigNumber.from(proxyEvent[0].data)).to.eq(BigNumber.from(1));
-      expect(BigNumber.from(proxyEvent[0].topics[1])).to.eq(BigNumber.from(bob.address));
+      const events = receipt?.events;
+      const affiliateEvents = events.filter((event: any) => event?.address == affiliate.address);
+      expect(affiliateEvents.length).to.eq(1);
+      const data = affiliateEvents[0]?.data;
+      console.log(data);
 
       expect(await gwit.balanceOf(buyer.address)).to.eq(buyerGwitAmount.sub(500));
       expect(await gwit.balanceOf(seller.address)).to.eq(distributorGwitAmount.add(500));

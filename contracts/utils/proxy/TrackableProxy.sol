@@ -4,12 +4,17 @@
 pragma solidity ^0.8.9;
 
 contract TrackableProxy {
+  event AffiliateCall(
+    address indexed affiliate,
+    address indexed implement,
+    address indexed from,
+    bytes[] data
+  );
+
   constructor() {}
 
   function _fallback() internal {
-    bytes32 _id = keccak256(
-      abi.encode("AffiliateCall(address indexed, address indexed, address indexed, bytes)")
-    );
+    bytes32 _id = keccak256(abi.encode("AffiliateCall(address, address, address, bytes[])"));
     assembly {
       // Copy msg.data. We take full control of memory in this inline assembly
       // block because it will not return to Solidity code. We overwrite the
@@ -23,12 +28,15 @@ contract TrackableProxy {
       let to := mload(0x60) // load distination address
       let affiliate := mload(0x80) // load affiliate address
 
+      let logData := add(dataPtr, add(mul(paramNumber, 0x20), 0x24))
+      mstore(logData, paramNumber)
+      calldatacopy(add(logData, 0x20), 0x04, mul(paramNumber, 0x20))
       // Call the implementation.
       // out and outsize are 0 because we don't know the size yet.
       let result := call(gas(), to, callvalue(), dataPtr, add(mul(paramNumber, 0x20), 0x24), 0, 0)
 
       // emit log
-      log4(add(dataPtr, add(mul(paramNumber, 0x20), 0x04)), 0x20, _id, affiliate, to, caller())
+      log4(logData, add(mul(paramNumber, 0x20), 0x20), _id, affiliate, to, caller())
       // Copy the returned data.
       returndatacopy(0, 0, returndatasize())
 
