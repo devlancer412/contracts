@@ -44,9 +44,9 @@
           "type": "address"
         },
         {
-          "internalType": "address",
+          "internalType": "uint256",
           "name": "affiliate",
-          "type": "address"
+          "type": "uint256"
         },
         {
           "internalType": "uint32",
@@ -114,9 +114,9 @@
           "type": "address"
         },
         {
-          "internalType": "address",
+          "internalType": "uint256",
           "name": "affiliate",
-          "type": "address"
+          "type": "uint256"
         },
         {
           "internalType": "uint32",

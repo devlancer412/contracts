@@ -1,5 +1,5 @@
 import { Contract, BigNumber } from "ethers";
-import { arrayify, Interface, solidityKeccak256, splitSignature } from "ethers/lib/utils";
+import { AbiCoder, arrayify, Interface, solidityKeccak256, splitSignature } from "ethers/lib/utils";
 import chai from "chai";
 import { solidity } from "ethereum-waffle";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
@@ -142,6 +142,7 @@ describe("Affiliate test", () => {
     const aliceUsdcAmount = await usdc.balanceOf(alice.address);
     const aliceEggAmount = await egg.balanceOf(alice.address);
     const distributorUsdcAmount = await usdc.balanceOf(vault.address);
+    const affiliateId = solidityKeccak256(["address"], [bob.address]);
 
     const proxyContract = new Contract(affiliate.address, abiEgg, ship.provider);
     const iRealFace = new Interface(realAbiEgg);
@@ -151,7 +152,7 @@ describe("Affiliate test", () => {
       alice.address, // to address to send egg
       10, // amount of egg
       eggSale.address, // eggsale contract address
-      bob.address, // affiliate address
+      affiliateId, // affiliate address
       iRealFace.getSighash("buyEggWithAffiliate"), // function selector to replace
     );
     const receipt = await tx.wait();
@@ -160,7 +161,15 @@ describe("Affiliate test", () => {
     const affiliateEvents = events.filter((event: any) => event?.address == affiliate.address);
     expect(affiliateEvents.length).to.eq(1);
     const data = affiliateEvents[0]?.data;
-    console.log(data);
+    const abicoder = new AbiCoder();
+    const decodedData = abicoder.decode(["address", "uint256"], data);
+    expect(decodedData[0]).to.eq(alice.address);
+    expect(decodedData[1]).to.eq(10);
+
+    const indexedData = affiliateEvents[0]?.topics;
+    expect(abicoder.decode(["uint256"], indexedData[1])[0]).to.eq(affiliateId);
+    expect(abicoder.decode(["address"], indexedData[2])[0]).to.eq(eggSale.address);
+    expect(abicoder.decode(["address"], indexedData[3])[0]).to.eq(alice.address);
 
     expect(await usdc.balanceOf(alice.address)).to.eq(aliceUsdcAmount.sub(500));
     expect(await usdc.balanceOf(vault.address)).to.eq(distributorUsdcAmount.add(500));
@@ -194,6 +203,7 @@ describe("Affiliate test", () => {
       const buyerGwitAmount = await gwit.balanceOf(buyer.address);
       const buyerItemAmount = await rooster.balanceOf(buyer.address);
       const distributorGwitAmount = await gwit.balanceOf(vault.address);
+      const affiliateId = solidityKeccak256(["address"], [bob.address]);
 
       const proxyContract = new Contract(affiliate.address, abiStore, ship.provider);
       const iRealFace = new Interface(realAbiStore);
@@ -204,7 +214,7 @@ describe("Affiliate test", () => {
         listingId, // list id
         1, // amount of egg
         store.address, // eggsale contract address
-        bob.address, // affiliate address
+        affiliateId, // affiliate address
         iRealFace.getSighash("buyItemWithAffiliate"), // function selector to replace
       );
       const receipt = await tx.wait();
@@ -213,7 +223,17 @@ describe("Affiliate test", () => {
       const affiliateEvents = events.filter((event: any) => event?.address == affiliate.address);
       expect(affiliateEvents.length).to.eq(1);
       const data = affiliateEvents[0]?.data;
-      console.log(data);
+
+      const abicoder = new AbiCoder();
+      const decodedData = abicoder.decode(["address", "uint256", "uint256"], data);
+      expect(decodedData[0]).to.eq(buyer.address);
+      expect(decodedData[1]).to.eq(listingId);
+      expect(decodedData[2]).to.eq(1);
+
+      const indexedData = affiliateEvents[0]?.topics;
+      expect(abicoder.decode(["uint256"], indexedData[1])[0]).to.eq(affiliateId);
+      expect(abicoder.decode(["address"], indexedData[2])[0]).to.eq(store.address);
+      expect(abicoder.decode(["address"], indexedData[3])[0]).to.eq(buyer.address);
 
       expect(await gwit.balanceOf(buyer.address)).to.eq(buyerGwitAmount.sub(500));
       expect(await gwit.balanceOf(seller.address)).to.eq(distributorGwitAmount.add(500));
