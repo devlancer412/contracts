@@ -19,12 +19,12 @@ const func: DeployFunction = async (hre) => {
     const wallet = accounts.vault.address;
     const egg = await connect(RoosterEgg__factory);
     const signer = accounts.signer.address;
-    const minted = 52;
+    const minted = 0;
     await deploy(RoosterEggSale__factory, {
       args: [usdc.address, egg.address, wallet, signer, minted],
     });
-    const eggSale = await connect(RoosterEggSale__factory);
-    await egg.connect(accounts.deployer).transferOwnership(eggSale.address);
+    // const eggSale = await connect(RoosterEggSale__factory);
+    // await egg.connect(accounts.deployer).transferOwnership(eggSale.address);
   }
 };
 
