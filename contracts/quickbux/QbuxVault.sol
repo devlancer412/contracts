@@ -14,6 +14,9 @@ contract QBuxVault is Ownable {
   mapping(address => bool) public approvedToken;
   uint256 vaultUSD;
 
+  address vaultFees;
+  uint256 withdrawPercentage;
+
   uint256 private constant _MAX_UINT256 = type(uint256).max;
 
   event Deposit(
@@ -80,6 +83,11 @@ contract QBuxVault is Ownable {
     }
   }
 
+  function setWithdrawFees(address vault, uint256 fee) public onlyOwner {
+    vaultFees = vault;
+    withdrawPercentage = fee;
+  }
+
   function deposit(address token, uint256 value_token) public onlyApprovedToken(token) {
     uint256 converted = value_token * exchange_rate;
     vaultUSD += value_token;
@@ -115,6 +123,10 @@ contract QBuxVault is Ownable {
     require(last_signed_nonce[account] != timestamp, "QBuxVault:NONCE_USED");
 
     uint256 converted = value_qbux / exchange_rate;
+    if (withdrawPercentage > 0) {
+      converted -= converted * (withdrawPercentage / 10000);
+    }
+
     vaultUSD -= converted;
     last_signed_nonce[account] = timestamp;
 
