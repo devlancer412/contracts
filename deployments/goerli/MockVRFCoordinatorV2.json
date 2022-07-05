@@ -1,0 +1,667 @@
+{
+  "address": "0xdB1901B2456049C72202947246E0Ae213C39d276",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "uint96",
+          "name": "_baseFee",
+          "type": "uint96"
+        },
+        {
+          "internalType": "uint96",
+          "name": "_gasPriceLink",
+          "type": "uint96"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "inputs": [],
+      "name": "InsufficientBalance",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "InvalidSubscription",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "owner",
+          "type": "address"
+        }
+      ],
+      "name": "MustBeSubOwner",
+      "type": "error"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "requestId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "outputSeed",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint96",
+          "name": "payment",
+          "type": "uint96"
+        },
+        {
+          "indexed": false,
+          "internalType": "bool",
+          "name": "success",
+          "type": "bool"
+        }
+      ],
+      "name": "RandomWordsFulfilled",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "keyHash",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "requestId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "preSeed",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "uint64",
+          "name": "subId",
+          "type": "uint64"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint16",
+          "name": "minimumRequestConfirmations",
+          "type": "uint16"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint32",
+          "name": "callbackGasLimit",
+          "type": "uint32"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint32",
+          "name": "numWords",
+          "type": "uint32"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "sender",
+          "type": "address"
+        }
+      ],
+      "name": "RandomWordsRequested",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint64",
+          "name": "subId",
+          "type": "uint64"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "to",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "SubscriptionCanceled",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint64",
+          "name": "subId",
+          "type": "uint64"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "owner",
+          "type": "address"
+        }
+      ],
+      "name": "SubscriptionCreated",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint64",
+          "name": "subId",
+          "type": "uint64"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "oldBalance",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "newBalance",
+          "type": "uint256"
+        }
+      ],
+      "name": "SubscriptionFunded",
+      "type": "event"
+    },
+    {
+      "inputs": [],
+      "name": "BASE_FEE",
+      "outputs": [
+        {
+          "internalType": "uint96",
+          "name": "",
+          "type": "uint96"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "GAS_PRICE_LINK",
+      "outputs": [
+        {
+          "internalType": "uint96",
+          "name": "",
+          "type": "uint96"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint64",
+          "name": "_subId",
+          "type": "uint64"
+        }
+      ],
+      "name": "acceptSubscriptionOwnerTransfer",
+      "outputs": [],
+      "stateMutability": "pure",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint64",
+          "name": "_subId",
+          "type": "uint64"
+        },
+        {
+          "internalType": "address",
+          "name": "_consumer",
+          "type": "address"
+        }
+      ],
+      "name": "addConsumer",
+      "outputs": [],
+      "stateMutability": "pure",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint64",
+          "name": "_subId",
+          "type": "uint64"
+        },
+        {
+          "internalType": "address",
+          "name": "_to",
+          "type": "address"
+        }
+      ],
+      "name": "cancelSubscription",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "createSubscription",
+      "outputs": [
+        {
+          "internalType": "uint64",
+          "name": "_subId",
+          "type": "uint64"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_requestId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "_consumer",
+          "type": "address"
+        }
+      ],
+      "name": "fulfillRandomWords",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint64",
+          "name": "_subId",
+          "type": "uint64"
+        },
+        {
+          "internalType": "uint96",
+          "name": "_amount",
+          "type": "uint96"
+        }
+      ],
+      "name": "fundSubscription",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getRequestConfig",
+      "outputs": [
+        {
+          "internalType": "uint16",
+          "name": "",
+          "type": "uint16"
+        },
+        {
+          "internalType": "uint32",
+          "name": "",
+          "type": "uint32"
+        },
+        {
+          "internalType": "bytes32[]",
+          "name": "",
+          "type": "bytes32[]"
+        }
+      ],
+      "stateMutability": "pure",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint64",
+          "name": "_subId",
+          "type": "uint64"
+        }
+      ],
+      "name": "getSubscription",
+      "outputs": [
+        {
+          "internalType": "uint96",
+          "name": "balance",
+          "type": "uint96"
+        },
+        {
+          "internalType": "uint64",
+          "name": "reqCount",
+          "type": "uint64"
+        },
+        {
+          "internalType": "address",
+          "name": "owner",
+          "type": "address"
+        },
+        {
+          "internalType": "address[]",
+          "name": "consumers",
+          "type": "address[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint64",
+          "name": "_subId",
+          "type": "uint64"
+        },
+        {
+          "internalType": "address",
+          "name": "_consumer",
+          "type": "address"
+        }
+      ],
+      "name": "removeConsumer",
+      "outputs": [],
+      "stateMutability": "pure",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_keyHash",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint64",
+          "name": "_subId",
+          "type": "uint64"
+        },
+        {
+          "internalType": "uint16",
+          "name": "_minimumRequestConfirmations",
+          "type": "uint16"
+        },
+        {
+          "internalType": "uint32",
+          "name": "_callbackGasLimit",
+          "type": "uint32"
+        },
+        {
+          "internalType": "uint32",
+          "name": "_numWords",
+          "type": "uint32"
+        }
+      ],
+      "name": "requestRandomWords",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint64",
+          "name": "_subId",
+          "type": "uint64"
+        },
+        {
+          "internalType": "address",
+          "name": "_newOwner",
+          "type": "address"
+        }
+      ],
+      "name": "requestSubscriptionOwnerTransfer",
+      "outputs": [],
+      "stateMutability": "pure",
+      "type": "function"
+    }
+  ],
+  "transactionHash": "0x68c19854e89e760fbcd3d974dcc1e111569686d5473856824d8f604b052ab81f",
+  "receipt": {
+    "to": null,
+    "from": "0xf5CA36c9873d61Bc28C117BD470981Ef6647A685",
+    "contractAddress": "0xdB1901B2456049C72202947246E0Ae213C39d276",
+    "transactionIndex": 9,
+    "gasUsed": "876612",
+    "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "blockHash": "0xf7fd26b24bd68b9a5a6e03b6518b4fc35ddfa0a6ed5f6a2589797d8b721b6ee6",
+    "transactionHash": "0x68c19854e89e760fbcd3d974dcc1e111569686d5473856824d8f604b052ab81f",
+    "logs": [],
+    "blockNumber": 7174131,
+    "cumulativeGasUsed": "3753281",
+    "status": 1,
+    "byzantium": true
+  },
+  "args": [
+    0,
+    0
+  ],
+  "numDeployments": 1,
+  "solcInputHash": "61c20db86f383acbf281885c4f75de62",
+  "metadata": "{\"compiler\":{\"version\":\"0.8.9+commit.e5eed63a\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[{\"internalType\":\"uint96\",\"name\":\"_baseFee\",\"type\":\"uint96\"},{\"internalType\":\"uint96\",\"name\":\"_gasPriceLink\",\"type\":\"uint96\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"inputs\":[],\"name\":\"InsufficientBalance\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"InvalidSubscription\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"}],\"name\":\"MustBeSubOwner\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"requestId\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"outputSeed\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint96\",\"name\":\"payment\",\"type\":\"uint96\"},{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"success\",\"type\":\"bool\"}],\"name\":\"RandomWordsFulfilled\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"keyHash\",\"type\":\"bytes32\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"requestId\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"preSeed\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"uint64\",\"name\":\"subId\",\"type\":\"uint64\"},{\"indexed\":false,\"internalType\":\"uint16\",\"name\":\"minimumRequestConfirmations\",\"type\":\"uint16\"},{\"indexed\":false,\"internalType\":\"uint32\",\"name\":\"callbackGasLimit\",\"type\":\"uint32\"},{\"indexed\":false,\"internalType\":\"uint32\",\"name\":\"numWords\",\"type\":\"uint32\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"}],\"name\":\"RandomWordsRequested\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint64\",\"name\":\"subId\",\"type\":\"uint64\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"to\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"SubscriptionCanceled\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint64\",\"name\":\"subId\",\"type\":\"uint64\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"}],\"name\":\"SubscriptionCreated\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint64\",\"name\":\"subId\",\"type\":\"uint64\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"oldBalance\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"newBalance\",\"type\":\"uint256\"}],\"name\":\"SubscriptionFunded\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"BASE_FEE\",\"outputs\":[{\"internalType\":\"uint96\",\"name\":\"\",\"type\":\"uint96\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"GAS_PRICE_LINK\",\"outputs\":[{\"internalType\":\"uint96\",\"name\":\"\",\"type\":\"uint96\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint64\",\"name\":\"_subId\",\"type\":\"uint64\"}],\"name\":\"acceptSubscriptionOwnerTransfer\",\"outputs\":[],\"stateMutability\":\"pure\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint64\",\"name\":\"_subId\",\"type\":\"uint64\"},{\"internalType\":\"address\",\"name\":\"_consumer\",\"type\":\"address\"}],\"name\":\"addConsumer\",\"outputs\":[],\"stateMutability\":\"pure\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint64\",\"name\":\"_subId\",\"type\":\"uint64\"},{\"internalType\":\"address\",\"name\":\"_to\",\"type\":\"address\"}],\"name\":\"cancelSubscription\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"createSubscription\",\"outputs\":[{\"internalType\":\"uint64\",\"name\":\"_subId\",\"type\":\"uint64\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"_requestId\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"_consumer\",\"type\":\"address\"}],\"name\":\"fulfillRandomWords\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint64\",\"name\":\"_subId\",\"type\":\"uint64\"},{\"internalType\":\"uint96\",\"name\":\"_amount\",\"type\":\"uint96\"}],\"name\":\"fundSubscription\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getRequestConfig\",\"outputs\":[{\"internalType\":\"uint16\",\"name\":\"\",\"type\":\"uint16\"},{\"internalType\":\"uint32\",\"name\":\"\",\"type\":\"uint32\"},{\"internalType\":\"bytes32[]\",\"name\":\"\",\"type\":\"bytes32[]\"}],\"stateMutability\":\"pure\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint64\",\"name\":\"_subId\",\"type\":\"uint64\"}],\"name\":\"getSubscription\",\"outputs\":[{\"internalType\":\"uint96\",\"name\":\"balance\",\"type\":\"uint96\"},{\"internalType\":\"uint64\",\"name\":\"reqCount\",\"type\":\"uint64\"},{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"},{\"internalType\":\"address[]\",\"name\":\"consumers\",\"type\":\"address[]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint64\",\"name\":\"_subId\",\"type\":\"uint64\"},{\"internalType\":\"address\",\"name\":\"_consumer\",\"type\":\"address\"}],\"name\":\"removeConsumer\",\"outputs\":[],\"stateMutability\":\"pure\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"_keyHash\",\"type\":\"bytes32\"},{\"internalType\":\"uint64\",\"name\":\"_subId\",\"type\":\"uint64\"},{\"internalType\":\"uint16\",\"name\":\"_minimumRequestConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"uint32\",\"name\":\"_callbackGasLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"_numWords\",\"type\":\"uint32\"}],\"name\":\"requestRandomWords\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint64\",\"name\":\"_subId\",\"type\":\"uint64\"},{\"internalType\":\"address\",\"name\":\"_newOwner\",\"type\":\"address\"}],\"name\":\"requestSubscriptionOwnerTransfer\",\"outputs\":[],\"stateMutability\":\"pure\",\"type\":\"function\"}],\"devdoc\":{\"kind\":\"dev\",\"methods\":{\"createSubscription()\":{\"details\":\"You can manage the consumer set dynamically with addConsumer/removeConsumer.Note to fund the subscription, use transferAndCall. For exampleLINKTOKEN.transferAndCall(address(COORDINATOR),amount,abi.encode(subId));\",\"returns\":{\"_subId\":\"- A unique subscription id.\"}},\"fulfillRandomWords(uint256,address)\":{\"details\":\"This mock uses a simplified formula for calculating payment amount and gas usage, and doesnot account for all edge cases handled in the real VRF coordinator. When making requestsagainst the real coordinator a small amount of additional LINK is required.\",\"params\":{\"_consumer\":\"the VRF randomness consumer to send the result to\",\"_requestId\":\"the request to fulfill\"}},\"fundSubscription(uint64,uint96)\":{\"params\":{\"_amount\":\"the amount to fund\",\"_subId\":\"the subscription to fund\"}},\"getRequestConfig()\":{\"returns\":{\"_0\":\"minimumRequestConfirmations global min for request confirmations\",\"_1\":\"maxGasLimit global max for request gas limit\",\"_2\":\"s_provingKeyHashes list of registered key hashes\"}}},\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{\"createSubscription()\":{\"notice\":\"Create a VRF subscription.\"},\"fulfillRandomWords(uint256,address)\":{\"notice\":\"fulfillRandomWords fulfills the given request, sending the random words to the suppliedconsumer.\"},\"fundSubscription(uint64,uint96)\":{\"notice\":\"fundSubscription allows funding a subscription with an arbitrary amount for testing.\"},\"getRequestConfig()\":{\"notice\":\"Get configuration relevant for making requests\"}},\"version\":1}},\"settings\":{\"compilationTarget\":{\"contracts/mocks/MockVRFCoordinatorV2.sol\":\"MockVRFCoordinatorV2\"},\"evmVersion\":\"london\",\"libraries\":{\":__CACHE_BREAKER__\":\"0x00000000d41867734bbee4c6863d9255b2b06ac1\"},\"metadata\":{\"bytecodeHash\":\"ipfs\",\"useLiteralContent\":true},\"optimizer\":{\"enabled\":true,\"runs\":200},\"remappings\":[]},\"sources\":{\"@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity ^0.8.0;\\n\\n/** ****************************************************************************\\n * @notice Interface for contracts using VRF randomness\\n * *****************************************************************************\\n * @dev PURPOSE\\n *\\n * @dev Reggie the Random Oracle (not his real job) wants to provide randomness\\n * @dev to Vera the verifier in such a way that Vera can be sure he's not\\n * @dev making his output up to suit himself. Reggie provides Vera a public key\\n * @dev to which he knows the secret key. Each time Vera provides a seed to\\n * @dev Reggie, he gives back a value which is computed completely\\n * @dev deterministically from the seed and the secret key.\\n *\\n * @dev Reggie provides a proof by which Vera can verify that the output was\\n * @dev correctly computed once Reggie tells it to her, but without that proof,\\n * @dev the output is indistinguishable to her from a uniform random sample\\n * @dev from the output space.\\n *\\n * @dev The purpose of this contract is to make it easy for unrelated contracts\\n * @dev to talk to Vera the verifier about the work Reggie is doing, to provide\\n * @dev simple access to a verifiable source of randomness. It ensures 2 things:\\n * @dev 1. The fulfillment came from the VRFCoordinator\\n * @dev 2. The consumer contract implements fulfillRandomWords.\\n * *****************************************************************************\\n * @dev USAGE\\n *\\n * @dev Calling contracts must inherit from VRFConsumerBase, and can\\n * @dev initialize VRFConsumerBase's attributes in their constructor as\\n * @dev shown:\\n *\\n * @dev   contract VRFConsumer {\\n * @dev     constructor(<other arguments>, address _vrfCoordinator, address _link)\\n * @dev       VRFConsumerBase(_vrfCoordinator) public {\\n * @dev         <initialization with other arguments goes here>\\n * @dev       }\\n * @dev   }\\n *\\n * @dev The oracle will have given you an ID for the VRF keypair they have\\n * @dev committed to (let's call it keyHash). Create subscription, fund it\\n * @dev and your consumer contract as a consumer of it (see VRFCoordinatorInterface\\n * @dev subscription management functions).\\n * @dev Call requestRandomWords(keyHash, subId, minimumRequestConfirmations,\\n * @dev callbackGasLimit, numWords),\\n * @dev see (VRFCoordinatorInterface for a description of the arguments).\\n *\\n * @dev Once the VRFCoordinator has received and validated the oracle's response\\n * @dev to your request, it will call your contract's fulfillRandomWords method.\\n *\\n * @dev The randomness argument to fulfillRandomWords is a set of random words\\n * @dev generated from your requestId and the blockHash of the request.\\n *\\n * @dev If your contract could have concurrent requests open, you can use the\\n * @dev requestId returned from requestRandomWords to track which response is associated\\n * @dev with which randomness request.\\n * @dev See \\\"SECURITY CONSIDERATIONS\\\" for principles to keep in mind,\\n * @dev if your contract could have multiple requests in flight simultaneously.\\n *\\n * @dev Colliding `requestId`s are cryptographically impossible as long as seeds\\n * @dev differ.\\n *\\n * *****************************************************************************\\n * @dev SECURITY CONSIDERATIONS\\n *\\n * @dev A method with the ability to call your fulfillRandomness method directly\\n * @dev could spoof a VRF response with any random value, so it's critical that\\n * @dev it cannot be directly called by anything other than this base contract\\n * @dev (specifically, by the VRFConsumerBase.rawFulfillRandomness method).\\n *\\n * @dev For your users to trust that your contract's random behavior is free\\n * @dev from malicious interference, it's best if you can write it so that all\\n * @dev behaviors implied by a VRF response are executed *during* your\\n * @dev fulfillRandomness method. If your contract must store the response (or\\n * @dev anything derived from it) and use it later, you must ensure that any\\n * @dev user-significant behavior which depends on that stored value cannot be\\n * @dev manipulated by a subsequent VRF request.\\n *\\n * @dev Similarly, both miners and the VRF oracle itself have some influence\\n * @dev over the order in which VRF responses appear on the blockchain, so if\\n * @dev your contract could have multiple VRF requests in flight simultaneously,\\n * @dev you must ensure that the order in which the VRF responses arrive cannot\\n * @dev be used to manipulate your contract's user-significant behavior.\\n *\\n * @dev Since the block hash of the block which contains the requestRandomness\\n * @dev call is mixed into the input to the VRF *last*, a sufficiently powerful\\n * @dev miner could, in principle, fork the blockchain to evict the block\\n * @dev containing the request, forcing the request to be included in a\\n * @dev different block with a different hash, and therefore a different input\\n * @dev to the VRF. However, such an attack would incur a substantial economic\\n * @dev cost. This cost scales with the number of blocks the VRF oracle waits\\n * @dev until it calls responds to a request. It is for this reason that\\n * @dev that you can signal to an oracle you'd like them to wait longer before\\n * @dev responding to the request (however this is not enforced in the contract\\n * @dev and so remains effective only in the case of unmodified oracle software).\\n */\\nabstract contract VRFConsumerBaseV2 {\\n  error OnlyCoordinatorCanFulfill(address have, address want);\\n  address private immutable vrfCoordinator;\\n\\n  /**\\n   * @param _vrfCoordinator address of VRFCoordinator contract\\n   */\\n  constructor(address _vrfCoordinator) {\\n    vrfCoordinator = _vrfCoordinator;\\n  }\\n\\n  /**\\n   * @notice fulfillRandomness handles the VRF response. Your contract must\\n   * @notice implement it. See \\\"SECURITY CONSIDERATIONS\\\" above for important\\n   * @notice principles to keep in mind when implementing your fulfillRandomness\\n   * @notice method.\\n   *\\n   * @dev VRFConsumerBaseV2 expects its subcontracts to have a method with this\\n   * @dev signature, and will call it once it has verified the proof\\n   * @dev associated with the randomness. (It is triggered via a call to\\n   * @dev rawFulfillRandomness, below.)\\n   *\\n   * @param requestId The Id initially returned by requestRandomness\\n   * @param randomWords the VRF output expanded to the requested number of words\\n   */\\n  function fulfillRandomWords(uint256 requestId, uint256[] memory randomWords) internal virtual;\\n\\n  // rawFulfillRandomness is called by VRFCoordinator when it receives a valid VRF\\n  // proof. rawFulfillRandomness then calls fulfillRandomness, after validating\\n  // the origin of the call\\n  function rawFulfillRandomWords(uint256 requestId, uint256[] memory randomWords) external {\\n    if (msg.sender != vrfCoordinator) {\\n      revert OnlyCoordinatorCanFulfill(msg.sender, vrfCoordinator);\\n    }\\n    fulfillRandomWords(requestId, randomWords);\\n  }\\n}\\n\",\"keccak256\":\"0xec8b7e3032e887dd0732d2a5f8552ddce64a99a81b0008ef0bcf6cad68a535fc\",\"license\":\"MIT\"},\"@chainlink/contracts/src/v0.8/interfaces/LinkTokenInterface.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity ^0.8.0;\\n\\ninterface LinkTokenInterface {\\n  function allowance(address owner, address spender) external view returns (uint256 remaining);\\n\\n  function approve(address spender, uint256 value) external returns (bool success);\\n\\n  function balanceOf(address owner) external view returns (uint256 balance);\\n\\n  function decimals() external view returns (uint8 decimalPlaces);\\n\\n  function decreaseApproval(address spender, uint256 addedValue) external returns (bool success);\\n\\n  function increaseApproval(address spender, uint256 subtractedValue) external;\\n\\n  function name() external view returns (string memory tokenName);\\n\\n  function symbol() external view returns (string memory tokenSymbol);\\n\\n  function totalSupply() external view returns (uint256 totalTokensIssued);\\n\\n  function transfer(address to, uint256 value) external returns (bool success);\\n\\n  function transferAndCall(\\n    address to,\\n    uint256 value,\\n    bytes calldata data\\n  ) external returns (bool success);\\n\\n  function transferFrom(\\n    address from,\\n    address to,\\n    uint256 value\\n  ) external returns (bool success);\\n}\\n\",\"keccak256\":\"0xc7d7cd730d36825485ef4107d93c3ff18b9f3a5a00ea3d5988ba9a0bd70b10c5\",\"license\":\"MIT\"},\"@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity ^0.8.0;\\n\\ninterface VRFCoordinatorV2Interface {\\n  /**\\n   * @notice Get configuration relevant for making requests\\n   * @return minimumRequestConfirmations global min for request confirmations\\n   * @return maxGasLimit global max for request gas limit\\n   * @return s_provingKeyHashes list of registered key hashes\\n   */\\n  function getRequestConfig()\\n    external\\n    view\\n    returns (\\n      uint16,\\n      uint32,\\n      bytes32[] memory\\n    );\\n\\n  /**\\n   * @notice Request a set of random words.\\n   * @param keyHash - Corresponds to a particular oracle job which uses\\n   * that key for generating the VRF proof. Different keyHash's have different gas price\\n   * ceilings, so you can select a specific one to bound your maximum per request cost.\\n   * @param subId  - The ID of the VRF subscription. Must be funded\\n   * with the minimum subscription balance required for the selected keyHash.\\n   * @param minimumRequestConfirmations - How many blocks you'd like the\\n   * oracle to wait before responding to the request. See SECURITY CONSIDERATIONS\\n   * for why you may want to request more. The acceptable range is\\n   * [minimumRequestBlockConfirmations, 200].\\n   * @param callbackGasLimit - How much gas you'd like to receive in your\\n   * fulfillRandomWords callback. Note that gasleft() inside fulfillRandomWords\\n   * may be slightly less than this amount because of gas used calling the function\\n   * (argument decoding etc.), so you may need to request slightly more than you expect\\n   * to have inside fulfillRandomWords. The acceptable range is\\n   * [0, maxGasLimit]\\n   * @param numWords - The number of uint256 random values you'd like to receive\\n   * in your fulfillRandomWords callback. Note these numbers are expanded in a\\n   * secure way by the VRFCoordinator from a single random value supplied by the oracle.\\n   * @return requestId - A unique identifier of the request. Can be used to match\\n   * a request to a response in fulfillRandomWords.\\n   */\\n  function requestRandomWords(\\n    bytes32 keyHash,\\n    uint64 subId,\\n    uint16 minimumRequestConfirmations,\\n    uint32 callbackGasLimit,\\n    uint32 numWords\\n  ) external returns (uint256 requestId);\\n\\n  /**\\n   * @notice Create a VRF subscription.\\n   * @return subId - A unique subscription id.\\n   * @dev You can manage the consumer set dynamically with addConsumer/removeConsumer.\\n   * @dev Note to fund the subscription, use transferAndCall. For example\\n   * @dev  LINKTOKEN.transferAndCall(\\n   * @dev    address(COORDINATOR),\\n   * @dev    amount,\\n   * @dev    abi.encode(subId));\\n   */\\n  function createSubscription() external returns (uint64 subId);\\n\\n  /**\\n   * @notice Get a VRF subscription.\\n   * @param subId - ID of the subscription\\n   * @return balance - LINK balance of the subscription in juels.\\n   * @return reqCount - number of requests for this subscription, determines fee tier.\\n   * @return owner - owner of the subscription.\\n   * @return consumers - list of consumer address which are able to use this subscription.\\n   */\\n  function getSubscription(uint64 subId)\\n    external\\n    view\\n    returns (\\n      uint96 balance,\\n      uint64 reqCount,\\n      address owner,\\n      address[] memory consumers\\n    );\\n\\n  /**\\n   * @notice Request subscription owner transfer.\\n   * @param subId - ID of the subscription\\n   * @param newOwner - proposed new owner of the subscription\\n   */\\n  function requestSubscriptionOwnerTransfer(uint64 subId, address newOwner) external;\\n\\n  /**\\n   * @notice Request subscription owner transfer.\\n   * @param subId - ID of the subscription\\n   * @dev will revert if original owner of subId has\\n   * not requested that msg.sender become the new owner.\\n   */\\n  function acceptSubscriptionOwnerTransfer(uint64 subId) external;\\n\\n  /**\\n   * @notice Add a consumer to a VRF subscription.\\n   * @param subId - ID of the subscription\\n   * @param consumer - New consumer which can use the subscription\\n   */\\n  function addConsumer(uint64 subId, address consumer) external;\\n\\n  /**\\n   * @notice Remove a consumer from a VRF subscription.\\n   * @param subId - ID of the subscription\\n   * @param consumer - Consumer to remove from the subscription\\n   */\\n  function removeConsumer(uint64 subId, address consumer) external;\\n\\n  /**\\n   * @notice Cancel a subscription\\n   * @param subId - ID of the subscription\\n   * @param to - Where to send the remaining LINK to\\n   */\\n  function cancelSubscription(uint64 subId, address to) external;\\n}\\n\",\"keccak256\":\"0xcb29ee50ee2b05441e4deebf8b4756a0feec4f5497e36b6a1ca320f7ce561802\",\"license\":\"MIT\"},\"contracts/mocks/MockVRFCoordinatorV2.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// A mock for testing code that relies on VRFCoordinatorV2.\\npragma solidity ^0.8.0;\\n\\nimport \\\"@chainlink/contracts/src/v0.8/interfaces/LinkTokenInterface.sol\\\";\\nimport \\\"@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol\\\";\\nimport \\\"@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol\\\";\\n\\ncontract MockVRFCoordinatorV2 is VRFCoordinatorV2Interface {\\n  uint96 public immutable BASE_FEE;\\n  uint96 public immutable GAS_PRICE_LINK;\\n\\n  error InvalidSubscription();\\n  error InsufficientBalance();\\n  error MustBeSubOwner(address owner);\\n\\n  event RandomWordsRequested(\\n    bytes32 indexed keyHash,\\n    uint256 requestId,\\n    uint256 preSeed,\\n    uint64 indexed subId,\\n    uint16 minimumRequestConfirmations,\\n    uint32 callbackGasLimit,\\n    uint32 numWords,\\n    address indexed sender\\n  );\\n  event RandomWordsFulfilled(\\n    uint256 indexed requestId,\\n    uint256 outputSeed,\\n    uint96 payment,\\n    bool success\\n  );\\n  event SubscriptionCreated(uint64 indexed subId, address owner);\\n  event SubscriptionFunded(uint64 indexed subId, uint256 oldBalance, uint256 newBalance);\\n  event SubscriptionCanceled(uint64 indexed subId, address to, uint256 amount);\\n\\n  uint64 s_currentSubId;\\n  uint256 s_nextRequestId = 1;\\n  uint256 s_nextPreSeed = 100;\\n  struct Subscription {\\n    address owner;\\n    uint96 balance;\\n  }\\n  mapping(uint64 => Subscription) s_subscriptions; /* subId */ /* subscription */\\n\\n  struct Request {\\n    uint64 subId;\\n    uint32 callbackGasLimit;\\n    uint32 numWords;\\n  }\\n  mapping(uint256 => Request) s_requests; /* requestId */ /* request */\\n\\n  constructor(uint96 _baseFee, uint96 _gasPriceLink) {\\n    BASE_FEE = _baseFee;\\n    GAS_PRICE_LINK = _gasPriceLink;\\n  }\\n\\n  /**\\n   * @notice fulfillRandomWords fulfills the given request, sending the random words to the supplied\\n   * @notice consumer.\\n   *\\n   * @dev This mock uses a simplified formula for calculating payment amount and gas usage, and does\\n   * @dev not account for all edge cases handled in the real VRF coordinator. When making requests\\n   * @dev against the real coordinator a small amount of additional LINK is required.\\n   *\\n   * @param _requestId the request to fulfill\\n   * @param _consumer the VRF randomness consumer to send the result to\\n   */\\n  function fulfillRandomWords(uint256 _requestId, address _consumer) external {\\n    uint256 startGas = gasleft();\\n    if (s_requests[_requestId].subId == 0) {\\n      revert(\\\"nonexistent request\\\");\\n    }\\n    Request memory req = s_requests[_requestId];\\n\\n    uint256[] memory words = new uint256[](req.numWords);\\n    for (uint256 i = 0; i < req.numWords; i++) {\\n      words[i] = uint256(keccak256(abi.encode(_requestId, i)));\\n    }\\n\\n    VRFConsumerBaseV2 v;\\n    bytes memory callReq = abi.encodeWithSelector(\\n      v.rawFulfillRandomWords.selector,\\n      _requestId,\\n      words\\n    );\\n    (bool success, ) = _consumer.call{gas: req.callbackGasLimit}(callReq);\\n\\n    // uint96 payment = uint96(BASE_FEE + ((startGas - gasleft()) * GAS_PRICE_LINK));\\n    uint96 payment = 0;\\n    if (s_subscriptions[req.subId].balance < payment) {\\n      revert InsufficientBalance();\\n    }\\n    s_subscriptions[req.subId].balance -= payment;\\n    delete (s_requests[_requestId]);\\n    emit RandomWordsFulfilled(_requestId, _requestId, payment, success);\\n  }\\n\\n  /**\\n   * @notice fundSubscription allows funding a subscription with an arbitrary amount for testing.\\n   *\\n   * @param _subId the subscription to fund\\n   * @param _amount the amount to fund\\n   */\\n  function fundSubscription(uint64 _subId, uint96 _amount) public {\\n    if (s_subscriptions[_subId].owner == address(0)) {\\n      revert InvalidSubscription();\\n    }\\n    uint96 oldBalance = s_subscriptions[_subId].balance;\\n    s_subscriptions[_subId].balance += _amount;\\n    emit SubscriptionFunded(_subId, oldBalance, oldBalance + _amount);\\n  }\\n\\n  function requestRandomWords(\\n    bytes32 _keyHash,\\n    uint64 _subId,\\n    uint16 _minimumRequestConfirmations,\\n    uint32 _callbackGasLimit,\\n    uint32 _numWords\\n  ) external override returns (uint256) {\\n    if (s_subscriptions[_subId].owner == address(0)) {\\n      revert InvalidSubscription();\\n    }\\n\\n    uint256 requestId = s_nextRequestId++;\\n    uint256 preSeed = s_nextPreSeed++;\\n\\n    s_requests[requestId] = Request({\\n      subId: _subId,\\n      callbackGasLimit: _callbackGasLimit,\\n      numWords: _numWords\\n    });\\n\\n    emit RandomWordsRequested(\\n      _keyHash,\\n      requestId,\\n      preSeed,\\n      _subId,\\n      _minimumRequestConfirmations,\\n      _callbackGasLimit,\\n      _numWords,\\n      msg.sender\\n    );\\n    return requestId;\\n  }\\n\\n  function createSubscription() external override returns (uint64 _subId) {\\n    s_currentSubId++;\\n    s_subscriptions[s_currentSubId] = Subscription({owner: msg.sender, balance: 0});\\n    emit SubscriptionCreated(s_currentSubId, msg.sender);\\n    return s_currentSubId;\\n  }\\n\\n  function getSubscription(uint64 _subId)\\n    external\\n    view\\n    override\\n    returns (\\n      uint96 balance,\\n      uint64 reqCount,\\n      address owner,\\n      address[] memory consumers\\n    )\\n  {\\n    if (s_subscriptions[_subId].owner == address(0)) {\\n      revert InvalidSubscription();\\n    }\\n    return (s_subscriptions[_subId].balance, 0, s_subscriptions[_subId].owner, new address[](0));\\n  }\\n\\n  function cancelSubscription(uint64 _subId, address _to) external override onlySubOwner(_subId) {\\n    emit SubscriptionCanceled(_subId, _to, s_subscriptions[_subId].balance);\\n    delete (s_subscriptions[_subId]);\\n  }\\n\\n  modifier onlySubOwner(uint64 _subId) {\\n    address owner = s_subscriptions[_subId].owner;\\n    if (owner == address(0)) {\\n      revert InvalidSubscription();\\n    }\\n    if (msg.sender != owner) {\\n      revert MustBeSubOwner(owner);\\n    }\\n    _;\\n  }\\n\\n  function getRequestConfig()\\n    external\\n    pure\\n    override\\n    returns (\\n      uint16,\\n      uint32,\\n      bytes32[] memory\\n    )\\n  {\\n    return (3, 2000000, new bytes32[](0));\\n  }\\n\\n  function addConsumer(uint64 _subId, address _consumer) external pure override {\\n    revert(\\\"not implemented\\\");\\n  }\\n\\n  function removeConsumer(uint64 _subId, address _consumer) external pure override {\\n    revert(\\\"not implemented\\\");\\n  }\\n\\n  function requestSubscriptionOwnerTransfer(uint64 _subId, address _newOwner)\\n    external\\n    pure\\n    override\\n  {\\n    revert(\\\"not implemented\\\");\\n  }\\n\\n  function acceptSubscriptionOwnerTransfer(uint64 _subId) external pure override {\\n    revert(\\\"not implemented\\\");\\n  }\\n}\\n\",\"keccak256\":\"0x4501ba65b72280d788907e68f331c9b3f6249627d698b8433c2232813b69ed47\",\"license\":\"MIT\"}},\"version\":1}",
+  "bytecode": "0x60c060405260018055606460025534801561001957600080fd5b50604051610ed0380380610ed08339810160408190526100389161006b565b6001600160601b039182166080521660a05261009e565b80516001600160601b038116811461006657600080fd5b919050565b6000806040838503121561007e57600080fd5b6100878361004f565b91506100956020840161004f565b90509250929050565b60805160a051610e0d6100c360003960006101b8015260006101170152610e0d6000f3fe608060405234801561001057600080fd5b50600436106100ce5760003560e01c8063823597401161008c578063a410347f11610066578063a410347f146101b3578063a47c7696146101da578063afc69b53146101fd578063d7ae1d301461021057600080fd5b806382359740146101855780639f87fad7146100fd578063a21a23e41461019357600080fd5b8062012291146100d357806304c357cb146100fd5780633d18651e146101125780635d3b1d30146101515780637341c10c146100fd578063808974ff14610172575b600080fd5b604080516000815260208101918290526100f491600391621e848091610a35565b60405180910390f35b61011061010b366004610ac7565b610223565b005b6101397f000000000000000000000000000000000000000000000000000000000000000081565b6040516001600160601b0390911681526020016100f4565b61016461015f366004610b0e565b610262565b6040519081526020016100f4565b610110610180366004610b75565b6103b7565b61011061010b366004610b98565b61019b6106bc565b6040516001600160401b0390911681526020016100f4565b6101397f000000000000000000000000000000000000000000000000000000000000000081565b6101ed6101e8366004610b98565b610784565b6040516100f49493929190610bba565b61011061020b366004610c34565b610838565b61011061021e366004610ac7565b610934565b60405162461bcd60e51b815260206004820152600f60248201526e1b9bdd081a5b5c1b195b595b9d1959608a1b60448201526064015b60405180910390fd5b6001600160401b0384166000908152600360205260408120546001600160a01b03166102a157604051630fb532db60e11b815260040160405180910390fd5b60018054600091826102b283610ca3565b909155506002805491925060009190826102cb83610ca3565b9091555060408051606080820183526001600160401b038b811680845263ffffffff8b811660208087018281528d8416888a0181815260008e8152600485528b902099518a54935191518716600160601b0263ffffffff60601b1992909716600160401b026bffffffffffffffffffffffff19909416981697909717919091179590951692909217909555855189815290810187905261ffff8d16818701529283019390935260808201529151929350339290918b917f63373d1c4696214b898952999c9aaec57dac1ee2723cec59bea6888f489a97729160a0908290030190a4509695505050505050565b60005a6000848152600460205260409020549091506001600160401b03166104175760405162461bcd60e51b81526020600482015260136024820152721b9bdb995e1a5cdd195b9d081c995c5d595cdd606a1b6044820152606401610259565b6000838152600460209081526040808320815160608101835290546001600160401b03808216835263ffffffff600160401b8304811695840195909552600160601b909104909316918101829052929181111561047657610476610c77565b60405190808252806020026020018201604052801561049f578160200160208202803683370190505b50905060005b826040015163ffffffff168110156105135760408051602081018890529081018290526060016040516020818303038152906040528051906020012060001c8282815181106104f6576104f6610cbe565b60209081029190910101528061050b81610ca3565b9150506104a5565b50600080631fe543e360e01b8784604051602401610532929190610cd4565b604051602081830303815290604052906001600160e01b0319166020820180516001600160e01b03838183161783525050505090506000866001600160a01b0316856020015163ffffffff168360405161058c9190610d22565b60006040518083038160008787f1925050503d80600081146105ca576040519150601f19603f3d011682016040523d82523d6000602084013e6105cf565b606091505b505085516001600160401b03166000908152600360205290915085516001600160401b031660009081526003602052604090208054829190601490610625908490600160a01b90046001600160601b0316610d5d565b82546101009290920a6001600160601b0381810219909316918316021790915560008b81526004602090815260409182902080546fffffffffffffffffffffffffffffffff1916905581518d815292851690830152841515908201528a91507f7dffc5ae5ee4e2e4df1651cf6ad329a73cebdb728f37ea0187b9b17e036756e49060600160405180910390a2505050505050505050565b600080546001600160401b031681806106d483610d85565b82546001600160401b039182166101009390930a928302928202191691909117909155604080518082018252338082526000602080840182815282548716835260038252858320945190516001600160601b0316600160a01b026001600160a01b03909116179093555492519081529190921692507f464722b4166576d3dcbba877b999bc35cf911f4eaf434b7eba68fa113951d0bf910160405180910390a2506000546001600160401b031690565b6001600160401b038116600090815260036020526040812054819081906060906001600160a01b03166107ca57604051630fb532db60e11b815260040160405180910390fd5b6001600160401b0385166000908152600360205260408120546001600160601b03600160a01b82041691906001600160a01b031681604051908082528060200260200182016040528015610828578160200160208202803683370190505b5093509350935093509193509193565b6001600160401b0382166000908152600360205260409020546001600160a01b031661087757604051630fb532db60e11b815260040160405180910390fd5b6001600160401b03821660009081526003602052604090208054600160a01b90046001600160601b031690829060146108b08385610dac565b92506101000a8154816001600160601b0302191690836001600160601b03160217905550826001600160401b03167fd39ec07f4e209f627a4c427971473820dc129761ba28de8906bd56f57101d4f882848461090c9190610dac565b604080516001600160601b0393841681529290911660208301520160405180910390a2505050565b6001600160401b03821660009081526003602052604090205482906001600160a01b03168061097657604051630fb532db60e11b815260040160405180910390fd5b336001600160a01b038216146109aa57604051636c51fda960e11b81526001600160a01b0382166004820152602401610259565b6001600160401b0384166000818152600360209081526040918290205482516001600160a01b0388168152600160a01b9091046001600160601b0316918101919091527fe8ed5b475a5b5987aa9165e8731bb78043f39eee32ec5a1169a89e27fcd49815910160405180910390a25050506001600160401b0316600090815260036020526040812055565b60006060820161ffff86168352602063ffffffff86168185015260606040850152818551808452608086019150828701935060005b81811015610a8657845183529383019391830191600101610a6a565b509098975050505050505050565b80356001600160401b0381168114610aab57600080fd5b919050565b80356001600160a01b0381168114610aab57600080fd5b60008060408385031215610ada57600080fd5b610ae383610a94565b9150610af160208401610ab0565b90509250929050565b803563ffffffff81168114610aab57600080fd5b600080600080600060a08688031215610b2657600080fd5b85359450610b3660208701610a94565b9350604086013561ffff81168114610b4d57600080fd5b9250610b5b60608701610afa565b9150610b6960808701610afa565b90509295509295909350565b60008060408385031215610b8857600080fd5b82359150610af160208401610ab0565b600060208284031215610baa57600080fd5b610bb382610a94565b9392505050565b6000608082016001600160601b038716835260206001600160401b0387168185015260018060a01b0380871660408601526080606086015282865180855260a087019150838801945060005b81811015610c24578551841683529484019491840191600101610c06565b50909a9950505050505050505050565b60008060408385031215610c4757600080fd5b610c5083610a94565b915060208301356001600160601b0381168114610c6c57600080fd5b809150509250929050565b634e487b7160e01b600052604160045260246000fd5b634e487b7160e01b600052601160045260246000fd5b6000600019821415610cb757610cb7610c8d565b5060010190565b634e487b7160e01b600052603260045260246000fd5b6000604082018483526020604081850152818551808452606086019150828701935060005b81811015610d1557845183529383019391830191600101610cf9565b5090979650505050505050565b6000825160005b81811015610d435760208186018101518583015201610d29565b81811115610d52576000828501525b509190910192915050565b60006001600160601b0383811690831681811015610d7d57610d7d610c8d565b039392505050565b60006001600160401b0380831681811415610da257610da2610c8d565b6001019392505050565b60006001600160601b03808316818516808303821115610dce57610dce610c8d565b0194935050505056fea2646970667358221220e8797dd46b63aca8f98804b331f4036449a5ec12c9a4f11759ba402db1360e4764736f6c63430008090033",
+  "deployedBytecode": "0x608060405234801561001057600080fd5b50600436106100ce5760003560e01c8063823597401161008c578063a410347f11610066578063a410347f146101b3578063a47c7696146101da578063afc69b53146101fd578063d7ae1d301461021057600080fd5b806382359740146101855780639f87fad7146100fd578063a21a23e41461019357600080fd5b8062012291146100d357806304c357cb146100fd5780633d18651e146101125780635d3b1d30146101515780637341c10c146100fd578063808974ff14610172575b600080fd5b604080516000815260208101918290526100f491600391621e848091610a35565b60405180910390f35b61011061010b366004610ac7565b610223565b005b6101397f000000000000000000000000000000000000000000000000000000000000000081565b6040516001600160601b0390911681526020016100f4565b61016461015f366004610b0e565b610262565b6040519081526020016100f4565b610110610180366004610b75565b6103b7565b61011061010b366004610b98565b61019b6106bc565b6040516001600160401b0390911681526020016100f4565b6101397f000000000000000000000000000000000000000000000000000000000000000081565b6101ed6101e8366004610b98565b610784565b6040516100f49493929190610bba565b61011061020b366004610c34565b610838565b61011061021e366004610ac7565b610934565b60405162461bcd60e51b815260206004820152600f60248201526e1b9bdd081a5b5c1b195b595b9d1959608a1b60448201526064015b60405180910390fd5b6001600160401b0384166000908152600360205260408120546001600160a01b03166102a157604051630fb532db60e11b815260040160405180910390fd5b60018054600091826102b283610ca3565b909155506002805491925060009190826102cb83610ca3565b9091555060408051606080820183526001600160401b038b811680845263ffffffff8b811660208087018281528d8416888a0181815260008e8152600485528b902099518a54935191518716600160601b0263ffffffff60601b1992909716600160401b026bffffffffffffffffffffffff19909416981697909717919091179590951692909217909555855189815290810187905261ffff8d16818701529283019390935260808201529151929350339290918b917f63373d1c4696214b898952999c9aaec57dac1ee2723cec59bea6888f489a97729160a0908290030190a4509695505050505050565b60005a6000848152600460205260409020549091506001600160401b03166104175760405162461bcd60e51b81526020600482015260136024820152721b9bdb995e1a5cdd195b9d081c995c5d595cdd606a1b6044820152606401610259565b6000838152600460209081526040808320815160608101835290546001600160401b03808216835263ffffffff600160401b8304811695840195909552600160601b909104909316918101829052929181111561047657610476610c77565b60405190808252806020026020018201604052801561049f578160200160208202803683370190505b50905060005b826040015163ffffffff168110156105135760408051602081018890529081018290526060016040516020818303038152906040528051906020012060001c8282815181106104f6576104f6610cbe565b60209081029190910101528061050b81610ca3565b9150506104a5565b50600080631fe543e360e01b8784604051602401610532929190610cd4565b604051602081830303815290604052906001600160e01b0319166020820180516001600160e01b03838183161783525050505090506000866001600160a01b0316856020015163ffffffff168360405161058c9190610d22565b60006040518083038160008787f1925050503d80600081146105ca576040519150601f19603f3d011682016040523d82523d6000602084013e6105cf565b606091505b505085516001600160401b03166000908152600360205290915085516001600160401b031660009081526003602052604090208054829190601490610625908490600160a01b90046001600160601b0316610d5d565b82546101009290920a6001600160601b0381810219909316918316021790915560008b81526004602090815260409182902080546fffffffffffffffffffffffffffffffff1916905581518d815292851690830152841515908201528a91507f7dffc5ae5ee4e2e4df1651cf6ad329a73cebdb728f37ea0187b9b17e036756e49060600160405180910390a2505050505050505050565b600080546001600160401b031681806106d483610d85565b82546001600160401b039182166101009390930a928302928202191691909117909155604080518082018252338082526000602080840182815282548716835260038252858320945190516001600160601b0316600160a01b026001600160a01b03909116179093555492519081529190921692507f464722b4166576d3dcbba877b999bc35cf911f4eaf434b7eba68fa113951d0bf910160405180910390a2506000546001600160401b031690565b6001600160401b038116600090815260036020526040812054819081906060906001600160a01b03166107ca57604051630fb532db60e11b815260040160405180910390fd5b6001600160401b0385166000908152600360205260408120546001600160601b03600160a01b82041691906001600160a01b031681604051908082528060200260200182016040528015610828578160200160208202803683370190505b5093509350935093509193509193565b6001600160401b0382166000908152600360205260409020546001600160a01b031661087757604051630fb532db60e11b815260040160405180910390fd5b6001600160401b03821660009081526003602052604090208054600160a01b90046001600160601b031690829060146108b08385610dac565b92506101000a8154816001600160601b0302191690836001600160601b03160217905550826001600160401b03167fd39ec07f4e209f627a4c427971473820dc129761ba28de8906bd56f57101d4f882848461090c9190610dac565b604080516001600160601b0393841681529290911660208301520160405180910390a2505050565b6001600160401b03821660009081526003602052604090205482906001600160a01b03168061097657604051630fb532db60e11b815260040160405180910390fd5b336001600160a01b038216146109aa57604051636c51fda960e11b81526001600160a01b0382166004820152602401610259565b6001600160401b0384166000818152600360209081526040918290205482516001600160a01b0388168152600160a01b9091046001600160601b0316918101919091527fe8ed5b475a5b5987aa9165e8731bb78043f39eee32ec5a1169a89e27fcd49815910160405180910390a25050506001600160401b0316600090815260036020526040812055565b60006060820161ffff86168352602063ffffffff86168185015260606040850152818551808452608086019150828701935060005b81811015610a8657845183529383019391830191600101610a6a565b509098975050505050505050565b80356001600160401b0381168114610aab57600080fd5b919050565b80356001600160a01b0381168114610aab57600080fd5b60008060408385031215610ada57600080fd5b610ae383610a94565b9150610af160208401610ab0565b90509250929050565b803563ffffffff81168114610aab57600080fd5b600080600080600060a08688031215610b2657600080fd5b85359450610b3660208701610a94565b9350604086013561ffff81168114610b4d57600080fd5b9250610b5b60608701610afa565b9150610b6960808701610afa565b90509295509295909350565b60008060408385031215610b8857600080fd5b82359150610af160208401610ab0565b600060208284031215610baa57600080fd5b610bb382610a94565b9392505050565b6000608082016001600160601b038716835260206001600160401b0387168185015260018060a01b0380871660408601526080606086015282865180855260a087019150838801945060005b81811015610c24578551841683529484019491840191600101610c06565b50909a9950505050505050505050565b60008060408385031215610c4757600080fd5b610c5083610a94565b915060208301356001600160601b0381168114610c6c57600080fd5b809150509250929050565b634e487b7160e01b600052604160045260246000fd5b634e487b7160e01b600052601160045260246000fd5b6000600019821415610cb757610cb7610c8d565b5060010190565b634e487b7160e01b600052603260045260246000fd5b6000604082018483526020604081850152818551808452606086019150828701935060005b81811015610d1557845183529383019391830191600101610cf9565b5090979650505050505050565b6000825160005b81811015610d435760208186018101518583015201610d29565b81811115610d52576000828501525b509190910192915050565b60006001600160601b0383811690831681811015610d7d57610d7d610c8d565b039392505050565b60006001600160401b0380831681811415610da257610da2610c8d565b6001019392505050565b60006001600160601b03808316818516808303821115610dce57610dce610c8d565b0194935050505056fea2646970667358221220e8797dd46b63aca8f98804b331f4036449a5ec12c9a4f11759ba402db1360e4764736f6c63430008090033",
+  "devdoc": {
+    "kind": "dev",
+    "methods": {
+      "createSubscription()": {
+        "details": "You can manage the consumer set dynamically with addConsumer/removeConsumer.Note to fund the subscription, use transferAndCall. For exampleLINKTOKEN.transferAndCall(address(COORDINATOR),amount,abi.encode(subId));",
+        "returns": {
+          "_subId": "- A unique subscription id."
+        }
+      },
+      "fulfillRandomWords(uint256,address)": {
+        "details": "This mock uses a simplified formula for calculating payment amount and gas usage, and doesnot account for all edge cases handled in the real VRF coordinator. When making requestsagainst the real coordinator a small amount of additional LINK is required.",
+        "params": {
+          "_consumer": "the VRF randomness consumer to send the result to",
+          "_requestId": "the request to fulfill"
+        }
+      },
+      "fundSubscription(uint64,uint96)": {
+        "params": {
+          "_amount": "the amount to fund",
+          "_subId": "the subscription to fund"
+        }
+      },
+      "getRequestConfig()": {
+        "returns": {
+          "_0": "minimumRequestConfirmations global min for request confirmations",
+          "_1": "maxGasLimit global max for request gas limit",
+          "_2": "s_provingKeyHashes list of registered key hashes"
+        }
+      }
+    },
+    "version": 1
+  },
+  "userdoc": {
+    "kind": "user",
+    "methods": {
+      "createSubscription()": {
+        "notice": "Create a VRF subscription."
+      },
+      "fulfillRandomWords(uint256,address)": {
+        "notice": "fulfillRandomWords fulfills the given request, sending the random words to the suppliedconsumer."
+      },
+      "fundSubscription(uint64,uint96)": {
+        "notice": "fundSubscription allows funding a subscription with an arbitrary amount for testing."
+      },
+      "getRequestConfig()": {
+        "notice": "Get configuration relevant for making requests"
+      }
+    },
+    "version": 1
+  },
+  "storageLayout": {
+    "storage": [
+      {
+        "astId": 14168,
+        "contract": "contracts/mocks/MockVRFCoordinatorV2.sol:MockVRFCoordinatorV2",
+        "label": "s_currentSubId",
+        "offset": 0,
+        "slot": "0",
+        "type": "t_uint64"
+      },
+      {
+        "astId": 14171,
+        "contract": "contracts/mocks/MockVRFCoordinatorV2.sol:MockVRFCoordinatorV2",
+        "label": "s_nextRequestId",
+        "offset": 0,
+        "slot": "1",
+        "type": "t_uint256"
+      },
+      {
+        "astId": 14174,
+        "contract": "contracts/mocks/MockVRFCoordinatorV2.sol:MockVRFCoordinatorV2",
+        "label": "s_nextPreSeed",
+        "offset": 0,
+        "slot": "2",
+        "type": "t_uint256"
+      },
+      {
+        "astId": 14184,
+        "contract": "contracts/mocks/MockVRFCoordinatorV2.sol:MockVRFCoordinatorV2",
+        "label": "s_subscriptions",
+        "offset": 0,
+        "slot": "3",
+        "type": "t_mapping(t_uint64,t_struct(Subscription)14179_storage)"
+      },
+      {
+        "astId": 14196,
+        "contract": "contracts/mocks/MockVRFCoordinatorV2.sol:MockVRFCoordinatorV2",
+        "label": "s_requests",
+        "offset": 0,
+        "slot": "4",
+        "type": "t_mapping(t_uint256,t_struct(Request)14191_storage)"
+      }
+    ],
+    "types": {
+      "t_address": {
+        "encoding": "inplace",
+        "label": "address",
+        "numberOfBytes": "20"
+      },
+      "t_mapping(t_uint256,t_struct(Request)14191_storage)": {
+        "encoding": "mapping",
+        "key": "t_uint256",
+        "label": "mapping(uint256 => struct MockVRFCoordinatorV2.Request)",
+        "numberOfBytes": "32",
+        "value": "t_struct(Request)14191_storage"
+      },
+      "t_mapping(t_uint64,t_struct(Subscription)14179_storage)": {
+        "encoding": "mapping",
+        "key": "t_uint64",
+        "label": "mapping(uint64 => struct MockVRFCoordinatorV2.Subscription)",
+        "numberOfBytes": "32",
+        "value": "t_struct(Subscription)14179_storage"
+      },
+      "t_struct(Request)14191_storage": {
+        "encoding": "inplace",
+        "label": "struct MockVRFCoordinatorV2.Request",
+        "members": [
+          {
+            "astId": 14186,
+            "contract": "contracts/mocks/MockVRFCoordinatorV2.sol:MockVRFCoordinatorV2",
+            "label": "subId",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_uint64"
+          },
+          {
+            "astId": 14188,
+            "contract": "contracts/mocks/MockVRFCoordinatorV2.sol:MockVRFCoordinatorV2",
+            "label": "callbackGasLimit",
+            "offset": 8,
+            "slot": "0",
+            "type": "t_uint32"
+          },
+          {
+            "astId": 14190,
+            "contract": "contracts/mocks/MockVRFCoordinatorV2.sol:MockVRFCoordinatorV2",
+            "label": "numWords",
+            "offset": 12,
+            "slot": "0",
+            "type": "t_uint32"
+          }
+        ],
+        "numberOfBytes": "32"
+      },
+      "t_struct(Subscription)14179_storage": {
+        "encoding": "inplace",
+        "label": "struct MockVRFCoordinatorV2.Subscription",
+        "members": [
+          {
+            "astId": 14176,
+            "contract": "contracts/mocks/MockVRFCoordinatorV2.sol:MockVRFCoordinatorV2",
+            "label": "owner",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_address"
+          },
+          {
+            "astId": 14178,
+            "contract": "contracts/mocks/MockVRFCoordinatorV2.sol:MockVRFCoordinatorV2",
+            "label": "balance",
+            "offset": 20,
+            "slot": "0",
+            "type": "t_uint96"
+          }
+        ],
+        "numberOfBytes": "32"
+      },
+      "t_uint256": {
+        "encoding": "inplace",
+        "label": "uint256",
+        "numberOfBytes": "32"
+      },
+      "t_uint32": {
+        "encoding": "inplace",
+        "label": "uint32",
+        "numberOfBytes": "4"
+      },
+      "t_uint64": {
+        "encoding": "inplace",
+        "label": "uint64",
+        "numberOfBytes": "8"
+      },
+      "t_uint96": {
+        "encoding": "inplace",
+        "label": "uint96",
+        "numberOfBytes": "12"
+      }
+    }
+  }
+}

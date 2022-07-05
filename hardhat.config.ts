@@ -49,12 +49,18 @@ const config: HardhatUserConfig = {
       accounts: accounts("rinkeby"),
       tags: ["test", "live"],
     },
+    goerli: {
+      url: node_url("goerli"),
+      accounts: accounts("goerli"),
+      tags: ["test", "live"],
+    },
   },
   etherscan: {
     apiKey: {
       mainnet: verifyKey("etherscan"),
       rinkeby: verifyKey("etherscan"),
       polygon: verifyKey("polyscan"),
+      goerli: verifyKey("etherscan"),
     },
   },
   solidity: {
