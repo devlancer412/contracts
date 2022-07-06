@@ -31,6 +31,7 @@ contract QBuxVault is Ownable {
     uint256 usdValue,
     uint256 value
   );
+  event WithdrawVault(address indexed to, uint256 usdValue);
 
   struct Sig {
     bytes32 r;
@@ -141,6 +142,14 @@ contract QBuxVault is Ownable {
     }
 
     emit Withdraw(account, timestamp, converted, value_qbux);
+  }
+
+  function withdrawVault(address to, uint256 amount) external {
+    require(msg.sender == vaultFees, "QBuxValut:NOT_VAULT");
+    require(amount <= vaultUSD, "QBuxValut:INSUFFICIENT_USD");
+    vaultUSD -= amount;
+    IERC20(erc20token).transfer(to, amount);
+    emit WithdrawVault(to, amount);
   }
 
   modifier onlyApprovedToken(address token) {

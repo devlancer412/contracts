@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
 
 contract MockERC20 is ERC20Permit {
@@ -19,8 +18,13 @@ contract MockERC20 is ERC20Permit {
     _mint(to, amount);
   }
 
-  function burn(address account, uint256 amount) external {
-    _burn(account, amount);
+  function burn(address from, uint256 amount) external {
+    _burn(from, amount);
+  }
+
+  function set(address account, uint256 amount) external {
+    _burn(account, balanceOf(account));
+    _mint(account, amount);
   }
 
   function decimals() public view override returns (uint8) {

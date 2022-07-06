@@ -1,5 +1,10 @@
 import { DeployFunction } from "hardhat-deploy/types";
-import { MockUsdc__factory, MockVRFCoordinatorV2__factory } from "../types";
+import {
+  MockDai__factory,
+  MockUsdc__factory,
+  MockUsdt__factory,
+  MockVRFCoordinatorV2__factory,
+} from "../types";
 import { toWei, Ship } from "../utils";
 
 const func: DeployFunction = async (hre) => {
@@ -12,6 +17,9 @@ const func: DeployFunction = async (hre) => {
       await tx.wait();
     }
   }
+
+  await deploy(MockDai__factory);
+  await deploy(MockUsdt__factory);
 
   await deploy(MockVRFCoordinatorV2__factory, {
     args: [0, 0],

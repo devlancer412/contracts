@@ -73,14 +73,7 @@ class Ship {
     const from = option?.from || this.accounts.deployer;
     const fromAddr = from.address;
 
-    let log = option?.log || this.log;
-    if (log === undefined) {
-      if (this.hre.network.name !== "hardhat") {
-        log = true;
-      } else {
-        log = false;
-      }
-    }
+    const log = option?.log || this.log || this.hre.network.name !== "hardhat" ? true : false;
     const deployResult = await this.hre.deployments.deploy(contractName, {
       ...option,
       from: fromAddr,
