@@ -55,6 +55,10 @@ contract Store is Ownable, Claimable {
   // { account: block.number}
   mapping(address => uint256) public last_purchase;
 
+  //==============================
+  // for affiliate marketing
+  address private affiliateAddress;
+
   event Listed(
     uint256 listingId,
     address token,
@@ -263,5 +267,52 @@ contract Store is Ownable, Claimable {
       _permit.s
     );
     purchase(to, listingIds, amounts, claimData);
+  }
+
+  // for affiliate sale
+  function setAffiliateAddress(address _address) public onlyOwner {
+    affiliateAddress = _address;
+  }
+
+  modifier onlyAffiliate() {
+    require(affiliateAddress == msg.sender, "Store:NOT_AFFILIATE");
+    _;
+  }
+
+  function buyItemWithAffiliate(
+    address from,
+    address to,
+    uint256 listingId,
+    uint256 amount
+  ) public onlyAffiliate {
+    require(!inactive[listingId], "Store:INACTIVE_LISTING");
+    require(stocks[listingId] >= amount, "Store:INSUFFICIENT_STOCK");
+
+    Listing memory listing = listings[listingId];
+
+    stocks[listingId] -= amount;
+    uint256 price = listing.price * amount;
+    if (feeRate != 0) {
+      uint256 fee = (price * feeRate) / 10_000;
+      price -= fee;
+      // Send the fee to the contract owner
+      operatingToken.transferFrom(from, vault, fee);
+    }
+    operatingToken.transferFrom(from, listing.owner, price);
+
+    bytes memory payload = _generatePayload(
+      to,
+      listing.tokentype,
+      listing.tokenId,
+      amount,
+      0,
+      bytes32(0),
+      listing.maxval
+    );
+
+    (bool ok, ) = listing.token.call(payload);
+    require(ok);
+
+    emit Sold(listingId, to, amount);
   }
 }
